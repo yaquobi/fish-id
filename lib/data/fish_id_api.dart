@@ -7,7 +7,7 @@ import 'result.dart';
 
 /// عنوان خادم حوات. يتغير وقت البناء: --dart-define=API_URL=http://localhost:8080/
 /// والقيمة DEMO تشغّل وضع التجربة بنتيجة ثابتة بدون خادم.
-const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'https://huwat.tech/api/');
+const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'https://hawat.id/api/');
 bool get isDemo => apiUrl == 'DEMO';
 
 class FishIdException implements Exception {
@@ -17,7 +17,7 @@ class FishIdException implements Exception {
   String toString() => message;
 }
 
-/// يرسل الصورة لنقطة fishId.identify في خادم حوات (بروتوكول Serverpod عبر HTTP).
+/// يرسل الصورة لخادم FISH ID (مجلد server/) على https://hawat.id/api/.
 /// مفتاح Claude موجود في الخادم فقط، والتطبيق ما يعرفه.
 abstract final class FishIdApi {
   static Future<FishResult> identify(Uint8List image) async {
