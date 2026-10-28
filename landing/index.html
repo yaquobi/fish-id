@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FISH ID · صوّر السمكة واعرف نوعها وطزاجتها</title>
+<meta name="description" content="FISH ID من منظومة حوات: صوّر السمكة بجوالك، ويقول لك نوعها من موسوعة أسماك السعودية ومدى طزاجتها وكل المعلومات عنها.">
+<meta name="theme-color" content="#0B2236">
+<meta property="og:title" content="FISH ID">
+<meta property="og:description" content="صوّر السمكة، واعرف نوعها ومدى طزاجتها وكل شيء عنها. لأسماك البحر الأحمر والخليج العربي.">
+<meta property="og:image" content="https://hawat.id/img/icon.png">
+<link rel="icon" href="/img/favicon.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Tajawal:wght@400;500;700;800&display=swap">
+<style>
+:root{
+  --navy:#0B2236; --navy-deep:#061624; --navy-2:#0F2C44; --gold:#F2C14E; --gold-ink:#8A5E00;
+  --bg:#EEF2F5; --surface:#fff; --ink:#0B2236; --muted:#4A5B6B; --line:#D5DEE6; --chip:#E6EDF3;
+  --good:#1D7A51; --on-navy:#C9D6E2;
+  --ar:"Tajawal",system-ui,sans-serif; --lat:"Montserrat",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 var(--ar);-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:max(20px,env(safe-area-inset-left))}
+.lat{font-family:var(--lat);direction:ltr;unicode-bidi:isolate}
+.word{font-family:var(--lat);font-weight:800;letter-spacing:.14em;direction:ltr;unicode-bidi:isolate;white-space:nowrap}
+.word b{color:var(--gold);font-weight:800}
+
+/* Hero */
+.hero{background:radial-gradient(1200px 600px at 85% -10%,#14375A 0,transparent 60%),linear-gradient(180deg,var(--navy-deep),var(--navy));color:#fff;overflow:hidden}
+nav{display:flex;align-items:center;gap:12px;padding-block:18px}
+nav .word{font-size:20px}
+nav .sp{flex:1}
+nav a.k{color:var(--on-navy);text-decoration:none;font-size:15px}
+nav a.k:hover{color:#fff}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:48px;align-items:center;padding-block:40px 0}
+.eyebrow{display:inline-flex;gap:8px;align-items:center;background:rgba(242,193,78,.12);color:var(--gold);border:1px solid rgba(242,193,78,.35);border-radius:999px;padding:4px 14px;font-size:14px;font-weight:700}
+h1{font-size:clamp(36px,5.6vw,60px);line-height:1.2;margin:18px 0 14px;font-weight:800;text-wrap:balance}
+h1 em{font-style:normal;color:var(--gold)}
+.lead{color:var(--on-navy);font-size:clamp(17px,2vw,20px);max-width:34em;margin:0 0 28px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:10px;min-height:54px;padding:0 22px;border-radius:12px;font:800 17px var(--ar);text-decoration:none;border:0;cursor:pointer}
+.btn.gold{background:var(--gold);color:var(--navy)}
+.btn.gold:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.35)}
+.btn.ghost:hover{border-color:#fff}
+.btn small{display:block;font:500 12px var(--ar);opacity:.8;line-height:1}
+.btn span{display:flex;flex-direction:column;align-items:flex-start;gap:3px;line-height:1.1}
+.stats{display:flex;gap:32px;flex-wrap:wrap;margin-top:34px;padding-bottom:56px}
+.stats div{display:flex;flex-direction:column}
+.stats b{font:800 30px var(--lat);color:var(--gold);font-variant-numeric:tabular-nums;line-height:1.2}
+.stats small{color:var(--on-navy);font-size:14px}
+.phone-wrap{position:relative;align-self:end;display:flex;justify-content:center}
+.phone{width:min(320px,80vw);border-radius:42px 42px 0 0;background:#000;padding:12px 12px 0;box-shadow:0 30px 80px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.08) inset}
+.phone img{border-radius:32px 32px 0 0;aspect-ratio:390/600;object-fit:cover;object-position:top}
+.glow{position:absolute;inset:auto 10% 0;height:60%;background:radial-gradient(closest-side,rgba(242,193,78,.25),transparent);filter:blur(30px);z-index:-1}
+.phone-wrap{isolation:isolate}
+
+/* Sections */
+section{padding-block:80px}
+.kicker{color:var(--gold-ink);font-weight:800;font-size:15px;letter-spacing:.02em}
+h2{font-size:clamp(28px,3.6vw,40px);line-height:1.25;margin:6px 0 14px;text-wrap:balance}
+.sub{color:var(--muted);max-width:40em;margin:0}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:40px;counter-reset:s}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;position:relative}
+.step::before{counter-increment:s;content:counter(s);font:800 15px var(--lat);display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:var(--navy);color:var(--gold);margin-bottom:14px}
+.step h3{margin:0 0 6px;font-size:20px}
+.step p{margin:0;color:var(--muted)}
+
+/* Result demo */
+.demo{background:var(--surface);border-block:1px solid var(--line)}
+.demo-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:48px;align-items:center}
+.feat{list-style:none;padding:0;margin:26px 0 0;display:flex;flex-direction:column;gap:16px}
+.feat li{display:flex;gap:14px;align-items:flex-start}
+.feat i{flex:none;width:40px;height:40px;border-radius:10px;background:#FFF4D6;display:grid;place-items:center}
+.feat i svg{width:22px;height:22px;stroke:var(--gold-ink);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.feat b{display:block;font-size:18px}
+.feat span{color:var(--muted);font-size:16px}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(11,34,54,.08)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border-radius:999px;padding:6px 14px;font-size:15px;background:var(--chip);border:1px solid var(--line)}
+.chip.on{background:var(--gold);border-color:var(--gold);font-weight:700}
+.res{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.res-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.res h3{margin:0;font-size:28px;line-height:1.2}
+.sci{font-style:italic;color:var(--muted);direction:ltr;text-align:right;unicode-bidi:isolate}
+.conf{background:var(--navy);color:var(--on-navy);border-radius:12px;padding:8px 14px;text-align:center;font-size:12px}
+.conf b{display:block;font:800 22px var(--lat);color:var(--gold)}
+.res p{margin:12px 0 0;color:var(--ink)}
+dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px;margin:14px 0 0;padding-top:14px;border-top:1px solid var(--line)}
+dt{color:var(--muted);font-size:13px}
+dd{margin:0;font-weight:500}
+.fresh{display:flex;flex-direction:column;gap:8px}
+.fresh-top{display:flex;justify-content:space-between;font-weight:700}
+.fresh-top span{color:var(--good)}
+.meter{height:10px;border-radius:5px;background:linear-gradient(to left,#DC2626,#D97706,#16A34A);position:relative}
+.meter i{position:absolute;top:50%;left:18%;width:22px;height:22px;border-radius:50%;background:#fff;border:4px solid var(--navy);transform:translate(-50%,-50%)}
+.scale{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.note{color:var(--muted);font-size:13px;margin:0}
+
+/* KSAFish */
+.ksa{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:center;background:var(--navy);color:#fff;border-radius:24px;padding:40px}
+.ksa h2{color:#fff}
+.ksa .sub{color:var(--on-navy)}
+.ksa-nums{display:flex;gap:28px;flex-wrap:wrap;margin-top:22px}
+.ksa-nums b{display:block;font:800 28px var(--lat);color:var(--gold)}
+.ksa-nums small{color:var(--on-navy)}
+
+/* Download */
+.dl{text-align:center}
+.dl .sub{margin-inline:auto}
+.dl .cta{justify-content:center;margin-top:28px}
+.dl .btn.store{background:var(--navy);color:#fff}
+.soon{display:inline-block;margin-top:14px;color:var(--muted);font-size:14px}
+
+footer{background:var(--navy-deep);color:var(--on-navy);padding-block:36px;font-size:15px}
+footer .wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+footer .word{color:#fff;font-size:18px}
+footer .sp{flex:1}
+footer a{color:var(--on-navy)}
+
+@media (max-width:880px){
+  .hero-grid,.demo-grid{grid-template-columns:minmax(0,1fr)}
+  .hero-grid{gap:36px;padding-top:24px}
+  .stats{padding-bottom:0}
+  .steps{grid-template-columns:minmax(0,1fr)}
+  .ksa{grid-template-columns:minmax(0,1fr);padding:28px}
+  section{padding-block:56px}
+  nav a.k{display:none}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <nav>
+      <svg width="40" height="30" viewBox="0 0 240 180" aria-hidden="true">
+        <g fill="none" stroke="#F2C14E" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"><path d="M20 50 V20 H50"/><path d="M190 20 H220 V50"/><path d="M220 130 V160 H190"/><path d="M50 160 H20 V130"/></g>
+        <g transform="translate(34 30)"><path d="M10 60 C40 15 110 15 140 60 C110 105 40 105 10 60 Z" fill="#0B2236" stroke="#fff" stroke-width="11" stroke-linejoin="round"/><path d="M140 60 L172 32 L166 60 L172 88 Z" fill="#0B2236" stroke="#fff" stroke-width="11" stroke-linejoin="round"/><circle cx="40" cy="54" r="11" fill="#F2C14E"/></g>
+      </svg>
+      <span class="word">FISH <b>ID</b></span>
+      <span class="sp"></span>
+      <a class="k" href="#how">كيف يشتغل</a>
+      <a class="k" href="#result">النتيجة</a>
+      <a class="k" href="#download">التحميل</a>
+    </nav>
+
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow">إحدى مبادرات منظومة حوات</span>
+        <h1>صوّر السمكة،<br>واعرف <em>نوعها وطزاجتها</em> في ثواني.</h1>
+        <p class="lead">FISH ID يتعرف على أسماك البحر الأحمر والخليج العربي من صورة بجوالك، ويعطيك اسمها المحلي والعلمي، ويقدّر طزاجتها من العين والخياشيم والجلد.</p>
+        <div class="cta">
+          <a class="btn gold" href="#download">حمّل التطبيق</a>
+          <a class="btn ghost" href="#how">كيف يشتغل؟</a>
+        </div>
+        <div class="stats">
+          <div><b>447</b><small>نوعًا من الموسوعة</small></div>
+          <div><b>92</b><small>عائلة</small></div>
+          <div><b>330</b><small>اسمًا محليًا للبحرين</small></div>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="glow"></div>
+        <div class="phone"><img src="/img/app-home.jpg" alt="الشاشة الرئيسية لتطبيق FISH ID: زر تصوير السمكة وزر اختيار صورة ونصائح التصوير" width="390" height="600"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="how">
+    <div class="wrap">
+      <div class="kicker">كيف يشتغل</div>
+      <h2>ثلاث خطوات، من السوق إلى النتيجة</h2>
+      <p class="sub">ما يحتاج تعرف أي شيء عن الأسماك. صوّر، والتطبيق يكمل.</p>
+      <div class="steps">
+        <div class="step"><h3>صوّر السمكة</h3><p>من الجنب وهي كاملة، وخلّ العين واضحة. ولو تقدر، صوّر الخياشيم مفتوحة عشان يقدّر الطزاجة بدقة أكبر.</p></div>
+        <div class="step"><h3>نحللها لك</h3><p>الذكاء الاصطناعي يقارن الصورة بـ 447 نوعًا في موسوعة أسماك السعودية، ويفحص العين والخياشيم والجلد.</p></div>
+        <div class="step"><h3>اعرف كل شيء عنها</h3><p>الاسم المحلي في البحر الأحمر والخليج، والاسم العلمي والعائلة، وتقدير الطزاجة من 100، ومعلوماتها المنشورة في الموسوعة.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="result" class="demo">
+    <div class="wrap demo-grid">
+      <div>
+        <div class="kicker">النتيجة</div>
+        <h2>إجابة واضحة، مع سببها</h2>
+        <p class="sub">ما يعطيك اسم وبس. يقول لك ليش اختار هذا النوع، ويعطيك احتمالات ثانية لو الصورة مو واضحة.</p>
+        <ul class="feat">
+          <li><i><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></i><div><b>النوع بأسمائه المحلية</b><span>نفس الاسم اللي يعرفه البائع في سوقك، في البحر الأحمر أو الخليج.</span></div></li>
+          <li><i><svg viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></i><div><b>تقدير الطزاجة</b><span>من صفاء العين ولون الخياشيم ولمعة الجلد، مع ملاحظة لكل جزء.</span></div></li>
+          <li><i><svg viewBox="0 0 24 24"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M8 7h6"/></svg></i><div><b>مربوط بموسوعة KSAFish</b><span>صفحة كل نوع وصوره ومعلوماته العلمية بضغطة زر.</span></div></li>
+        </ul>
+      </div>
+
+      <div class="card" aria-label="مثال لنتيجة التحليل">
+        <div class="note" style="font-weight:700">مثال لنتيجة من التطبيق</div>
+        <div class="chips"><span class="chip on">ناجل · 80%</span><span class="chip">طرادي · 12%</span></div>
+        <div class="res">
+          <div class="res-top">
+            <div><h3>ناجل</h3><div class="sci">Plectropomus pessuliferus</div></div>
+            <div class="conf"><b class="lat">80%</b>الثقة</div>
+          </div>
+          <p>جسم مستطيل أحمر مع نقاط زرقاء صغيرة كثيفة وأشرطة عمودية داكنة على الظهر، وهي صفات مميزة للناجل في البحر الأحمر.</p>
+          <dl>
+            <div><dt>الاسم الإنجليزي</dt><dd class="lat" style="text-align:right">Roving coralgrouper</dd></div>
+            <div><dt>العائلة</dt><dd>أسماك الهامور والوقار</dd></div>
+            <div><dt>معرّف حوات</dt><dd class="lat" style="text-align:right">HWT-FISH-0380</dd></div>
+            <div><dt>البحر</dt><dd>البحر الأحمر</dd></div>
+          </dl>
+        </div>
+        <div class="res fresh">
+          <div class="fresh-top">تقدير الطزاجة <span>طازجة · <span class="lat">82/100</span></span></div>
+          <div class="meter" role="img" aria-label="مؤشر الطزاجة 82 من 100"><i></i></div>
+          <div class="scale"><span>غير طازجة</span><span>طازجة جدًا</span></div>
+          <p class="note">تقدير بصري بالذكاء الاصطناعي، وليس بديلًا عن الفحص بالشم واللمس.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="ksa">
+        <div>
+          <div class="kicker" style="color:var(--gold)">مبني على مصدر سعودي موثوق</div>
+          <h2>موسوعة أسماك السعودية KSAFish</h2>
+          <p class="sub">كل نتيجة في FISH ID تجي من الموسوعة: الأسماء العلمية المعتمدة، والأسماء المحلية لكل بحر، والقياسات والمواسم، مع مصادرها.</p>
+          <div class="ksa-nums">
+            <div><b>447</b><small>نوعًا</small></div>
+            <div><b>1,567</b><small>معلومة منشورة</small></div>
+            <div><b>74</b><small>مصدرًا علميًا</small></div>
+          </div>
+        </div>
+        <a class="btn gold" href="https://ksafish.com/ar" target="_blank" rel="noopener">افتح الموسوعة</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="download" class="dl">
+    <div class="wrap">
+      <img src="/img/icon.png" alt="" width="96" height="96" style="margin:0 auto 18px;border-radius:22px;box-shadow:0 14px 40px rgba(11,34,54,.25)">
+      <h2>FISH ID على جوالك</h2>
+      <p class="sub">التطبيق في مرحلة التجربة الحين، وقريب ينزل في المتاجر.</p>
+      <div class="cta">
+        <span class="btn store" aria-disabled="true"><span><small>قريبًا على</small>Google Play</span></span>
+        <span class="btn store" aria-disabled="true"><span><small>قريبًا على</small>App Store</span></span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="word">FISH <b>ID</b></span>
+    <span>إحدى مبادرات منظومة حوات</span>
+    <span class="sp"></span>
+    <a href="https://ksafish.com/ar" target="_blank" rel="noopener">موسوعة KSAFish</a>
+    <span class="lat">© 2026</span>
+  </div>
+</footer>
+
+</body>
+</html>

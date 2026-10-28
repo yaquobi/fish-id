@@ -24,6 +24,8 @@ flutter test
 
 ## الخادم (server/)
 
+صفحة الهبوط في `landing/` تنعرض على `https://hawat.id/`.
+
 خادم Dart صغير في Docker، يسمع على `127.0.0.1:18490`، و nginx يوصّل له من `https://hawat.id/api/`.
 
 التركيب أول مرة على سيرفر KSAFish:
