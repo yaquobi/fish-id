@@ -52,6 +52,7 @@ main{padding:24px clamp(16px,3vw,36px);max-width:1200px;width:100%}
 .kpi.hero .v,.kpi.hero .pos{color:var(--gold)!important}.kpi.hero .neg{color:#FF9A8F!important}
 .pos{color:var(--good)!important}.neg{color:var(--bad)!important}
 .k{color:var(--muted);font-size:14px}
+.sr{width:.9em;height:.9em;vertical-align:-.1em;display:inline-block}
 table{width:100%;border-collapse:collapse}
 th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:start;font-size:14px;vertical-align:middle}
 th{color:var(--muted);font-weight:700;font-size:13px}
@@ -116,7 +117,56 @@ label.set input{width:120px;direction:ltr}
 .alert .go{margin-inline-start:auto}
 .secret{display:flex;gap:8px;align-items:center;background:var(--navy);color:var(--gold);border-radius:12px;padding:10px 14px;margin-top:12px}
 .secret code{flex:1;word-break:break-all;direction:ltr;font-size:13px}
-.print-head{display:none}
+.print-head,.print-foot,#doc{display:none}
+/* مستند الطباعة الرسمي (كشف الحساب والتقرير)، يظهر في الطباعة بس */
+.doc{font:12px/1.55 Tajawal,system-ui,sans-serif;color:#1C2B3A}
+[dir=ltr] .doc{font-family:Montserrat,Tajawal,sans-serif;font-size:11px}
+.doc .d-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding-bottom:14px;border-bottom:3px solid var(--navy);position:relative}
+.doc .d-head:after{content:"";position:absolute;inset-inline-start:0;bottom:-7px;width:90px;height:3px;background:var(--gold)}
+.doc .d-brand{display:flex;gap:12px;align-items:center}
+.doc .d-brand b{display:block;font:800 26px Montserrat,sans-serif;color:var(--navy);letter-spacing:.5px;line-height:1}
+.doc .d-brand b span{color:#C9971F}
+.doc .d-brand small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.doc .d-title{text-align:end}
+.doc .d-title h1{margin:0;font-size:24px;font-weight:800;color:var(--navy);letter-spacing:.3px}
+.doc .d-title .en{font:600 11px Montserrat,sans-serif;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.doc .d-meta{display:grid;grid-template-columns:repeat(4,1fr);margin:18px 0 12px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.doc .d-meta div{padding:8px 12px;border-inline-end:1px solid var(--line)}
+.doc .d-meta div:last-child{border:0}
+.doc .d-meta span{display:block;color:var(--muted);font-size:10px}
+.doc .d-meta b{font-size:12.5px;color:var(--navy);font-variant-numeric:tabular-nums}
+.doc .d-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px}
+.doc .d-sum div{border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.doc .d-sum span{display:block;color:var(--muted);font-size:11px}
+.doc .d-sum b{font:700 19px Montserrat,sans-serif;color:var(--navy);direction:ltr;display:block;text-align:start}
+[dir=rtl] .doc .d-sum b{text-align:right}
+.doc .d-sum b small{font:500 10px Tajawal;color:var(--muted)}
+.doc .d-sum .main{background:var(--navy);border-color:var(--navy)}
+.doc .d-sum .main span{color:var(--on-navy)}.doc .d-sum .main b{color:var(--gold)}
+.doc h2{font-size:13.5px;margin:12px 0 5px;color:var(--navy);display:flex;align-items:center;gap:8px}
+.doc h2:before{content:"";width:4px;height:14px;background:var(--gold);border-radius:2px}
+.doc table{width:100%;border-collapse:collapse}
+.doc th{background:#EEF2F6;color:var(--navy);font-size:10.5px;font-weight:800;padding:6px 8px;text-align:start;border-bottom:2px solid var(--navy)}
+.doc td{padding:5px 8px;border-bottom:1px solid var(--line);font-size:11.5px;vertical-align:top;background:#fff}
+.doc td.num,.doc th.num{text-align:left;direction:ltr;font-variant-numeric:tabular-nums;white-space:nowrap}
+[dir=ltr] .doc td.num,[dir=ltr] .doc th.num{text-align:right}
+.doc td.i{color:var(--muted);width:24px}
+.doc td small{display:block;color:var(--muted);font-size:10px}
+.doc .d-sub td{background:#F8FAFB;font-weight:800;color:var(--navy);border-bottom:1px solid var(--navy)}
+.doc .d-bottom{display:grid;grid-template-columns:1fr 280px;gap:24px;margin-top:12px;align-items:start}
+.doc .d-notes{color:var(--muted);font-size:10.5px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px}
+.doc .d-notes b{color:var(--navy);display:block;margin-bottom:2px}
+.doc .d-total{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.doc .d-total div{display:flex;justify-content:space-between;padding:5px 14px;border-bottom:1px solid var(--line)}
+.doc .d-total div b{direction:ltr;font-variant-numeric:tabular-nums}
+.doc .d-total .net{background:var(--navy);color:#fff;border:0;font-weight:800;font-size:13px}
+.doc .d-total .net b{color:var(--gold)}
+.doc .d-sign{display:grid;grid-template-columns:1fr 1fr 100px;gap:22px;margin-top:16px;break-inside:avoid}
+.doc .d-sign div{font-size:11px;color:var(--muted)}
+.doc .d-sign div p{margin:22px 0 0;border-top:1px solid #9AA8B5;padding-top:4px}
+.doc .d-sign .stamp{width:92px;height:92px;border:2px dashed var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px}
+.doc .d-foot{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:5px;font-size:9px;color:var(--muted)}
+.doc .pos{color:var(--good)}.doc .neg{color:var(--bad)}
 @media (max-width:860px){
   .shell{grid-template-columns:1fr}
   aside{position:sticky;height:auto;padding:10px 12px;flex-direction:row;align-items:center;gap:10px;z-index:5;overflow-x:auto}
@@ -133,20 +183,39 @@ label.set input{width:120px;direction:ltr}
   .pl small{font-size:9px}
 }
 @media print{
-  @page{margin:14mm}
+  @page{size:A4;margin:10mm 10mm 14mm}
   body{background:#fff;font-size:12px}
-  aside,.noprint,button,input,select,.alerts{display:none!important}
+  aside,.noprint,button,input,select,.alerts,.top{display:none!important}
   .shell{display:block}
-  main{padding:0;max-width:none}
-  .card{box-shadow:none;break-inside:avoid;border-color:#ccc}
-  .cols{grid-template-columns:1fr 1fr}
-  .grid{grid-template-columns:repeat(3,1fr)}
-  .kpi.hero{background:#fff;color:var(--ink);border:2px solid var(--navy)}
-  .kpi.hero .v{color:var(--navy)!important}.kpi.hero .pos{color:var(--good)!important}.kpi.hero .neg{color:var(--bad)!important}.kpi.hero .k,.kpi.hero .n{color:var(--muted)}
-  .print-head{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--navy);padding-bottom:8px;margin-bottom:14px}
-  .print-head b{font:800 18px Montserrat,sans-serif}
-  .print-head b span{color:var(--gold-ink)}
+  main{padding:0 0 10mm;max-width:none}
+  .card{box-shadow:none;break-inside:avoid;border-color:var(--line);border-radius:12px;padding:12px 14px}
+  .card h3{color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:6px;margin-bottom:8px;font-size:14px}
+  .cols{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .grid{grid-template-columns:repeat(4,1fr);gap:10px}
+  .kpi .v{font-size:20px}
+  .kpi .k,.kpi .n{font-size:11px}
+  th{background:var(--navy);color:#fff;font-size:11px;padding:7px 8px}
+  td{font-size:11.5px;padding:7px 8px}
+  tr:nth-child(even) td{background:#F6F8FA}
+  tfoot td{background:var(--gold-soft)!important;color:var(--navy)}
+  .pill{border:1px solid var(--line)}
+  .note{font-size:11px}
+  .print-head{display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--navy);color:#fff;border-radius:14px;padding:14px 20px;border-bottom:4px solid var(--gold);margin-bottom:14px}
+  .ph-brand{display:flex;align-items:center;gap:12px}
+  .ph-brand b{font:800 24px Montserrat,sans-serif;letter-spacing:.5px;color:#fff}
+  .ph-brand b span{color:var(--gold)}
+  .ph-brand small{display:block;color:var(--on-navy);font-size:11px;margin-top:2px}
+  .ph-doc{text-align:end}
+  #ph-title{font-size:18px;font-weight:800}
+  #ph-sub{color:var(--gold);font-size:12px;font-weight:700}
+  #ph-meta{color:var(--on-navy);font-size:10px;margin-top:2px}
+  .print-foot{display:flex;justify-content:space-between;position:fixed;bottom:0;left:0;right:0;border-top:1px solid var(--line);padding-top:4px;font-size:9.5px;color:var(--muted);background:#fff}
+  .print-foot b{font-family:Montserrat,sans-serif;color:var(--navy)}
+  .print-foot b span{color:var(--gold-ink)}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.has-doc .shell{display:none!important}
+  body.has-doc #doc{display:block}
+  body.has-doc main{padding:0}
 }
 </style>
 </head>
@@ -160,9 +229,15 @@ label.set input{width:120px;direction:ltr}
   <nav id="nav"></nav>
   <div class="side-foot"><div class="who" id="who"></div><button id="lang"></button><button id="out"></button></div>
 </aside>
-<main><div class="print-head"><b>FISH <span>ID</span></b><span id="print-meta"></span></div><div class="alerts" id="alerts"></div><div id="app"></div></main>
+<main>
+<header class="print-head"><div class="ph-brand"><svg width="46" height="46" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#122F48"/><path d="M6 11V7h4M28 11V7h-4M6 23v4h4M28 23v4h-4" stroke="#F2C14E" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M9 17c3-4 8-5 12-2l4-3v10l-4-3c-4 3-9 2-12-2z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg><div><b>FISH <span>ID</span></b><small id="ph-tag"></small></div></div>
+  <div class="ph-doc"><div id="ph-title"></div><div id="ph-sub"></div><div id="ph-meta"></div></div></header>
+<div class="alerts" id="alerts"></div><div id="app"></div>
+<footer class="print-foot"><b>FISH <span>ID</span></b><span id="pf-note"></span><span dir="ltr">hawat.id</span></footer>
+</main>
 </div>
 <main id="login"></main>
+<div id="doc" class="doc"></div>
 <script>
 const $ = (s, e = document) => e.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -180,7 +255,9 @@ function applyLang() {
 applyLang();
 
 const money = n => (Math.round((n || 0) * 100) / 100).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-const sar = n => money(n) + ` <small>${T('ر.س', 'SAR')}</small>`;
+// رمز الريال السعودي الرسمي (من خط saudi_riyal، رخصة SIL OFL).
+const RIYAL = '<svg class="sr" viewBox="0 0 1256 1256" role="img" aria-label="SAR"><path fill="currentColor" d="M750,1119 C730,1163,716,1211,711,1262 C711,1262,1136,1172,1136,1172 C1156,1127,1169,1079,1174,1028 C1174,1028,750,1119,750,1119Z M1136,901 C1136,901,1136,901,1136,901 C1156,857,1169,809,1174,758 C1174,758,843,828,843,828 C843,828,843,693,843,693 C843,693,1136,631,1136,631 C1156,587,1169,538,1174,488 C1174,488,843,558,843,558 C843,558,843,72,843,72 C793,100,748,138,711,183 C711,183,711,586,711,586 C711,586,579,614,579,614 C579,614,579,6,579,6 C528,34,483,72,447,117 C447,117,447,642,447,642 C447,642,151,705,151,705 C131,750,117,798,112,849 C112,849,447,777,447,777 C447,777,447,948,447,948 C447,948,88,1024,88,1024 C68,1068,55,1117,50,1167 C50,1167,425,1088,425,1088 C456,1081,482,1063,499,1038 C499,1038,568,936,568,936 C568,936,568,936,568,936 C575,926,579,913,579,899 C579,899,579,749,579,749 C579,749,711,721,711,721 C711,721,711,992,711,992 C711,992,1136,901,1136,901Z"/></svg>';
+const sar = n => money(n) + ` <small>${RIYAL}</small>`;
 const num = n => (n || 0).toLocaleString('en-US');
 const when = s => s ? new Date(s).toLocaleString(loc(), {dateStyle: 'medium', timeStyle: 'short'}) : '';
 const dayName = d => new Date(d + 'T00:00:00Z').toLocaleDateString(loc(), {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'});
@@ -234,6 +311,8 @@ async function api(path, opts = {}) {
 const post = (path, body) => api(path, {method: 'POST', body: JSON.stringify(body)});
 const sp = id => names[id] ? `${esc(names[id])} <span class="mono">${esc(id)}</span>` : `<span class="mono">${esc(id || '')}</span>`;
 const printBtn = () => `<button class="act ghost noprint" onclick="window.print()">${T('طباعة', 'Print')}</button>`;
+// الصفحة اللي لها مستند رسمي (كشف الحساب، التقرير) تحط هنا دالة ترسمه وقت الطباعة.
+let docBuilder = null;
 const heading = (title, sub = '', extra = '') => `<div class="top"><div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div><div class="row">${extra}${printBtn()}</div></div>`;
 const kpi = (k, v, note = '', cls = '') => `<div class="card kpi ${cls}"><div class="k">${k}</div><div class="v">${v}</div>${note ? `<div class="n">${note}</div>` : ''}</div>`;
 const signed = n => `<span class="${n < 0 ? 'neg' : 'pos'}">${sar(n)}</span>`;
@@ -298,12 +377,122 @@ async function show(tab, ...args) {
   if (!can(tab)) tab = roleTabs[me.role][0];
   current = tab;
   currentArgs = args;
+  docBuilder = null;
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   history.replaceState(null, '', '#' + tab);
-  $('#print-meta').textContent = tabName(tab) + ' · ' + T('طُبع ', 'Printed ') + when(new Date().toISOString());
   $('#app').innerHTML = `<div class="msg">${T('جاري التحميل…', 'Loading…')}</div>`;
   if (can('alerts')) loadAlerts();
   try { await views[tab](...args); } catch (e) { $('#app').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; }
+  fillPrint();
+}
+
+// ترويسة الطباعة: عنوان الصفحة وفترتها ووقت الطباعة ومن طبعها.
+function fillPrint() {
+  $('#ph-tag').textContent = T('إحدى مبادرات منظومة حوات', 'A HUWAT ecosystem initiative');
+  $('#ph-title').textContent = $('#app .top h1')?.textContent || tabName(current);
+  $('#ph-sub').textContent = $('#app .top .sub')?.textContent || '';
+  $('#ph-meta').textContent = T('طُبع ', 'Printed ') + when(new Date().toISOString()) + (me ? ' · ' + (me.name || roleName(me.role)) : '');
+  $('#pf-note').textContent = T('تقرير صادر من لوحة إدارة FISH ID، للاستخدام الداخلي', 'Generated by the FISH ID admin panel, for internal use');
+}
+window.addEventListener('beforeprint', () => {
+  fillPrint();
+  $('#doc').innerHTML = docBuilder ? docBuilder() : '';
+  document.body.classList.toggle('has-doc', !!docBuilder);
+});
+
+const logoSvg = size => `<svg width="${size}" height="${size}" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#0B2236"/><path d="M6 11V7h4M28 11V7h-4M6 23v4h4M28 23v4h-4" stroke="#F2C14E" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M9 17c3-4 8-5 12-2l4-3v10l-4-3c-4 3-9 2-12-2z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+const docSar = n => `${money(n)} <small>${RIYAL}</small>`;
+
+// هيكل المستند: الترويسة، بيانات المستند، المحتوى، التوقيعات والتذييل.
+function docShell({title, en, number, period, body}) {
+  return `<div class="d-head">
+      <div class="d-brand">${logoSvg(54)}<div><b>FISH <span>ID</span></b><small>${T('إحدى مبادرات منظومة حوات', 'A HUWAT ecosystem initiative')}</small><small dir="ltr">hawat.id</small></div></div>
+      <div class="d-title"><h1>${title}</h1><div class="en">${en}</div></div></div>
+    <div class="d-meta">
+      <div><span>${T('رقم المستند', 'Document no.')}</span><b dir="ltr">${number}</b></div>
+      <div><span>${T('الفترة', 'Period')}</span><b>${period}</b></div>
+      <div><span>${T('تاريخ الإصدار', 'Issued')}</span><b>${new Date().toLocaleDateString(loc(), {day: 'numeric', month: 'long', year: 'numeric'})}</b></div>
+      <div><span>${T('أعدّه', 'Prepared by')}</span><b>${esc(me?.name || roleName(me?.role))}</b></div>
+    </div>
+    ${body}
+    <div class="d-sign">
+      <div>${T('المحاسب', 'Accountant')}<p>${T('الاسم والتوقيع', 'Name and signature')}</p></div>
+      <div>${T('الإدارة', 'Management')}<p>${T('الاسم والتوقيع', 'Name and signature')}</p></div>
+      <div class="stamp">${T('الختم', 'Stamp')}</div>
+    </div>
+    <div class="d-foot"><span>FISH ID · ${T('إحدى مبادرات منظومة حوات', 'A HUWAT ecosystem initiative')}</span><span>${T('مستند صادر آليًا من لوحة إدارة FISH ID', 'Issued automatically by the FISH ID admin panel')}</span><span dir="ltr">hawat.id</span></div>`;
+}
+
+// كشف الحساب الشهري بشكل فاتورة.
+function statementDoc(r) {
+  const inc = r.income.map((i, n) => `<tr><td class="i">${n + 1}</td><td>${esc(i.auto ? productName(i.label) : i.label)}${i.note ? `<small>${esc(i.note)}</small>` : ''}</td><td>${esc(i.provider)}</td>
+    <td class="num">${i.auto ? num(i.n) : '—'}</td><td class="num">${money(i.auto ? i.grossSar : i.sar)}</td><td class="num">${i.auto ? money(i.taxSar) : '—'}</td><td class="num">${i.auto ? money(i.feeSar) : '—'}</td><td class="num"><b>${money(i.sar)}</b></td></tr>`).join('')
+    || `<tr><td colspan="8">${T('لا يوجد دخل مسجّل', 'No income recorded')}</td></tr>`;
+  const exp = r.expenses.map((e, n) => `<tr><td class="i">${n + 1}</td><td>${esc(e.auto ? T(e.label, autoLabel(e)) : e.label)}${e.n ? `<small>${num(e.n)} ${T('فحص', 'scans')}</small>` : ''}${e.note ? `<small>${esc(e.note)}</small>` : ''}</td><td>${esc(e.provider)}</td>
+    <td>${e.auto ? T('حسب الاستخدام', 'Usage based') : repeatName(e.repeat)}${e.original ? `<small dir="ltr">${esc(e.original)}</small>` : ''}</td><td class="num"><b>${money(e.sar)}</b></td></tr>`).join('')
+    || `<tr><td colspan="5">${T('لا توجد مصاريف مسجّلة', 'No expenses recorded')}</td></tr>`;
+  return docShell({
+    title: T('كشف الحساب الشهري', 'Monthly statement'), en: T('Monthly Statement', 'Income & expenses'),
+    number: 'FID-ST-' + r.month.replace('-', ''), period: monthName(r.month),
+    body: `<div class="d-sum">
+        <div><span>${T('الدخل الصافي', 'Net income')}</span><b>${docSar(r.incomeSar)}</b></div>
+        <div><span>${T('المصاريف', 'Expenses')}</span><b>${docSar(r.expensesSar)}</b></div>
+        <div class="main"><span>${T('صافي الربح', 'Net profit')}${r.margin != null ? ` · ${T('الهامش', 'margin')} ${num(r.margin)}%` : ''}</span><b>${docSar(r.netSar)}</b></div></div>
+      <h2>${T('أولًا: الدخل', '1. Income')}</h2>
+      <table><tr><th>#</th><th>${T('البند', 'Item')}</th><th>${T('المصدر', 'Source')}</th><th class="num">${T('العدد', 'Qty')}</th><th class="num">${T('الإجمالي', 'Gross')}</th><th class="num">${T('الضريبة', 'VAT')}</th><th class="num">${T('عمولة المتجر', 'Store fee')}</th><th class="num">${T('الصافي', 'Net')}</th></tr>
+        ${inc}<tr class="d-sub"><td></td><td colspan="6">${T('إجمالي الدخل الصافي', 'Total net income')}</td><td class="num">${money(r.incomeSar)}</td></tr></table>
+      <h2>${T('ثانيًا: المصاريف', '2. Expenses')}</h2>
+      <table><tr><th>#</th><th>${T('البند', 'Item')}</th><th>${T('المزوّد', 'Provider')}</th><th>${T('التكرار', 'Repeats')}</th><th class="num">${T('المبلغ', 'Amount')}</th></tr>
+        ${exp}<tr class="d-sub"><td></td><td colspan="3">${T('إجمالي المصاريف', 'Total expenses')}</td><td class="num">${money(r.expensesSar)}</td></tr></table>
+      <div class="d-bottom">
+        <div class="d-notes"><b>${T('ملاحظات', 'Notes')}</b>${T('جميع المبالغ بالريال السعودي. دخل المتجر بعد خصم ضريبة القيمة المضافة وعمولة Google Play. المصاريف بالدولار محوّلة بسعر الصرف المعتمد في اللوحة. تكلفة Claude محسوبة آليًا من كل فحص.', 'All amounts in Saudi riyals. Store income is after VAT and the Google Play fee. USD expenses are converted at the rate set in the panel. Claude cost is calculated automatically per scan.')}
+          ${r.sandboxSales ? `<br>${T('مبيعات تجريبية غير محتسبة:', 'Test purchases not counted:')} ${num(r.sandboxSales)}` : ''}</div>
+        <div class="d-total">
+          <div><span>${T('إجمالي مبيعات المتجر', 'Store gross sales')}</span><b>${money(r.grossSar)}</b></div>
+          <div><span>${T('الضريبة والعمولة', 'VAT and fees')}</span><b>−${money(r.storeTaxSar + r.storeFeeSar)}</b></div>
+          <div><span>${T('الدخل الصافي', 'Net income')}</span><b>${money(r.incomeSar)}</b></div>
+          <div><span>${T('المصاريف', 'Expenses')}</span><b>−${money(r.expensesSar)}</b></div>
+          <div class="net"><span>${T('صافي الربح', 'Net profit')}</span><b>${money(r.netSar)} ${RIYAL}</b></div>
+        </div></div>`,
+  });
+}
+
+// ملخص الأداء للمستثمر.
+function reportDoc(r, period, key) {
+  const p = r.previous;
+  const pct = (c, v, low = false) => {
+    if (!v) return c ? T('جديد', 'new') : '—';
+    const x = Math.round((c - v) / Math.abs(v) * 100);
+    return `<span class="${(low ? x < 0 : x > 0) ? 'pos' : x ? 'neg' : ''}">${x > 0 ? '+' : ''}${num(x)}%</span>`;
+  };
+  const rows = [[T(`الدخل الصافي (${RIYAL})`, `Net income (${RIYAL})`), 'incomeSar', money], [T(`المصاريف (${RIYAL})`, `Expenses (${RIYAL})`), 'expensesSar', money, true], [T(`صافي الربح (${RIYAL})`, `Net profit (${RIYAL})`), 'netSar', money],
+    [T(`مبيعات المتجر (${RIYAL})`, `Store gross (${RIYAL})`), 'grossSar', money], [T('اشتراكات جديدة', 'New subscriptions'), 'newSubs', num], [T('تجديدات', 'Renewals'), 'renewals', num],
+    [T('مستخدمون جدد', 'New users'), 'newUsers', num], [T('مستخدمون نشطون', 'Active users'), 'activeUsers', num], [T('الفحوصات', 'Scans'), 'scans', num],
+    [T(`تكلفة Claude (${RIYAL})`, `Claude cost (${RIYAL})`), 'claudeSar', money, true]];
+  const paying = Object.values(r.payingNow).reduce((t, n) => t + n, 0);
+  const title = {day: T('ملخص الأداء اليومي', 'Daily performance summary'), month: T('ملخص الأداء الشهري', 'Monthly performance summary'), year: T('ملخص الأداء السنوي', 'Annual performance summary')}[period];
+  return docShell({
+    title, en: T('Performance Summary', 'For investors and partners'), number: 'FID-RP-' + key.replace(/-/g, ''), period: periodLabel(period, key),
+    body: `<div class="d-sum">
+        <div><span>${T('المشتركون حاليًا', 'Paying subscribers')}</span><b>${num(paying)}</b></div>
+        <div><span>${T('إجمالي المستخدمين', 'Total users')}</span><b>${num(r.users)}</b></div>
+        <div class="main"><span>${T('صافي الربح', 'Net profit')}</span><b>${docSar(r.netSar)}</b></div></div>
+      <h2>${T('المؤشرات الرئيسية', 'Key indicators')}</h2>
+      <table><tr><th>#</th><th>${T('المؤشر', 'Indicator')}</th><th class="num">${esc(periodLabel(period, key))}</th><th class="num">${esc(periodLabel(period, r.previousKey))}</th><th class="num">${T('التغيّر', 'Change')}</th></tr>
+        ${rows.map(([l, f, fmt, low], n) => `<tr><td class="i">${n + 1}</td><td>${l}</td><td class="num"><b>${fmt(r[f])}</b></td><td class="num">${fmt(p[f])}</td><td class="num">${pct(r[f], p[f], low)}</td></tr>`).join('')}</table>
+      <div class="d-bottom">
+        <div><h2 style="margin-top:0">${T('أكثر الأنواع فحصًا', 'Most scanned species')}</h2>
+          <table><tr><th>#</th><th>${T('النوع', 'Species')}</th><th class="num">${T('الفحوصات', 'Scans')}</th></tr>
+          ${r.topSpecies.slice(0, 5).map((t, n) => `<tr><td class="i">${n + 1}</td><td>${esc(names[t.id] || t.id)}</td><td class="num">${num(t.n)}</td></tr>`).join('') || `<tr><td colspan="3">—</td></tr>`}</table></div>
+        <div class="d-total">
+          <div><span>${T('المشتركون الشهريون', 'Monthly plans')}</span><b>${num(r.payingNow.monthly)}</b></div>
+          <div><span>${T('المشتركون السنويون', 'Yearly plans')}</span><b>${num(r.payingNow.yearly)}</b></div>
+          <div><span>${T('المحلات', 'Shops')}</span><b>${num(r.payingNow.shop)}</b></div>
+          <div><span>${T('متوسط ثقة التعرّف', 'Average ID confidence')}</span><b>${r.avgConfidence != null ? num(Math.round(r.avgConfidence)) + '%' : '—'}</b></div>
+          <div class="net"><span>${T('صافي الربح', 'Net profit')}</span><b>${money(r.netSar)} ${RIYAL}</b></div>
+        </div></div>
+      <div class="d-notes" style="margin-top:14px"><b>${T('ملاحظات', 'Notes')}</b>${T('المبالغ بالريال السعودي بعد ضريبة المتجر وعمولته. المقارنة مع الفترة السابقة المماثلة.', 'Amounts in SAR after store VAT and fees. Compared with the previous equal period.')} ${period === 'day' ? T('الملخص اليومي لا يوزّع المصاريف الشهرية على الأيام.', 'The daily summary does not spread monthly costs across days.') : ''}</div>`,
+  });
 }
 
 // نص التنبيه بلغة اللوحة. السيرفر يرسل الرمز والأرقام بس.
@@ -315,7 +504,7 @@ function alertText(a) {
     case 'balance_out': return T(`<b>رصيد Claude المتوقع خلص</b> (صرفنا ${usd(a.spentUsd)} من ${usd(a.usd)}). اشحن الحين وحدّث الرصيد هنا.`, `<b>Expected Claude balance is used up</b> (spent ${usd(a.spentUsd)} of ${usd(a.usd)}). Top up now and update the balance here.`);
     case 'balance_low': return T(`<b>رصيد Claude قرب يخلص:</b> باقي تقريبًا ${usd(a.leftUsd)}${a.daysLeft != null ? `، يكفي ${num(a.daysLeft)} يوم` : ''}.`, `<b>Claude balance is running low:</b> about ${usd(a.leftUsd)} left${a.daysLeft != null ? `, enough for ${num(a.daysLeft)} days` : ''}.`);
     case 'balance_unset': return T('سجّل رصيد Claude الحالي عشان ننبهك قبل ما يخلص.', 'Enter the current Claude balance so you get warned before it runs out.');
-    case 'bill_due': return T(`<b>فاتورة قريبة:</b> ${esc(a.label)} (${esc(a.provider)}) بتاريخ ${shortDay(a.due)}، ${money(a.sar)} ر.س`, `<b>Bill due:</b> ${esc(a.label)} (${esc(a.provider)}) on ${shortDay(a.due)}, ${money(a.sar)} SAR`);
+    case 'bill_due': return T(`<b>فاتورة قريبة:</b> ${esc(a.label)} (${esc(a.provider)}) بتاريخ ${shortDay(a.due)}، ${money(a.sar)} ${RIYAL}`, `<b>Bill due:</b> ${esc(a.label)} (${esc(a.provider)}) on ${shortDay(a.due)}, ${money(a.sar)} ${RIYAL}`);
     default: return esc(a.code);
   }
 }
@@ -407,7 +596,7 @@ const views = {
         <div class="card"><h3>${T('الفحوصات', 'Scans')} <span class="k">${{day: T('بالساعة', 'by hour'), month: T('باليوم', 'by day'), year: T('بالشهر', 'by month')}[period]}</span></h3>${bars(r.series, 'scans', label)}</div>
         <div class="card"><h3>${T('المستخدمين الجدد', 'New users')}</h3>${bars(r.series, 'newUsers', label)}</div>
       </div>
-      ${period === 'year' ? `<div class="card" style="margin-top:14px"><h3>${T('صافي الربح بالشهر', 'Net profit by month')} <span class="k">${T('ر.س', 'SAR')}</span></h3>${bars(r.series, 'netSar', label, money)}</div>` : ''}
+      ${period === 'year' ? `<div class="card" style="margin-top:14px"><h3>${T('صافي الربح بالشهر', 'Net profit by month')} <span class="k">${RIYAL}</span></h3>${bars(r.series, 'netSar', label, money)}</div>` : ''}
       <div class="cols">
         <div class="card"><h3>${T('أكثر الأنواع فحصًا', 'Top species')}</h3>
           <table>${r.topSpecies.map(t => `<tr><td>${sp(t.id)}<div class="meter"><i style="width:${t.n / r.topSpecies[0].n * 100}%"></i></div></td><td class="num">${num(t.n)}</td></tr>`).join('') || `<tr><td class="msg">${T('ما فيه فحوصات بهالفترة', 'No scans in this period')}</td></tr>`}</table></div>
@@ -419,6 +608,7 @@ const views = {
         </table></div>
       </div>
       <div class="note">${T('المبالغ بالريال بعد ضريبة المتجر وعمولته. ', 'Amounts in SAR after store VAT and commission. ')}${period === 'day' ? T('ملخص اليوم ما يوزّع المصاريف الشهرية على الأيام.', 'The daily summary does not spread monthly costs across days.') : ''} ${T('أُنشئ', 'Generated')} ${when(r.generated)}</div>`;
+    docBuilder = () => reportDoc(r, period, key);
     $('#per').querySelectorAll('button').forEach(b => b.onclick = () => show('report', b.dataset.p));
     $('#key').onchange = e => e.target.value && show('report', period, e.target.value);
   },
@@ -469,6 +659,7 @@ const views = {
       </div>`;
     $('#mon').onchange = e => e.target.value && show('money', e.target.value);
     $('#app').querySelectorAll('.pl .m').forEach(m => m.onclick = () => show('money', m.dataset.m));
+    docBuilder = () => statementDoc(r);
     $('#csv').onclick = () => csv(r);
     let kind = 'expense';
     const fill = () => $('#provs').innerHTML = providers()[kind].map(p => `<option value="${esc(p)}">`).join('');
@@ -595,9 +786,9 @@ const views = {
       ['freeScans', T('الفحوصات المجانية لكل حساب (مرة وحدة)', 'Free scans per account (one time)')],
       ['monthlyCap', T('سقف الفحوصات بالشهر للشهري والسنوي', 'Monthly scan cap, monthly and yearly plans')],
       ['shopCap', T('سقف الفحوصات بالشهر للمحلات', 'Monthly scan cap, shops')],
-      ['priceMonthly', T('سعر الشهري (ريال)', 'Monthly price (SAR)')],
-      ['priceYearly', T('سعر السنوي (ريال)', 'Yearly price (SAR)')],
-      ['priceShop', T('سعر باقة المحل بالشهر (ريال)', 'Shop plan per month (SAR)')],
+      ['priceMonthly', T(`سعر الشهري (${RIYAL})`, `Monthly price (${RIYAL})`)],
+      ['priceYearly', T(`سعر السنوي (${RIYAL})`, `Yearly price (${RIYAL})`)],
+      ['priceShop', T(`سعر باقة المحل بالشهر (${RIYAL})`, `Shop plan per month (${RIYAL})`)],
       ['netShare', T('نسبة الصافي التقديرية بعد العمولة والضريبة (0.74 = 74%)', 'Estimated net share after fees and VAT (0.74 = 74%)')],
       ['usdToSar', T('سعر الدولار بالريال', 'USD to SAR rate')],
     ];
