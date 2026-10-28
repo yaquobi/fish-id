@@ -26,12 +26,12 @@ class AccountStore {
   static const defaults = <String, dynamic>{
     'freeScans': 3,
     'monthlyCap': 15,
-    'shopCap': 150,
+    'shopCap': 300,
     // false: التطبيقات القديمة اللي ما ترسل رقم حساب تشتغل بدون حد. نخليها true بعد ما ينتشر التحديث.
     'requireAccount': false,
-    'priceMonthly': 10,
-    'priceYearly': 90,
-    'priceShop': 149,
+    'priceMonthly': 25,
+    'priceYearly': 199,
+    'priceShop': 350,
     // الصافي بعد عمولة المتجر 15% وضريبة القيمة المضافة 15%.
     'netShare': 0.74,
     'usdToSar': 3.75,

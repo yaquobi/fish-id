@@ -369,12 +369,12 @@ class _SubscribeState extends State<_Subscribe> {
                   ),
                 ),
               ] else ...[
-                _Plan(title: tr('شهري', 'Monthly'), price: tr('10 ريال', 'SAR 10'), note: tr('بالشهر', 'per month')),
+                _Plan(title: tr('شهري', 'Monthly'), price: tr('25 ريال', 'SAR 25'), note: tr('بالشهر', 'per month')),
                 const SizedBox(height: 8),
                 _Plan(
                   title: tr('سنوي', 'Yearly'),
-                  price: tr('90 ريال', 'SAR 90'),
-                  note: tr('بالسنة، توفّر 25%', 'per year, save 25%'),
+                  price: tr('199 ريال', 'SAR 199'),
+                  note: tr('بالسنة، توفّر 33%', 'per year, save 33%'),
                 ),
                 const SizedBox(height: 14),
                 FilledButton(
