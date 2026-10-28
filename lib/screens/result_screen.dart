@@ -8,6 +8,7 @@ import '../data/ksafish.dart';
 import '../data/result.dart';
 import '../theme.dart';
 import '../widgets/freshness_card.dart';
+import '../widgets/shelf_life_card.dart';
 import '../widgets/species_card.dart';
 
 /// يرسل الصورة للتحليل ويعرض النوع (حتى 3 احتمالات) وتقدير الطزاجة.
@@ -185,6 +186,15 @@ class _ResultScreenState extends State<ResultScreen> {
                 : 'ما قدرنا نحدد النوع من أنواع الموسوعة.',
           ),
         if (r.freshness case final f?) ...[const SizedBox(height: 12), FreshnessCard(freshness: f)],
+        const SizedBox(height: 12),
+        ShelfLifeCard(
+          key: ValueKey(cands.isNotEmpty ? cands[sel].$2.id : ''),
+          family: cands.isNotEmpty ? cands[sel].$2.family : '',
+          photoDays: switch (r.freshness) {
+            final f? when f.assessable && f.daysMin >= 0 && f.daysMax >= 0 => (f.daysMin + f.daysMax) / 2,
+            _ => null,
+          },
+        ),
         if (r.photoTip.isNotEmpty) ...[
           const SizedBox(height: 12),
           Row(
