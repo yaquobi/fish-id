@@ -22,9 +22,11 @@ Future<void> main(List<String> args) async {
   final ai = FishIdAi(
     key: key,
     speciesList: FishIdAi.speciesListFrom(data),
-    model: env['FISHID_MODEL'] ?? 'claude-opus-5-5',
-    effort: env['FISHID_EFFORT'] ?? 'low',
+    model: opts.value('model', env['FISHID_MODEL'] ?? 'claude-opus-5-5'),
+    effort: opts.value('effort', env['FISHID_EFFORT'] ?? 'low'),
+    prompt: opts.value('prompt', env['FISHID_PROMPT'] ?? 'v1'),
   );
+  stdout.writeln('النموذج ${ai.model}، الجهد ${ai.effort}، التعليمات ${ai.prompt}');
   final family = {
     for (final s in data['species'] as List) (s['id'] as String).substring(s['id'].length - 4): s['fam'] as String,
   };
@@ -38,7 +40,8 @@ Future<void> main(List<String> args) async {
       await _fresh(ai, opts, File('${out.path}/fresh-$stamp.jsonl'));
     default:
       _die(
-        'الاستخدام: eval species [--per 2] [--list eval/species.json]\n'
+        'الاستخدام: eval species [--per 2] [--list eval/species.json] [--photos /out/species-….jsonl]\n'
+        '         (لكل الأوضاع: --effort low|medium|high  --prompt v1|v2  --model …)\n'
         '         eval fresh --dir /data/ffe [--per 50]',
       );
   }
@@ -51,8 +54,18 @@ Future<void> _species(FishIdAi ai, Map<String, String> family, _Opts opts, File 
   final per = int.parse(opts.value('per', '2'));
   final http = HttpClient()..userAgent = 'FISH-ID-eval/1.0 (hawat.id)';
   final cases = <({String id, String sci, String url, String obs, bool dead})>[];
-  stdout.writeln('جمع الصور من iNaturalist لـ ${list.length} نوعًا…');
-  for (final s in list) {
+  // --photos: نفس صور تجربة سابقة، عشان تكون المقارنة بين الإعدادات على نفس الصور بالضبط.
+  final reuse = opts.value('photos', '');
+  if (reuse.isNotEmpty) {
+    for (final line in File(reuse).readAsLinesSync().where((l) => l.trim().isNotEmpty)) {
+      final j = jsonDecode(line) as Map<String, dynamic>;
+      cases.add((id: j['expected'], sci: j['sci'], url: j['photo'], obs: j['observation'], dead: j['dead'] == true));
+    }
+    stdout.writeln('نعيد ${cases.length} صورة من $reuse');
+  } else {
+    stdout.writeln('جمع الصور من iNaturalist لـ ${list.length} نوعًا…');
+  }
+  for (final s in reuse.isEmpty ? list : const <Map>[]) {
     final found = await _inatPhotos(http, s['sci'] as String, per);
     if (found.isEmpty) stdout.writeln('  ما لقينا صور لـ ${s['sci']}');
     for (final f in found) {

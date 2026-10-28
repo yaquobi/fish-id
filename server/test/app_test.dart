@@ -74,6 +74,19 @@ void main() {
     expect((content.first as Map)['type'], 'image');
   });
 
+  test('prompt v2 asks for observed features before the candidates', () {
+    Map<String, dynamic> schemaOf(Map<String, Object> body) =>
+        ((body['output_config'] as Map)['format'] as Map)['schema'] as Map<String, dynamic>;
+    String systemOf(Map<String, Object> body) => ((body['system'] as List).single as Map)['text'] as String;
+    final photo = [Photo(Uint8List.fromList([1, 2]), 'image/png')];
+    final v1 = FishIdAi(key: 'k', speciesList: '').requestBody(photo);
+    final v2 = FishIdAi(key: 'k', speciesList: '', prompt: 'v2').requestBody(photo);
+    expect((schemaOf(v1)['properties'] as Map).containsKey('observed_features'), isFalse);
+    expect((schemaOf(v2)['required'] as List).first, 'observed_features');
+    expect(systemOf(v1), isNot(contains('taxonomist')));
+    expect(systemOf(v2), contains('taxonomist'));
+  });
+
   test('accepts up to 3 photos of the same fish', () async {
     var n = 0;
     final app = FishIdApp(
