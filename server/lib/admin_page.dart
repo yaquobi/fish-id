@@ -116,7 +116,7 @@ label.set input{width:120px;direction:ltr}
 .alert .go{margin-inline-start:auto}
 .secret{display:flex;gap:8px;align-items:center;background:var(--navy);color:var(--gold);border-radius:12px;padding:10px 14px;margin-top:12px}
 .secret code{flex:1;word-break:break-all;direction:ltr;font-size:13px}
-.print-head{display:none}
+.print-head,.print-foot{display:none}
 @media (max-width:860px){
   .shell{grid-template-columns:1fr}
   aside{position:sticky;height:auto;padding:10px 12px;flex-direction:row;align-items:center;gap:10px;z-index:5;overflow-x:auto}
@@ -133,19 +133,35 @@ label.set input{width:120px;direction:ltr}
   .pl small{font-size:9px}
 }
 @media print{
-  @page{margin:14mm}
+  @page{size:A4;margin:10mm 10mm 14mm}
   body{background:#fff;font-size:12px}
-  aside,.noprint,button,input,select,.alerts{display:none!important}
+  aside,.noprint,button,input,select,.alerts,.top{display:none!important}
   .shell{display:block}
-  main{padding:0;max-width:none}
-  .card{box-shadow:none;break-inside:avoid;border-color:#ccc}
-  .cols{grid-template-columns:1fr 1fr}
-  .grid{grid-template-columns:repeat(3,1fr)}
-  .kpi.hero{background:#fff;color:var(--ink);border:2px solid var(--navy)}
-  .kpi.hero .v{color:var(--navy)!important}.kpi.hero .pos{color:var(--good)!important}.kpi.hero .neg{color:var(--bad)!important}.kpi.hero .k,.kpi.hero .n{color:var(--muted)}
-  .print-head{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--navy);padding-bottom:8px;margin-bottom:14px}
-  .print-head b{font:800 18px Montserrat,sans-serif}
-  .print-head b span{color:var(--gold-ink)}
+  main{padding:0 0 10mm;max-width:none}
+  .card{box-shadow:none;break-inside:avoid;border-color:var(--line);border-radius:12px;padding:12px 14px}
+  .card h3{color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:6px;margin-bottom:8px;font-size:14px}
+  .cols{grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .grid{grid-template-columns:repeat(4,1fr);gap:10px}
+  .kpi .v{font-size:20px}
+  .kpi .k,.kpi .n{font-size:11px}
+  th{background:var(--navy);color:#fff;font-size:11px;padding:7px 8px}
+  td{font-size:11.5px;padding:7px 8px}
+  tr:nth-child(even) td{background:#F6F8FA}
+  tfoot td{background:var(--gold-soft)!important;color:var(--navy)}
+  .pill{border:1px solid var(--line)}
+  .note{font-size:11px}
+  .print-head{display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--navy);color:#fff;border-radius:14px;padding:14px 20px;border-bottom:4px solid var(--gold);margin-bottom:14px}
+  .ph-brand{display:flex;align-items:center;gap:12px}
+  .ph-brand b{font:800 24px Montserrat,sans-serif;letter-spacing:.5px;color:#fff}
+  .ph-brand b span{color:var(--gold)}
+  .ph-brand small{display:block;color:var(--on-navy);font-size:11px;margin-top:2px}
+  .ph-doc{text-align:end}
+  #ph-title{font-size:18px;font-weight:800}
+  #ph-sub{color:var(--gold);font-size:12px;font-weight:700}
+  #ph-meta{color:var(--on-navy);font-size:10px;margin-top:2px}
+  .print-foot{display:flex;justify-content:space-between;position:fixed;bottom:0;left:0;right:0;border-top:1px solid var(--line);padding-top:4px;font-size:9.5px;color:var(--muted);background:#fff}
+  .print-foot b{font-family:Montserrat,sans-serif;color:var(--navy)}
+  .print-foot b span{color:var(--gold-ink)}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style>
@@ -160,7 +176,12 @@ label.set input{width:120px;direction:ltr}
   <nav id="nav"></nav>
   <div class="side-foot"><div class="who" id="who"></div><button id="lang"></button><button id="out"></button></div>
 </aside>
-<main><div class="print-head"><b>FISH <span>ID</span></b><span id="print-meta"></span></div><div class="alerts" id="alerts"></div><div id="app"></div></main>
+<main>
+<header class="print-head"><div class="ph-brand"><svg width="46" height="46" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#122F48"/><path d="M6 11V7h4M28 11V7h-4M6 23v4h4M28 23v4h-4" stroke="#F2C14E" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M9 17c3-4 8-5 12-2l4-3v10l-4-3c-4 3-9 2-12-2z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg><div><b>FISH <span>ID</span></b><small id="ph-tag"></small></div></div>
+  <div class="ph-doc"><div id="ph-title"></div><div id="ph-sub"></div><div id="ph-meta"></div></div></header>
+<div class="alerts" id="alerts"></div><div id="app"></div>
+<footer class="print-foot"><b>FISH <span>ID</span></b><span id="pf-note"></span><span dir="ltr">hawat.id</span></footer>
+</main>
 </div>
 <main id="login"></main>
 <script>
@@ -300,11 +321,21 @@ async function show(tab, ...args) {
   currentArgs = args;
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   history.replaceState(null, '', '#' + tab);
-  $('#print-meta').textContent = tabName(tab) + ' · ' + T('طُبع ', 'Printed ') + when(new Date().toISOString());
   $('#app').innerHTML = `<div class="msg">${T('جاري التحميل…', 'Loading…')}</div>`;
   if (can('alerts')) loadAlerts();
   try { await views[tab](...args); } catch (e) { $('#app').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; }
+  fillPrint();
 }
+
+// ترويسة الطباعة: عنوان الصفحة وفترتها ووقت الطباعة ومن طبعها.
+function fillPrint() {
+  $('#ph-tag').textContent = T('إحدى مبادرات منظومة حوات', 'A HUWAT ecosystem initiative');
+  $('#ph-title').textContent = $('#app .top h1')?.textContent || tabName(current);
+  $('#ph-sub').textContent = $('#app .top .sub')?.textContent || '';
+  $('#ph-meta').textContent = T('طُبع ', 'Printed ') + when(new Date().toISOString()) + (me ? ' · ' + (me.name || roleName(me.role)) : '');
+  $('#pf-note').textContent = T('تقرير صادر من لوحة إدارة FISH ID، للاستخدام الداخلي', 'Generated by the FISH ID admin panel, for internal use');
+}
+window.addEventListener('beforeprint', fillPrint);
 
 // نص التنبيه بلغة اللوحة. السيرفر يرسل الرمز والأرقام بس.
 function alertText(a) {
