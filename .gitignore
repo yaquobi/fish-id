@@ -50,3 +50,6 @@ app.*.map.json
 # نتائج قياس الدقة على السيرفر
 /eval-results/
 /data/
+
+# نسخ Google Play اللي يبنيها server/build-aab.sh
+/landing/dl/

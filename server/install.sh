@@ -31,7 +31,7 @@ curl -fsS http://127.0.0.1:$PORT/health; echo
 # إذا للدومين إعداد ثاني غير ملفنا، نطبع السطور اللي تنضاف له بدل ما نلمسه.
 SITE=/etc/nginx/sites-available/fish-id
 LANDING=$(cd .. && pwd)/landing
-ROOT_LOC="  location / { root $LANDING; try_files \$uri \$uri/ /index.html; }"
+ROOT_LOC="  location / { root $LANDING; add_header Access-Control-Allow-Origin *; try_files \$uri \$uri/ /index.html; }"
 if grep -rqs "server_name[^;]*\b$DOMAIN\b" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ && [[ ! -f $SITE ]]; then
   echo "للدومين $DOMAIN إعداد nginx موجود. أضف داخل server { } الخاص به:"
   echo "  location /api/ { proxy_pass http://127.0.0.1:$PORT/; client_max_body_size 10m; proxy_read_timeout 120s; proxy_set_header Host \$host; }"

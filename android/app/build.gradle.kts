@@ -31,8 +31,12 @@ android {
 
     // توقيع ثابت لنسخ التجربة اللي تنبني في GitHub Actions، عشان كل نسخة تتركّب فوق اللي قبلها.
     // المفتاح ما ينحفظ في المستودع: سير العمل apk.yml ينشئه مرة وحدة ويحفظه في ذاكرة Actions المؤقتة.
-    // على جهاز المطور (بدون الملف) نرجع لمفتاح debug العادي. نسخة Google Play تحتاج مفتاحًا خاصًا منفصلًا.
+    // على جهاز المطور (بدون الملف) نرجع لمفتاح debug العادي.
+    // نسخة Google Play تنبني على السيرفر (server/build-aab.sh) بمفتاح الرفع، و FISHID_UPLOAD_KEY يشير لملف خصائصه.
     val testKeystore = file("test-builds.keystore")
+    val upload = System.getenv("FISHID_UPLOAD_KEY")?.let { file(it) }?.takeIf { it.exists() }?.let { f ->
+        java.util.Properties().apply { f.inputStream().use { load(it) } }
+    }
     signingConfigs {
         create("testBuilds") {
             storeFile = testKeystore
@@ -40,11 +44,25 @@ android {
             keyAlias = "fishid-test"
             keyPassword = "android"
         }
+        if (upload != null) {
+            create("upload") {
+                storeFile = file(upload.getProperty("storeFile"))
+                storePassword = upload.getProperty("storePassword")
+                keyAlias = upload.getProperty("keyAlias")
+                keyPassword = upload.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName(if (testKeystore.exists()) "testBuilds" else "debug")
+            signingConfig = signingConfigs.getByName(
+                when {
+                    upload != null -> "upload"
+                    testKeystore.exists() -> "testBuilds"
+                    else -> "debug"
+                },
+            )
         }
     }
 }
