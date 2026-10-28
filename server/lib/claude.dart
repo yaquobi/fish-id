@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'qim.dart';
+import 'refs.dart';
 
 /// صورة واحدة من صور السمكة.
 class Photo {
@@ -21,7 +22,15 @@ class FishIdError implements Exception {
 
 /// استدعاء Claude Messages API مباشرة (لا توجد مكتبة Dart رسمية).
 class FishIdAi {
-  FishIdAi({required this.key, required this.speciesList, this.model = 'claude-opus-5-5', this.effort = 'low', this.prompt = 'v1'});
+  FishIdAi({
+    required this.key,
+    required this.speciesList,
+    this.model = 'claude-opus-5-5',
+    this.effort = 'low',
+    this.prompt = 'v1',
+    this.refs,
+    this.refsBelow = 80,
+  });
 
   final String key;
   final String model;
@@ -30,6 +39,10 @@ class FishIdAi {
   /// نسخة التعليمات: v1 الحالية، و v2 تجبر النموذج يحدد العائلة والجنس أولًا ويقارن الأنواع المتشابهة بعلاماتها.
   /// نقارن بينها بأداة القياس (bin/eval.dart) على نفس الصور قبل ما نغيّر الافتراضي.
   final String prompt;
+
+  /// مكتبة الصور المرجعية للمرحلة الثانية (اختيارية). تشتغل إذا ثقة أول مرشح أقل من [refsBelow].
+  final RefLibrary? refs;
+  final int refsBelow;
 
   /// سطر لكل نوع: رقم حوات (آخر 4 أرقام)|الاسم العلمي|الإنجليزي|الأسماء المحلية.
   final String speciesList;
@@ -169,7 +182,50 @@ Work like a taxonomist, and write your notes in observed_features before choosin
   };
 
   /// يرجّع نتيجة التحليل كنص JSON بالشكل المعرّف في [schema]، مع الدرجة والتصنيف المحسوبة من نقاط QIM.
+  /// إذا فيه مكتبة صور مرجعية والثقة منخفضة، نعيد ترتيب الأنواع بمقارنة صورة السمكة بصور الأنواع المتشابهة.
   Future<String> identify(List<Photo> photos) async {
+    final result = await _call(requestBody(photos));
+    if (result['freshness'] case final Map<String, dynamic> f) completeFreshness(f);
+    await _compareWithRefs(photos, result);
+    return jsonEncode(result);
+  }
+
+  Future<void> _compareWithRefs(List<Photo> photos, Map<String, dynamic> result) async {
+    final lib = refs;
+    final cands = (result['candidates'] as List? ?? const []).cast<Map>();
+    if (lib == null || cands.isEmpty) return;
+    final top = (cands.first['confidence'] as num?)?.toInt() ?? 0;
+    if (top >= refsBelow) return;
+    final pool = lib.poolFor([for (final c in cands) '${c['id']}'.padLeft(4, '0')]);
+    if (pool.length < 2) return;
+    try {
+      final second = await _call({
+        'model': model,
+        'max_tokens': 3000,
+        'output_config': {
+          'effort': effort,
+          'format': {'type': 'json_schema', 'schema': refsSchema},
+        },
+        'fallbacks': 'default',
+        'system': refsSystem,
+        'messages': [
+          {'role': 'user', 'content': await refsContent(lib, photos, pool)},
+        ],
+      });
+      final ranked = [
+        for (final c in (second['candidates'] as List? ?? const []).cast<Map>())
+          if (pool.contains('${c['id']}'.padLeft(4, '0'))) {...c, 'id': '${c['id']}'.padLeft(4, '0')},
+      ];
+      if (ranked.isEmpty) return;
+      result['candidates'] = ranked;
+      result['refs_compared'] = pool;
+    } on FishIdError catch (e) {
+      // المرحلة الثانية تحسين، فإذا فشلت نرجع نتيجة المرحلة الأولى كما هي.
+      stderr.writeln('FishId: refs stage skipped: ${e.code}');
+    }
+  }
+
+  Future<Map<String, dynamic>> _call(Map<String, Object> body) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
     try {
       final req = await client.postUrl(Uri.parse(_url));
@@ -178,7 +234,7 @@ Work like a taxonomist, and write your notes in observed_features before choosin
         ..set('anthropic-version', '2026-10-21')
         ..set('anthropic-beta', 'server-side-fallback-2026-07-01')
         ..contentType = ContentType.json;
-      req.add(utf8.encode(jsonEncode(requestBody(photos))));
+      req.add(utf8.encode(jsonEncode(body)));
       final res = await req.close().timeout(const Duration(seconds: 90));
       final text = await res.transform(utf8.decoder).join();
       if (res.statusCode == 429 || res.statusCode == 529) throw const FishIdError('busy', 'الخدمة مشغولة، حاول بعد شوي', status: 503);
@@ -191,9 +247,7 @@ Work like a taxonomist, and write your notes in observed_features before choosin
       if (msg['stop_reason'] == 'refusal') throw const FishIdError('fishid_refused', 'ما قدرنا نحلل هذه الصورة، جرّب صورة ثانية');
       if (msg['stop_reason'] == 'max_tokens') throw const FishIdError('fishid_error', 'تعذّر تحليل الصورة، حاول مرة ثانية', status: 502);
       final out = (msg['content'] as List).where((b) => b['type'] == 'text').map((b) => b['text'] as String).join();
-      final result = jsonDecode(out) as Map<String, dynamic>;
-      if (result['freshness'] case final Map<String, dynamic> f) completeFreshness(f);
-      return jsonEncode(result);
+      return jsonDecode(out) as Map<String, dynamic>;
     } on FishIdError {
       rethrow;
     } on FormatException {

@@ -2,17 +2,23 @@
 # قياس دقة FISH ID على السيرفر بنفس مفتاح Claude المحفوظ في server/.env.
 #   bash server/eval.sh species        # صور iNaturalist لأهم 54 نوعًا في السوق (صورتين لكل نوع)
 #   bash server/eval.sh fresh          # مجموعة FFE لطزاجة العين (تنزل تلقائيًا أول مرة)
+#   bash server/eval.sh refs           # يبني مكتبة الصور المرجعية (data/refs) من iNaturalist، تستبعد صور الاختبار
+#   bash server/eval.sh species --photos /out/species-….jsonl --refs /data/refs --refs-below 101
+#                                       # نفس صور تجربة سابقة، مع المقارنة بالصور المرجعية
 # النتائج تنحفظ في eval-results/ وتنطبع على الشاشة.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mode="${1:-species}"; shift || true
-mkdir -p eval-results data
+mkdir -p eval-results data/refs
 compose=(docker compose -f server/docker-compose.yml)
 "${compose[@]}" build -q
 
 case "$mode" in
   species)
-    "${compose[@]}" run --rm --no-deps -v "$PWD/eval-results:/out" fishid /app/fishid-eval species "$@"
+    "${compose[@]}" run --rm --no-deps -v "$PWD/eval-results:/out" -v "$PWD/data/refs:/data/refs:ro" fishid /app/fishid-eval species "$@"
+    ;;
+  refs)
+    "${compose[@]}" run --rm --no-deps -v "$PWD/eval-results:/out:ro" -v "$PWD/data/refs:/data/refs" fishid /app/fishid-eval refs "$@"
     ;;
   fresh)
     if [ ! -d data/ffe ]; then
@@ -23,5 +29,5 @@ case "$mode" in
     fi
     "${compose[@]}" run --rm --no-deps -v "$PWD/eval-results:/out" -v "$PWD/data/ffe:/data/ffe:ro" fishid /app/fishid-eval fresh --dir /data/ffe "$@"
     ;;
-  *) echo "الاستخدام: bash server/eval.sh species|fresh"; exit 2 ;;
+  *) echo "الاستخدام: bash server/eval.sh species|fresh|refs"; exit 2 ;;
 esac

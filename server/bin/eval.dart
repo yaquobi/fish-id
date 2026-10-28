@@ -4,6 +4,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:fish_id_server/claude.dart';
+import 'package:fish_id_server/refs.dart';
 
 /// قياس دقة FISH ID بنفس النموذج والتعليمات اللي يستخدمها الخادم.
 ///
@@ -25,8 +26,13 @@ Future<void> main(List<String> args) async {
     model: opts.value('model', env['FISHID_MODEL'] ?? 'claude-opus-5-5'),
     effort: opts.value('effort', env['FISHID_EFFORT'] ?? 'low'),
     prompt: opts.value('prompt', env['FISHID_PROMPT'] ?? 'v1'),
+    refs: opts.mode == 'refs' ? null : RefLibrary.load(opts.value('refs', env['FISHID_REFS'] ?? '/nonexistent'), data),
+    refsBelow: int.parse(opts.value('refs-below', env['FISHID_REFS_BELOW'] ?? '80')),
   );
-  stdout.writeln('النموذج ${ai.model}، الجهد ${ai.effort}، التعليمات ${ai.prompt}');
+  stdout.writeln(
+    'النموذج ${ai.model}، الجهد ${ai.effort}، التعليمات ${ai.prompt}، '
+    'الصور المرجعية: ${ai.refs == null ? 'لا' : '${ai.refs!.speciesCount} نوعًا، تحت ثقة ${ai.refsBelow}'}',
+  );
   final family = {
     for (final s in data['species'] as List) (s['id'] as String).substring(s['id'].length - 4): s['fam'] as String,
   };
@@ -36,12 +42,15 @@ Future<void> main(List<String> args) async {
   switch (opts.mode) {
     case 'species':
       await _species(ai, family, opts, File('${out.path}/species-$stamp.jsonl'));
+    case 'refs':
+      await _buildRefs(data, opts);
     case 'fresh':
       await _fresh(ai, opts, File('${out.path}/fresh-$stamp.jsonl'));
     default:
       _die(
         'الاستخدام: eval species [--per 2] [--list eval/species.json] [--photos /out/species-….jsonl]\n'
-        '         (لكل الأوضاع: --effort low|medium|high  --prompt v1|v2  --model …)\n'
+        '         eval refs [--dir /data/refs] [--per 3]   (يبني مكتبة الصور المرجعية)\n'
+        '         (للقياس: --effort low|medium|high  --prompt v1|v2  --model …  --refs /data/refs  --refs-below 80)\n'
         '         eval fresh --dir /data/ffe [--per 50]',
       );
   }
@@ -71,12 +80,11 @@ Future<void> _species(FishIdAi ai, Map<String, String> family, _Opts opts, File 
     for (final f in found) {
       cases.add((id: s['id'] as String, sci: s['sci'] as String, url: f.url, obs: f.obs, dead: f.dead));
     }
-    await Future<void>.delayed(const Duration(milliseconds: 1100)); // iNaturalist يطلب طلبًا واحدًا في الثانية تقريبًا
   }
   if (cases.isEmpty) _die('ما قدرنا نجيب أي صورة من iNaturalist. تأكد إن السيرفر يوصل لـ api.inaturalist.org');
   stdout.writeln('${cases.length} صورة. نبدأ التحليل…');
 
-  var top1 = 0, top3 = 0, fam = 0, done = 0, failed = 0;
+  var top1 = 0, top3 = 0, fam = 0, done = 0, failed = 0, compared = 0;
   final times = <int>[];
   final misses = <String>[];
   await _pool(cases, 3, (c) async {
@@ -103,6 +111,7 @@ Future<void> _species(FishIdAi ai, Map<String, String> family, _Opts opts, File 
       return;
     }
     times.add(sw.elapsedMilliseconds);
+    if (r?['refs_compared'] != null) compared++;
     if (ids.isNotEmpty && ids.first == c.id) top1++;
     if (ids.take(3).contains(c.id)) top3++;
     if (ids.isNotEmpty && family[ids.first] == family[c.id]) fam++;
@@ -118,6 +127,7 @@ Future<void> _species(FishIdAi ai, Map<String, String> family, _Opts opts, File 
   stdout.writeln('- الصحيح أولًا (top-1): ${_pct(top1, n)}');
   stdout.writeln('- ضمن أول 3 (top-3): ${_pct(top3, n)}');
   stdout.writeln('- العائلة صحيحة: ${_pct(fam, n)}');
+  if (compared > 0) stdout.writeln('- انقارنت بالصور المرجعية: ${_pct(compared, n)}');
   if (times.isNotEmpty) stdout.writeln('- الزمن: الوسيط ${(times[times.length ~/ 2] / 1000).toStringAsFixed(1)} ث');
   if (misses.isNotEmpty) {
     stdout.writeln('\n| النوع الصحيح | أول اختيار | الملاحظة |\n|---|---|---|');
@@ -127,9 +137,18 @@ Future<void> _species(FishIdAi ai, Map<String, String> family, _Opts opts, File 
   http.close();
 }
 
+typedef _InatPhoto = ({String url, String obs, bool dead, String license, String attribution});
+
 /// صور بدرجة بحثية برخص مفتوحة. نبدأ بالمعلّمة «ميتة» لأنها أقرب لصور السوق، ونكمّل من الباقي.
-Future<List<({String url, String obs, bool dead})>> _inatPhotos(HttpClient http, String sci, int per) async {
-  final found = <({String url, String obs, bool dead})>[];
+Future<List<_InatPhoto>> _inatPhotos(
+  HttpClient http,
+  String sci,
+  int per, {
+  String licenses = 'cc0,cc-by,cc-by-nc',
+  String size = 'large',
+  Set<String> exclude = const {},
+}) async {
+  final found = <_InatPhoto>[];
   final seen = <String>{};
   for (final dead in [true, false]) {
     if (found.length >= per) break;
@@ -137,9 +156,9 @@ Future<List<({String url, String obs, bool dead})>> _inatPhotos(HttpClient http,
       'taxon_name': sci,
       'quality_grade': 'research',
       'photos': 'true',
-      'photo_license': 'cc0,cc-by,cc-by-nc',
+      'photo_license': licenses,
       'order_by': 'votes',
-      'per_page': '10',
+      'per_page': '30',
       if (dead) ...{'term_id': '17', 'term_value_id': '19'},
     };
     try {
@@ -152,14 +171,92 @@ Future<List<({String url, String obs, bool dead})>> _inatPhotos(HttpClient http,
         if ((o['taxon']?['name'] as String?)?.toLowerCase() != sci.toLowerCase()) continue;
         final photos = o['photos'] as List;
         final obs = 'https://www.inaturalist.org/observations/${o['id']}';
-        if (photos.isEmpty || !seen.add(obs)) continue;
-        found.add((url: (photos.first['url'] as String).replaceFirst('/square.', '/large.'), obs: obs, dead: dead));
+        if (photos.isEmpty || exclude.contains(obs) || !seen.add(obs)) continue;
+        final p = photos.first as Map;
+        found.add((
+          url: (p['url'] as String).replaceFirst('/square.', '/$size.'),
+          obs: obs,
+          dead: dead,
+          license: '${p['license_code'] ?? ''}',
+          attribution: '${p['attribution'] ?? ''}',
+        ));
       }
     } on Exception catch (e) {
       stderr.writeln('iNaturalist $sci: $e');
     }
+    await Future<void>.delayed(const Duration(milliseconds: 1100)); // iNaturalist يطلب طلبًا واحدًا في الثانية تقريبًا
   }
   return found;
+}
+
+// ---------------------------------------------------------------- refs
+
+/// يبني مكتبة الصور المرجعية لكل أنواع الموسوعة: 3 صور لكل نوع برخص CC0 و CC BY (تسمح بالاستخدام التجاري)،
+/// بحجم متوسط (500 بكسل). صور الاختبار (كل ملاحظة في /out/species-*.jsonl) مستبعدة حتى ما يصير الاختبار غشًا.
+/// يكمل من حيث وقف لو انقطع.
+Future<void> _buildRefs(Map<String, dynamic> data, _Opts opts) async {
+  final dir = Directory(opts.value('dir', '/data/refs'))..createSync(recursive: true);
+  final per = int.parse(opts.value('per', '3'));
+  final exclude = <String>{};
+  final testDir = Directory(opts.value('exclude', '/out'));
+  if (testDir.existsSync()) {
+    for (final f in testDir.listSync().whereType<File>().where(
+      (f) => f.path.contains('species-') && f.path.endsWith('.jsonl'),
+    )) {
+      for (final l in f.readAsLinesSync().where((l) => l.trim().isNotEmpty)) {
+        exclude.add((jsonDecode(l) as Map)['observation'] as String);
+      }
+    }
+  }
+  stdout.writeln('نستبعد ${exclude.length} ملاحظة من صور الاختبار');
+  final manifestFile = File('${dir.path}/manifest.json');
+  final manifest = manifestFile.existsSync()
+      ? (jsonDecode(manifestFile.readAsStringSync()) as List).cast<Map>().toList()
+      : <Map>[];
+  final http = HttpClient()..userAgent = 'FISH-ID-refs/1.0 (hawat.id)';
+  final species = (data['species'] as List).cast<Map>();
+  var i = 0, total = 0, none = 0;
+  for (final s in species) {
+    i++;
+    final id = (s['id'] as String).split('-').last;
+    final sub = Directory('${dir.path}/$id')..createSync();
+    final have = sub.listSync().whereType<File>().length;
+    if (have >= per) {
+      total += have;
+      continue;
+    }
+    final photos = await _inatPhotos(
+      http,
+      s['sci'] as String,
+      per - have,
+      licenses: 'cc0,cc-by',
+      size: 'medium',
+      exclude: exclude,
+    );
+    if (photos.isEmpty && have == 0) none++;
+    for (final p in photos) {
+      try {
+        final bytes = await _get(http, p.url);
+        final name = '${p.obs.split('/').last}.jpg';
+        File('${sub.path}/$name').writeAsBytesSync(bytes);
+        manifest.add({
+          'id': id,
+          'file': '$id/$name',
+          'observation': p.obs,
+          'license': p.license,
+          'attribution': p.attribution,
+          'dead': p.dead,
+        });
+        total++;
+      } on Exception catch (e) {
+        stderr.writeln('${p.url}: $e');
+      }
+    }
+    manifestFile.writeAsStringSync(const JsonEncoder.withIndent(' ').convert(manifest));
+    stdout.write('\r$i/${species.length} نوعًا، $total صورة');
+  }
+  http.close();
+  stdout.writeln('\n\nالمكتبة جاهزة: $total صورة في ${dir.path}. أنواع بدون أي صورة مفتوحة الرخصة: $none');
 }
 
 // ---------------------------------------------------------------- fresh

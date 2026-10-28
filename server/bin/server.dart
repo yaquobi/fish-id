@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:fish_id_server/app.dart';
 import 'package:fish_id_server/claude.dart';
+import 'package:fish_id_server/refs.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
 /// الإعدادات من متغيرات البيئة (ملف .env في docker compose):
@@ -21,6 +22,9 @@ Future<void> main() async {
           model: env['FISHID_MODEL'] ?? 'claude-opus-5-5',
           effort: env['FISHID_EFFORT'] ?? 'low',
           prompt: env['FISHID_PROMPT'] ?? 'v1',
+          // الصور المرجعية للأنواع المتشابهة، تنبنى بـ bash server/eval.sh refs. إذا المجلد فاضي تنطفي المرحلة الثانية.
+          refs: RefLibrary.load(env['FISHID_REFS'] ?? 'refs', data),
+          refsBelow: int.tryParse(env['FISHID_REFS_BELOW'] ?? '') ?? 80,
         );
   if (ai == null) stderr.writeln('FishId: ANTHROPIC_API_KEY غير موجود، الخدمة ترجع «غير مفعّلة».');
 
