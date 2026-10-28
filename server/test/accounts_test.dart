@@ -26,11 +26,13 @@ void main() {
     return '{"candidates":[{"id":"0408","confidence":71}]}';
   }
 
-  FishIdApp app({String admin = 'secret-token', String rc = 'rc-secret'}) => FishIdApp(
+  // ما يرجّعه RevenueCat لكل حساب في الاختبارات.
+  final subscribers = <String, Map<String, dynamic>>{};
+  FishIdApp app({String admin = 'secret-token'}) => FishIdApp(
     identify: fakeIdentify,
     accounts: AccountStore.open(dir.path),
     adminToken: admin,
-    revenueCatSecret: rc,
+    revenueCat: (id) async => {'subscriber': {'entitlements': subscribers[id] ?? {}}},
     clock: () => t,
   );
 
@@ -84,12 +86,15 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await scan(a);
     }
-    Future<Response> rc(Map<String, Object> event, {String secret = 'rc-secret'}) async => a.handler(
-      Request('POST', Uri.parse('http://x/api/revenuecat'), body: jsonEncode({'event': event}), headers: {'authorization': 'Bearer $secret'}),
-    );
-    final until = t.add(const Duration(days: 30)).millisecondsSinceEpoch;
-    expect((await rc({'type': 'INITIAL_PURCHASE', 'app_user_id': user, 'product_id': 'fishid_monthly', 'expiration_at_ms': until}, secret: 'x')).statusCode, 401);
-    await rc({'type': 'INITIAL_PURCHASE', 'app_user_id': user, 'product_id': 'fishid_monthly', 'expiration_at_ms': until});
+    Future<Response> rc(Map<String, Object> event) async =>
+        a.handler(Request('POST', Uri.parse('http://x/api/revenuecat'), body: jsonEncode({'event': event})));
+    // الحدث وحده ما يكفي: RevenueCat يقول إن الحساب ما عنده اشتراك.
+    await rc({'type': 'INITIAL_PURCHASE', 'app_user_id': user, 'product_id': 'fishid_yearly'});
+    expect((await scan(a)).statusCode, 402);
+    subscribers[user] = {
+      'FISH ID Pro': {'product_identifier': 'fishid_monthly:monthly', 'expires_date': t.add(const Duration(days: 30)).toIso8601String()},
+    };
+    await rc({'type': 'INITIAL_PURCHASE', 'app_user_id': user});
     final r = await scan(a);
     expect(r.statusCode, 200);
     expect(r.headers['x-fishid-remaining'], '14');
@@ -98,6 +103,24 @@ void main() {
     // بعد تاريخ الانتهاء يرجع مجاني، والمجانية مستخدمة.
     t = t.add(const Duration(days: 31));
     expect((await scan(a)).statusCode, 402);
+  });
+
+  test('the app syncs after buying, and a refund ends only store plans', () async {
+    final a = app();
+    Future<Response> sync() async =>
+        a.handler(Request('POST', Uri.parse('http://x/api/fishId/sync'), headers: {'x-fishid-user': user}));
+    subscribers[user] = {
+      'FISH ID Pro': {'product_identifier': 'fishid_yearly', 'expires_date': t.add(const Duration(days: 365)).toIso8601String()},
+    };
+    expect(jsonDecode(await (await sync()).readAsString())['remaining'], 15);
+    expect(a.accounts!.find(user)!['plan'], 'yearly');
+    subscribers.remove(user);
+    await sync();
+    expect(a.accounts!.find(user)!['plan'], 'free');
+    // باقة من الأدمن تبقى حتى لو ما له اشتراك في المتجر.
+    await a.accounts!.update(user, t, plan: 'shop', until: t.add(const Duration(days: 31)));
+    await sync();
+    expect(a.accounts!.find(user)!['plan'], 'shop');
   });
 
   test('admin needs the token, and can gift scans, change plans and settings', () async {
