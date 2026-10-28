@@ -5,6 +5,7 @@ import 'package:fish_id_server/accounts.dart';
 import 'package:fish_id_server/app.dart';
 import 'package:fish_id_server/claude.dart';
 import 'package:fish_id_server/contrib.dart';
+import 'package:fish_id_server/ledger.dart';
 import 'package:fish_id_server/refs.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
@@ -31,12 +32,14 @@ Future<void> main() async {
         );
   if (ai == null) stderr.writeln('FishId: ANTHROPIC_API_KEY غير موجود، الخدمة ترجع «غير مفعّلة».');
 
+  // الحسابات والفحوصات والإعدادات (مربوطة بـ data/accounts على السيرفر)، والمحاسبة في نفس المجلد.
+  final accounts = AccountStore.open(env['FISHID_ACCOUNTS'] ?? 'accounts');
   final app = FishIdApp(
     identify: ai?.identify,
     // مجلد مساهمات المستخدمين (مربوط بـ data/contrib على السيرفر في docker-compose).
     contrib: ContribStore.open(env['FISHID_CONTRIB'] ?? 'contrib'),
-    // الحسابات والفحوصات والإعدادات (مربوطة بـ data/accounts على السيرفر).
-    accounts: AccountStore.open(env['FISHID_ACCOUNTS'] ?? 'accounts'),
+    accounts: accounts,
+    ledger: accounts == null ? null : Ledger.open(accounts),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {
