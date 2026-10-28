@@ -16,6 +16,7 @@ class Species {
     required this.english,
     required this.code,
     required this.url,
+    this.plate = '',
   });
 
   /// معرّف حوات الكامل، مثل HWT-FISH-0408.
@@ -28,6 +29,12 @@ class Species {
   final String english;
   final String code;
   final String url;
+
+  /// مسار لوحة النوع في KSAFish، مثل `uuid/uuid`، وفاضي إذا ما له لوحة.
+  final String plate;
+
+  /// رابط لوحة النوع، تُعرض من موقع KSAFish مباشرة وما تُضمَّن في التطبيق.
+  String? get plateUrl => plate.isEmpty ? null : 'https://ksafish.com/ar/plate/$plate';
 
   /// الاسم المعروض: بالعربي أول اسم محلي، وبالإنجليزي الاسم الإنجليزي، وإلا العلمي.
   String get name => L10n.en
@@ -44,6 +51,7 @@ class Species {
     english: j['en'] as String? ?? '',
     code: j['code'] as String? ?? '',
     url: j['url'] as String? ?? '',
+    plate: j['plate'] as String? ?? '',
   );
 
   static List<String> _names(Object? v) =>
