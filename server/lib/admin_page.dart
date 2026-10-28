@@ -61,6 +61,7 @@ label.set input{width:110px;direction:ltr}
     <button data-tab="scans">الفحوصات</button>
     <button data-tab="contrib">الصور المساهم فيها</button>
     <button data-tab="settings">الباقات والأسعار</button>
+    <button data-tab="codes">رموز الهدايا</button>
   </nav>
 </header>
 <main id="app"></main>
@@ -224,6 +225,25 @@ const views = {
       await post('settings', body);
       $('#saved').textContent = 'تم الحفظ';
     };
+  },
+
+  async codes() {
+    const list = await api('codes');
+    $('#app').innerHTML = `<div class="card" style="max-width:640px">
+      <h2 style="margin-top:0">رموز الهدايا</h2>
+      <div class="k" style="margin-bottom:10px">المستخدم يكتب الرمز في التطبيق (القائمة ← عندك رمز؟) وتنضاف له الفحوصات، مرة وحدة لكل حساب. رمز مراجعة Google Play لازم يكون هنا عشان فريق المراجعة يقدر يجرب التطبيق.</div>
+      <label class="set"><span>الرمز (حروف إنجليزية كبيرة وأرقام)</span><input id="c-code" dir="ltr"></label>
+      <label class="set"><span>كم فحص يعطي</span><input id="c-scans" type="number" min="1" value="50"></label>
+      <label class="set"><span>كم حساب يقدر يستخدمه (0 يحذف الرمز)</span><input id="c-max" type="number" min="0" value="20"></label>
+      <button class="act gold" id="c-save">حفظ الرمز</button> <span id="c-msg" class="k"></span></div>
+      <div class="wrap"><table><tr><th>الرمز</th><th>الفحوصات</th><th>المستخدم</th><th></th></tr>
+      ${list.map(c => `<tr><td class="mono">${esc(c.code)}</td><td>${num(c.scans)}</td><td>${num(c.used || 0)} من ${num(c.max)}</td><td><button class="act ghost" data-del="${esc(c.code)}">حذف</button></td></tr>`).join('') || '<tr><td colspan="4" class="k">ما فيه رموز</td></tr>'}
+      </table></div>`;
+    $('#c-save').onclick = async () => {
+      try { await post('codes', {code: $('#c-code').value, scans: parseInt($('#c-scans').value), max: parseInt($('#c-max').value)}); show('codes'); }
+      catch (e) { $('#c-msg').textContent = e.message; }
+    };
+    $('#app').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { await post('codes', {code: b.dataset.del, max: 0}); show('codes'); });
   },
 };
 

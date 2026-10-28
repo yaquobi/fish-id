@@ -8,17 +8,20 @@ import 'claude.dart';
 /// - `accounts.json`: لكل حساب الباقة وتاريخ انتهائها والفحوصات المستخدمة.
 /// - `settings.json`: عدد الفحوصات المجانية وسقف كل باقة والأسعار، وتتغير من لوحة الأدمن.
 /// - `scans/YYYY-MM.jsonl`: سطر لكل فحص ناجح فيه النوع والثقة والوقت والتكلفة بالدولار.
+/// - `codes.json`: رموز الهدايا (لفريق مراجعة المتجر أو للتسويق): كم فحص يعطي الرمز وكم حساب يقدر يستخدمه.
 ///
 /// الحساب هو رقم عشوائي يولّده التطبيق أول مرة ويحفظه، وما فيه اسم ولا جوال ولا إيميل.
 class AccountStore {
-  AccountStore._(this.dir, this._accounts, this.settings);
+  AccountStore._(this.dir, this._accounts, this.settings, this._codes);
 
   final String dir;
   final Map<String, Map<String, dynamic>> _accounts;
   final Map<String, dynamic> settings;
+  final Map<String, Map<String, dynamic>> _codes;
 
   static const plans = {'free', 'monthly', 'yearly', 'shop'};
   static final idPattern = RegExp(r'^[A-Za-z0-9_-]{16,64}$');
+  static final codePattern = RegExp(r'^[A-Z0-9-]{4,32}$');
 
   static const defaults = <String, dynamic>{
     'freeScans': 3,
@@ -42,7 +45,8 @@ class AccountStore {
       return f.existsSync() ? jsonDecode(f.readAsStringSync()) as Map<String, dynamic> : {};
     }
 
-    return AccountStore._(dir, read('accounts.json').map((k, v) => MapEntry(k, (v as Map).cast<String, dynamic>())), {...defaults, ...read('settings.json')});
+    Map<String, Map<String, dynamic>> maps(String name) => read(name).map((k, v) => MapEntry(k, (v as Map).cast<String, dynamic>()));
+    return AccountStore._(dir, maps('accounts.json'), {...defaults, ...read('settings.json')}, maps('codes.json'));
   }
 
   int _int(String k) => (settings[k] as num?)?.toInt() ?? (defaults[k] as num).toInt();
@@ -160,6 +164,39 @@ class AccountStore {
     final ids = _accounts.keys.where((id) => q.isEmpty || id.contains(q) || _accounts[id]!['plan'] == q).toList()
       ..sort((a, b) => '${_accounts[b]!['lastScan'] ?? _accounts[b]!['created']}'.compareTo('${_accounts[a]!['lastScan'] ?? _accounts[a]!['created']}'));
     return [for (final id in ids.take(limit)) view(id, now)];
+  }
+
+  /// يضيف فحوصات الرمز للحساب، مرة وحدة لكل حساب، ولين يوصل الرمز حده.
+  Future<Map<String, dynamic>> redeem(String id, String code, DateTime now) async {
+    code = code.trim().toUpperCase();
+    final c = codePattern.hasMatch(code) ? _codes[code] : null;
+    if (c == null) throw const FishIdError('bad_code', 'الرمز غير صحيح');
+    final a = account(id, now);
+    final used = (a['codes'] as List?)?.cast<String>() ?? const [];
+    if (used.contains(code)) throw const FishIdError('code_used', 'استخدمت هذا الرمز من قبل');
+    if ((c['used'] as int? ?? 0) >= (c['max'] as int? ?? 0)) throw const FishIdError('code_full', 'انتهى هذا الرمز');
+    c['used'] = (c['used'] as int? ?? 0) + 1;
+    a['codes'] = [...used, code];
+    a['bonus'] = (a['bonus'] as int? ?? 0) + (c['scans'] as int? ?? 0);
+    await _write('codes.json', _codes);
+    await _save();
+    return view(id, now);
+  }
+
+  List<Map<String, dynamic>> codes() => [
+    for (final e in _codes.entries) {'code': e.key, ...e.value},
+  ];
+
+  /// ينشئ رمزًا أو يعدّله. [max] = 0 يحذفه.
+  Future<void> saveCode(String code, {required int scans, required int max}) async {
+    code = code.trim().toUpperCase();
+    if (!codePattern.hasMatch(code)) throw const FishIdError('bad_request', 'الرمز لازم يكون حروف إنجليزية كبيرة وأرقام، من 4 إلى 32');
+    if (max <= 0) {
+      _codes.remove(code);
+    } else {
+      _codes[code] = {...?_codes[code], 'scans': scans.clamp(1, 1000), 'max': max};
+    }
+    await _write('codes.json', _codes);
   }
 
   Future<void> saveSettings(Map<String, dynamic> changes) async {
