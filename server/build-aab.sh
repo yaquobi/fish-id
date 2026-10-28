@@ -5,7 +5,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 KEYS=${FISHID_KEYS:-/opt/fish-id-keys}
-IMAGE=${FLUTTER_IMAGE:-ghcr.io/cirruslabs/flutter:3.47.8}
+# الحاوية تعطينا Java و Android SDK، و Flutter نفسه بنفس نسخة CI (.github/workflows) ينزل مرة وحدة على السيرفر.
+IMAGE=${FLUTTER_IMAGE:-ghcr.io/cirruslabs/flutter:stable}
+FLUTTER_VERSION=${FLUTTER_VERSION:-3.47.8}
+SDK=/opt/fish-id-flutter/$FLUTTER_VERSION
 
 # 1. مفتاح الرفع: ينشأ مرة وحدة بكلمة سر عشوائية. لو ضاع، Google يقدر يغيّره (Play App Signing يحفظ مفتاح التطبيق الأصلي).
 mkdir -p "$KEYS" && chmod 700 "$KEYS"
@@ -21,10 +24,13 @@ fi
 
 # 2. البناء داخل حاوية Flutter. رقم النسخة من التاريخ والساعة، فكل نسخة أكبر من اللي قبلها.
 BUILD=${BUILD:-$(date -u +%y%m%d%H)}
-docker pull -q "$IMAGE" >/dev/null || IMAGE=ghcr.io/cirruslabs/flutter:stable
-docker run --rm -v "$PWD":/app -v "$KEYS":/keys -v fishid-pub-cache:/root/.pub-cache -v fishid-gradle:/root/.gradle \
-  -e FISHID_UPLOAD_KEY=/keys/key.properties -w /app "$IMAGE" \
-  bash -c "git config --global --add safe.directory /app && flutter pub get && flutter build appbundle --release --build-number=$BUILD"
+if [[ ! -x $SDK/flutter/bin/flutter ]]; then
+  mkdir -p "$SDK"
+  curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_$FLUTTER_VERSION-stable.tar.xz" | tar -xJ -C "$SDK"
+fi
+docker run --rm -v "$PWD":/app -v "$SDK/flutter":/flutter -v "$KEYS":/keys -v fishid-pub-cache:/root/.pub-cache -v fishid-gradle:/root/.gradle \
+  -e FISHID_UPLOAD_KEY=/keys/key.properties -e PATH="/flutter/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" -w /app "$IMAGE" \
+  bash -c "git config --global --add safe.directory '*' && flutter --version | head -1 && flutter pub get && flutter build appbundle --release --build-number=$BUILD"
 
 # 3. ننسخها لمجلد التحميل في صفحة الهبوط.
 mkdir -p landing/dl
