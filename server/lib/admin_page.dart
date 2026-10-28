@@ -13,6 +13,7 @@ const adminPage = r'''<!doctype html>
 <style>
 :root{--navy:#0B2236;--navy-2:#122F48;--navy-3:#1B3D5C;--gold:#F2C14E;--gold-soft:#FDF3DA;--gold-ink:#7A5300;--bg:#F3F6F9;--surface:#fff;--ink:#0B2236;--muted:#5A6B7B;--line:#E1E8EE;--chip:#EDF2F6;--good:#17804F;--good-soft:#E2F4EA;--bad:#B3261E;--bad-soft:#FBE5E3;--info-soft:#E4EEF8;--info:#21507A;--on-navy:#B8C8D8;--shadow:0 1px 2px rgba(11,34,54,.05),0 4px 16px rgba(11,34,54,.06)}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Tajawal,system-ui,sans-serif}
 [dir=ltr] body{font-family:Montserrat,Tajawal,system-ui,sans-serif;font-size:14px}
 .shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
