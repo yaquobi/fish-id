@@ -17,7 +17,8 @@ if [[ ${1:-} == --setup || ! -f $FISHID_PLAY_KEY ]]; then
   [[ ${1:-} == --setup ]] && exit 0
 fi
 
-OUT=$(bash server/build-aab.sh | tee /dev/stderr | grep -o 'fish-id-[0-9]*\.aab' | tail -1)
+# نكرر المخرجات على نفس stderr (مو tee /dev/stderr) عشان لو كانت موجهة لملف ما يمسح السجل ويضيع سطر نتيجة الرفع.
+OUT=$(bash server/build-aab.sh | tee >(cat >&2) | grep -o 'fish-id-[0-9]*\.aab' | tail -1)
 python3 server/play_upload.py "landing/dl/$OUT" "${1:-}" "${2:-}"
 # الملف العام ما نحتاجه بعد الرفع.
 rm -f landing/dl/*.aab
