@@ -24,6 +24,12 @@ void main() {
       expect(db.search('EPINEPHELUS'), isNotEmpty);
       expect(db.search(''), hasLength(447));
     });
+
+    test('links species plates on KSAFish', () async {
+      final db = await Ksafish.load();
+      expect(db.species.where((s) => s.plateUrl != null), hasLength(442));
+      expect(db.byId('2')?.plateUrl, startsWith('https://ksafish.com/ar/plate/e665cab4-'));
+    });
   });
 
   group('FishResult', () {
