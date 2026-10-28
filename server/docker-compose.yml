@@ -9,3 +9,6 @@ services:
     # يسمع على السيرفر نفسه بس (المنفذ يتغير بـ FISHID_HOST_PORT)، و nginx يوصّل له من https://hawat.id/api/
     ports:
       - "127.0.0.1:${FISHID_HOST_PORT:-18490}:8080"
+    # صور يساهم فيها المستخدمون بموافقتهم (fishId/contribute)، تنحفظ على السيرفر في /opt/fish-id/data/contrib.
+    volumes:
+      - ../data/contrib:/app/contrib

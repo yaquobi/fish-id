@@ -7,6 +7,7 @@ import '../data/fish_id_api.dart';
 import '../data/ksafish.dart';
 import '../data/result.dart';
 import '../theme.dart';
+import '../widgets/contribute_card.dart';
 import '../widgets/freshness_card.dart';
 import '../widgets/shelf_life_card.dart';
 import '../widgets/species_card.dart';
@@ -194,6 +195,13 @@ class _ResultScreenState extends State<ResultScreen> {
             final f? when f.assessable && f.daysMin >= 0 && f.daysMax >= 0 => (f.daysMin + f.daysMax) / 2,
             _ => null,
           },
+        ),
+        const SizedBox(height: 12),
+        ContributeCard(
+          key: ValueKey(_images.length),
+          images: List.of(_images),
+          candidates: [for (final (_, s) in cands) (s.id.split('-').last, s.name)],
+          score: r.freshness?.assessable == true ? r.freshness!.score : -1,
         ),
         if (r.photoTip.isNotEmpty) ...[
           const SizedBox(height: 12),

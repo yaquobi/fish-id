@@ -54,6 +54,48 @@ abstract final class FishIdApi {
     }
   }
 
+  /// يحفظ الصور على الخادم مع النوع المؤكد وكم يوم من الصيد وطريقة الحفظ، بموافقة المستخدم.
+  /// تُستخدم لبناء مجموعة بيانات أسماك الخليج والبحر الأحمر ومعايرة الطزاجة.
+  static Future<void> contribute(
+    List<Uint8List> images, {
+    required String species,
+    required bool speciesConfirmed,
+    required int days,
+    required String storage,
+    required List<String> predicted,
+    required int score,
+  }) async {
+    if (isDemo) {
+      await Future<void>.delayed(const Duration(seconds: 1));
+      return;
+    }
+    final base = apiUrl.endsWith('/') ? apiUrl : '$apiUrl/';
+    final http.Response res;
+    try {
+      res = await http
+          .post(
+            Uri.parse('${base}fishId/contribute'),
+            headers: {'content-type': 'application/json; charset=utf-8'},
+            body: jsonEncode({
+              'images': [
+                for (final image in images) {'image': "decode('${base64Encode(image)}', 'base64')", 'mediaType': mediaTypeOf(image)},
+              ],
+              'species': species,
+              'speciesConfirmed': speciesConfirmed,
+              'days': days,
+              'storage': storage,
+              'predicted': predicted,
+              'score': score,
+              'consent': true,
+            }),
+          )
+          .timeout(const Duration(seconds: 60));
+    } on Exception {
+      throw const FishIdException('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة ثانية.');
+    }
+    if (res.statusCode != 200) throw FishIdException(_serverMessage(utf8.decode(res.bodyBytes)) ?? 'تعذّر حفظ المساهمة، حاول مرة ثانية.');
+  }
+
   /// رسالة HawatException العربية من رد الخطأ، إن وجدت.
   static String? _serverMessage(String body) {
     try {

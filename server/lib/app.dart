@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:shelf/shelf.dart';
 
 import 'claude.dart';
+import 'contrib.dart';
 
 typedef Identify = Future<String> Function(List<Photo> photos);
 
@@ -11,10 +12,12 @@ typedef Identify = Future<String> Function(List<Photo> photos);
 /// POST fishId/identify بجسم `{"image": "decode('BASE64', 'base64')", "mediaType": "image/jpeg"}`،
 /// أو `{"images": [{"image": ..., "mediaType": ...}, ...]}` حتى [maxPhotos] صور لنفس السمكة.
 /// والرد نص JSON داخل سلسلة JSON. الخطأ 4xx/5xx بجسم {"code", "message"}.
+/// POST fishId/contribute: نفس الصور مع النوع المؤكد والأيام وطريقة الحفظ وموافقة المستخدم، وتنحفظ في [contrib].
 class FishIdApp {
-  FishIdApp({required this.identify, this.perMinute = 30, DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
+  FishIdApp({required this.identify, this.contrib, this.perMinute = 30, DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
 
   final Identify? identify;
+  final ContribStore? contrib;
   final int perMinute;
   final DateTime Function() _clock;
 
@@ -44,12 +47,60 @@ class FishIdApp {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
     }
+    if (req.method == 'POST' && path == 'fishId/contribute') {
+      try {
+        return _json(200, {'ok': true, 'id': await _contribute(req)});
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
     return _json(404, {'code': 'not_found', 'message': 'المسار غير موجود'});
   };
 
   Future<String> _identify(Request req) async {
     final run = identify;
     if (run == null) throw const FishIdError('fishid_off', 'خدمة التعرف على الأسماك غير مفعّلة حاليًا', status: 503);
+    final (photos, _) = await _readPhotos(req);
+    _limit();
+    return run(photos);
+  }
+
+  static const storages = {'ice', 'fridge', 'room', 'hot', 'frozen', 'unknown'};
+
+  Future<String> _contribute(Request req) async {
+    final store = contrib;
+    if (store == null) throw const FishIdError('contrib_off', 'المساهمة غير متاحة حاليًا', status: 503);
+    final (photos, body) = await _readPhotos(req);
+    if (body['consent'] != true) throw const FishIdError('contrib_consent', 'نحتاج موافقتك قبل حفظ الصور');
+    // نحذف بيانات الموقع من JPEG و PNG فقط، فما نقبل غيرها هنا.
+    if (photos.any((p) => p.mediaType == 'image/webp')) throw const FishIdError('fishid_type', 'نوع الصورة غير مدعوم، استخدم JPG أو PNG');
+    final species = '${body['species'] ?? ''}';
+    if (species.isNotEmpty && !RegExp(r'^\d{4}$').hasMatch(species)) throw const FishIdError('bad_request', 'الطلب غير صالح');
+    final days = body['days'] is int ? (body['days'] as int).clamp(-1, 30) : -1;
+    final storage = storages.contains(body['storage']) ? body['storage'] as String : 'unknown';
+    final predicted = [for (final p in (body['predicted'] is List ? body['predicted'] as List : const [])) '$p'].take(3).toList();
+    final score = body['score'] is int ? (body['score'] as int).clamp(-1, 100) : -1;
+    _limit();
+    return store.save(photos, {
+      'species': species,
+      'species_confirmed': body['speciesConfirmed'] == true && species.isNotEmpty,
+      'days_since_catch': days,
+      'storage': storage,
+      'predicted': predicted,
+      'app_score': score,
+    }, _clock());
+  }
+
+  void _limit() {
+    final now = _clock().millisecondsSinceEpoch ~/ 60000;
+    if (now != _minute) {
+      _minute = now;
+      _count = 0;
+    }
+    if (++_count > perMinute) throw const FishIdError('busy', 'الخدمة مشغولة، حاول بعد دقيقة', status: 429);
+  }
+
+  Future<(List<Photo>, Map<String, dynamic>)> _readPhotos(Request req) async {
     final Map<String, dynamic> body;
     try {
       // base64 يكبّر الحجم الثلث، فالحد هنا أكبر من حد الصورة.
@@ -65,16 +116,7 @@ class FishIdApp {
     }
     final list = body['images'] is List ? body['images'] as List : [body];
     if (list.isEmpty || list.length > maxPhotos) throw const FishIdError('fishid_count', 'أرسل من صورة إلى 3 صور لنفس السمكة');
-    final photos = [for (final item in list) _photo(item)];
-
-    final now = _clock().millisecondsSinceEpoch ~/ 60000;
-    if (now != _minute) {
-      _minute = now;
-      _count = 0;
-    }
-    if (++_count > perMinute) throw const FishIdError('busy', 'الخدمة مشغولة، حاول بعد دقيقة', status: 429);
-
-    return run(photos);
+    return ([for (final item in list) _photo(item)], body);
   }
 
   static Photo _photo(Object? item) {
