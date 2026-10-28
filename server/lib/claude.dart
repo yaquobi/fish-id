@@ -2,6 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'qim.dart';
+
+/// صورة واحدة من صور السمكة.
+class Photo {
+  const Photo(this.bytes, this.mediaType);
+  final Uint8List bytes;
+  final String mediaType;
+}
+
 /// خطأ برسالة عربية تنعرض للمستخدم كما هي.
 class FishIdError implements Exception {
   const FishIdError(this.code, this.message, {this.status = 400});
@@ -25,28 +34,36 @@ class FishIdAi {
 
   /// يبني قائمة الأنواع من ملف ksafish.json نفسه اللي يستخدمه التطبيق.
   static String speciesListFrom(Map<String, dynamic> data) => [
-        for (final s in data['species'] as List)
-          [
-            (s['id'] as String).split('-').last,
-            s['sci'],
-            s['en'],
-            [s['red'], s['gulf']].where((n) => (n as String? ?? '').isNotEmpty).join(' | '),
-          ].join('|'),
-      ].join('\n');
+    for (final s in data['species'] as List)
+      [
+        (s['id'] as String).split('-').last,
+        s['sci'],
+        s['en'],
+        [s['red'], s['gulf']].where((n) => (n as String? ?? '').isNotEmpty).join(' | '),
+      ].join('|'),
+  ].join('\n');
 
-  String get _system => '''You are a fish identification and seafood-quality expert for Saudi Arabian waters (Red Sea and Arabian Gulf).
-You receive one photo taken with a phone, usually at a fish market or on a boat.
+  String get _system =>
+      '''You are a fish identification and seafood-quality expert for Saudi Arabian waters (Red Sea and Arabian Gulf).
+You receive 1 to 3 phone photos of the SAME fish, usually at a fish market or on a boat (for example the whole fish, a close-up of the eye, and the open gills).
 Identify the species ONLY from the KSAFish list below (format: id|scientific name|English name|Saudi local names).
-Estimate freshness from what is visible: eye clarity and shape, gill colour, skin shine and slime, discoloration.
-Be honest about uncertainty: if a part is not visible, say so, and keep confidence low when the photo is unclear.
+Give 1 to 3 candidates, best first, using ids from the list. If the fish is clearly not in the list, give your best scientific name in outside_list_guess and no candidates.
+
+Freshness: score each visual Quality Index Method (QIM) attribute in freshness.qim using these demerit points (0 = perfectly fresh).
+Use -1 when that part is not visible or cannot be judged from the photos. Never guess a part you cannot see.
+${qimPromptTable()}
+Smell and stiffness cannot be judged from photos; mention them in freshness.manual_checks when they would matter.
+Set freshness.assessable to false for live fish, cooked, frozen-solid or filleted fish, or when almost nothing is visible.
+estimated_days_min and estimated_days_max: your estimate of days since catch if kept on ice, considering the species and warm-water spoilage; use -1 when not assessable.
+Fill eyes, gills and skin with what you actually saw; summary is one sentence of practical advice for a buyer.
+
+Be honest about uncertainty and keep confidence low when the photo is unclear.
 Write every text field in clear Modern Standard Arabic that Saudi users understand.
-Give 1 to 3 candidates, best first, using ids from the list. score 100 means just caught.
-If the fish is clearly not in the list, give your best scientific name in outside_list_guess and no candidates.
 
 KSAFish list:
 $speciesList''';
 
-  static const schema = {
+  static final schema = {
     'type': 'object',
     'additionalProperties': false,
     'required': ['is_fish', 'subject', 'candidates', 'outside_list_guess', 'freshness', 'photo_tip'],
@@ -70,18 +87,27 @@ $speciesList''';
       'freshness': {
         'type': 'object',
         'additionalProperties': false,
-        'required': ['assessable', 'score', 'level', 'eyes', 'gills', 'skin', 'other', 'summary'],
+        'required': [
+          'assessable', 'qim', 'eyes', 'gills', 'skin', 'other', 'manual_checks', //
+          'estimated_days_min', 'estimated_days_max', 'summary',
+        ],
         'properties': {
           'assessable': {'type': 'boolean'},
-          'score': {'type': 'integer'},
-          'level': {
-            'type': 'string',
-            'enum': ['طازجة جدًا', 'طازجة', 'متوسطة', 'غير طازجة', 'غير معروف'],
+          'qim': {
+            'type': 'object',
+            'additionalProperties': false,
+            'required': [for (final a in qimAttributes) a.key],
+            'properties': {
+              for (final a in qimAttributes) a.key: {'type': 'integer'},
+            },
           },
           'eyes': {'type': 'string'},
           'gills': {'type': 'string'},
           'skin': {'type': 'string'},
           'other': {'type': 'string'},
+          'manual_checks': {'type': 'string'},
+          'estimated_days_min': {'type': 'integer'},
+          'estimated_days_max': {'type': 'integer'},
           'summary': {'type': 'string'},
         },
       },
@@ -89,34 +115,39 @@ $speciesList''';
     },
   };
 
-  Map<String, Object> requestBody(Uint8List image, String mediaType) => {
-        'model': model,
-        'max_tokens': 4000,
-        'output_config': {
-          'effort': effort,
-          'format': {'type': 'json_schema', 'schema': schema},
-        },
-        'fallbacks': 'default',
-        'system': [
-          // القائمة ثابتة، فتنحفظ مؤقتًا وتنقص تكلفة كل صورة بعد الأولى.
-          {'type': 'text', 'text': _system, 'cache_control': {'type': 'ephemeral'}},
+  Map<String, Object> requestBody(List<Photo> photos) => {
+    'model': model,
+    'max_tokens': 4000,
+    'output_config': {
+      'effort': effort,
+      'format': {'type': 'json_schema', 'schema': schema},
+    },
+    'fallbacks': 'default',
+    'system': [
+      // القائمة ثابتة، فتنحفظ مؤقتًا وتنقص تكلفة كل صورة بعد الأولى.
+      {
+        'type': 'text',
+        'text': _system,
+        'cache_control': {'type': 'ephemeral'},
+      },
+    ],
+    'messages': [
+      {
+        'role': 'user',
+        'content': [
+          for (final p in photos)
+            {
+              'type': 'image',
+              'source': {'type': 'base64', 'media_type': p.mediaType, 'data': base64Encode(p.bytes)},
+            },
+          {'type': 'text', 'text': photos.length == 1 ? 'حلّل هذه الصورة.' : 'حلّل هذه الصور، وكلها لنفس السمكة.'},
         ],
-        'messages': [
-          {
-            'role': 'user',
-            'content': [
-              {
-                'type': 'image',
-                'source': {'type': 'base64', 'media_type': mediaType, 'data': base64Encode(image)},
-              },
-              {'type': 'text', 'text': 'حلّل هذه الصورة.'},
-            ],
-          },
-        ],
-      };
+      },
+    ],
+  };
 
-  /// يرجّع نتيجة التحليل كنص JSON بالشكل المعرّف في [schema].
-  Future<String> identify(Uint8List image, String mediaType) async {
+  /// يرجّع نتيجة التحليل كنص JSON بالشكل المعرّف في [schema]، مع الدرجة والتصنيف المحسوبة من نقاط QIM.
+  Future<String> identify(List<Photo> photos) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
     try {
       final req = await client.postUrl(Uri.parse(_url));
@@ -125,7 +156,7 @@ $speciesList''';
         ..set('anthropic-version', '2026-10-21')
         ..set('anthropic-beta', 'server-side-fallback-2026-07-01')
         ..contentType = ContentType.json;
-      req.add(utf8.encode(jsonEncode(requestBody(image, mediaType))));
+      req.add(utf8.encode(jsonEncode(requestBody(photos))));
       final res = await req.close().timeout(const Duration(seconds: 90));
       final text = await res.transform(utf8.decoder).join();
       if (res.statusCode == 429 || res.statusCode == 529) throw const FishIdError('busy', 'الخدمة مشغولة، حاول بعد شوي', status: 503);
@@ -138,8 +169,9 @@ $speciesList''';
       if (msg['stop_reason'] == 'refusal') throw const FishIdError('fishid_refused', 'ما قدرنا نحلل هذه الصورة، جرّب صورة ثانية');
       if (msg['stop_reason'] == 'max_tokens') throw const FishIdError('fishid_error', 'تعذّر تحليل الصورة، حاول مرة ثانية', status: 502);
       final out = (msg['content'] as List).where((b) => b['type'] == 'text').map((b) => b['text'] as String).join();
-      jsonDecode(out); // يتأكد إنه JSON سليم قبل ما يوصل للتطبيق.
-      return out;
+      final result = jsonDecode(out) as Map<String, dynamic>;
+      if (result['freshness'] case final Map<String, dynamic> f) completeFreshness(f);
+      return jsonEncode(result);
     } on FishIdError {
       rethrow;
     } on FormatException {

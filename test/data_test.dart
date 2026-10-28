@@ -28,13 +28,32 @@ void main() {
 
   group('FishResult', () {
     test('parses the server JSON and clamps numbers', () {
-      final r = FishResult.fromJson(jsonDecode('''{
+      final r = FishResult.fromJson(
+        jsonDecode('''{
         "is_fish": true, "subject": "سمكة", "outside_list_guess": "", "photo_tip": "",
         "candidates": [{"id": "0408", "confidence": 140, "reason": "سبب"}],
         "freshness": {"assessable": true, "score": 72.6, "level": "طازجة", "eyes": "", "gills": "", "skin": "", "other": "", "summary": "تمام"}
-      }''') as Map<String, dynamic>);
+      }''') as Map<String, dynamic>,
+      );
       expect(r.candidates.single.confidence, 100);
       expect(r.freshness!.score, 73);
+    });
+
+    test('reads QIM rows, grade and days', () {
+      final r = FishResult.fromJson({
+        'is_fish': true,
+        'freshness': {
+          'assessable': true, 'score': 76, 'level': 'طازجة', 'grade': 'A', 'estimated_days_min': 2, 'estimated_days_max': 3,
+          'qim_rows': [
+            {'key': 'eye_clarity', 'label': 'صفاء العين', 'points': 1, 'max': 2},
+            {'key': 'gill_colour', 'label': 'لون الخياشيم', 'points': -1, 'max': 3},
+          ],
+        },
+      });
+      final f = r.freshness!;
+      expect(f.gradeLabel, 'جيدة (A)');
+      expect(f.daysLabel, 'من 2 إلى 3 أيام من الصيد');
+      expect(f.rows.map((x) => x.seen), [true, false]);
     });
 
     test('tolerates missing fields', () {

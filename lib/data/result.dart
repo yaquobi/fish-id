@@ -1,4 +1,4 @@
-/// نتيجة تحليل الصورة كما يرجعها خادم حوات (نقطة fishId.identify).
+/// نتيجة تحليل الصورة كما يرجعها خادم FISH ID (fishId/identify).
 class Candidate {
   const Candidate(this.id, this.confidence, this.reason);
   final String id;
@@ -6,26 +6,66 @@ class Candidate {
   final String reason;
 }
 
+/// علامة واحدة من علامات QIM: نقاط العيب من [max]، و-1 إذا الجزء ما بان في الصورة.
+class QimRow {
+  const QimRow(this.key, this.label, this.points, this.max);
+  final String key;
+  final String label;
+  final int points;
+  final int max;
+
+  bool get seen => points >= 0;
+}
+
 class Freshness {
   const Freshness({
     required this.assessable,
     required this.score,
     required this.level,
+    required this.grade,
+    required this.rows,
+    required this.daysMin,
+    required this.daysMax,
     required this.eyes,
     required this.gills,
     required this.skin,
     required this.other,
+    required this.manualChecks,
     required this.summary,
   });
 
   final bool assessable;
   final int score;
   final String level;
+
+  /// تقريب لدرجات الاتحاد الأوروبي: E (ممتازة) أو A أو B، و X غير صالحة للبيع.
+  final String grade;
+  final List<QimRow> rows;
+
+  /// أيام تقريبية من الصيد على الثلج، و-1 إذا ما تقدّر.
+  final int daysMin;
+  final int daysMax;
   final String eyes;
   final String gills;
   final String skin;
   final String other;
+  final String manualChecks;
   final String summary;
+
+  String get gradeLabel => switch (grade) {
+    'E' => 'ممتازة (Extra)',
+    'A' => 'جيدة (A)',
+    'B' => 'مقبولة (B)',
+    'X' => 'غير صالحة للبيع',
+    _ => '',
+  };
+
+  String get daysLabel {
+    if (daysMin < 0 || daysMax < 0) return '';
+    if (daysMax == 0) return 'نفس يوم الصيد';
+    if (daysMin == daysMax) return daysMin == 1 ? 'يوم تقريبًا من الصيد' : '$daysMin أيام تقريبًا من الصيد';
+    return 'من $daysMin إلى $daysMax أيام من الصيد';
+  }
 }
 
 class FishResult {
@@ -49,6 +89,7 @@ class FishResult {
     final f = j['freshness'] as Map<String, dynamic>?;
     String s(Map<String, dynamic> m, String k) => m[k]?.toString() ?? '';
     int n(Object? v) => (v is num ? v.round() : int.tryParse('$v') ?? 0).clamp(0, 100);
+    int i(Object? v) => v is num ? v.round() : int.tryParse('$v') ?? -1;
     return FishResult(
       isFish: j['is_fish'] != false,
       subject: s(j, 'subject'),
@@ -63,10 +104,18 @@ class FishResult {
               assessable: f['assessable'] == true,
               score: n(f['score']),
               level: s(f, 'level'),
+              grade: s(f, 'grade'),
+              rows: [
+                for (final r in (f['qim_rows'] as List? ?? const []))
+                  QimRow('${(r as Map)['key']}', '${r['label']}', i(r['points']), i(r['max'])),
+              ],
+              daysMin: i(f['estimated_days_min']),
+              daysMax: i(f['estimated_days_max']),
               eyes: s(f, 'eyes'),
               gills: s(f, 'gills'),
               skin: s(f, 'skin'),
               other: s(f, 'other'),
+              manualChecks: s(f, 'manual_checks'),
               summary: s(f, 'summary'),
             ),
       photoTip: s(j, 'photo_tip'),
@@ -86,12 +135,26 @@ class FishResult {
       assessable: true,
       score: 82,
       level: 'طازجة',
-      eyes: 'العين صافية ومحدّبة قليلًا.',
+      grade: 'A',
+      rows: [
+        QimRow('skin_appearance', 'لمعة الجلد', 0, 2),
+        QimRow('skin_mucus', 'مخاط الجلد', 1, 2),
+        QimRow('eye_clarity', 'صفاء العين', 0, 2),
+        QimRow('eye_shape', 'شكل العين', 1, 2),
+        QimRow('gill_colour', 'لون الخياشيم', -1, 3),
+        QimRow('gill_mucus', 'مخاط الخياشيم', -1, 2),
+        QimRow('abdomen', 'البطن', 0, 2),
+        QimRow('blood_discolouration', 'الدم وتغيّر اللون', 0, 2),
+      ],
+      daysMin: 1,
+      daysMax: 2,
+      eyes: 'العين صافية لكنها مسطّحة قليلًا.',
       gills: 'الخياشيم غير ظاهرة في الصورة.',
-      skin: 'الجلد لامع والقشور متماسكة.',
+      skin: 'الجلد لامع، والمخاط صار حليبيًا خفيفًا.',
       other: '',
-      summary: 'تبدو طازجة، يُفضّل فحص الخياشيم للتأكد.',
+      manualChecks: 'شمّ الخياشيم واضغط على اللحم: لازم يرجع بسرعة.',
+      summary: 'تبدو طازجة، صوّر الخياشيم مفتوحة للتأكد.',
     ),
-    photoTip: '',
+    photoTip: 'أضف صورة للخياشيم مفتوحة لتقييم أدق.',
   );
 }

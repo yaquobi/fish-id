@@ -20,7 +20,7 @@ class FishIdException implements Exception {
 /// يرسل الصورة لخادم FISH ID (مجلد server/) على https://hawat.id/api/.
 /// مفتاح Claude موجود في الخادم فقط، والتطبيق ما يعرفه.
 abstract final class FishIdApi {
-  static Future<FishResult> identify(Uint8List image) async {
+  static Future<FishResult> identify(List<Uint8List> images) async {
     if (isDemo) {
       await Future<void>.delayed(const Duration(seconds: 2));
       return FishResult.demo;
@@ -33,7 +33,11 @@ abstract final class FishIdApi {
             Uri.parse('${base}fishId/identify'),
             headers: {'content-type': 'application/json; charset=utf-8'},
             // هكذا يرمّز Serverpod نوع ByteData.
-            body: jsonEncode({'image': "decode('${base64Encode(image)}', 'base64')", 'mediaType': mediaTypeOf(image)}),
+            body: jsonEncode({
+              'images': [
+                for (final image in images) {'image': "decode('${base64Encode(image)}', 'base64')", 'mediaType': mediaTypeOf(image)},
+              ],
+            }),
           )
           .timeout(const Duration(seconds: 100));
     } on Exception {
