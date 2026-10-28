@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../data/fish_id_api.dart';
 import '../data/ksafish.dart';
 import '../data/result.dart';
+import '../l10n.dart';
 import '../theme.dart';
 import '../widgets/contribute_card.dart';
 import '../widgets/freshness_card.dart';
@@ -46,18 +47,21 @@ class _ResultScreenState extends State<ResultScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Text('صوّر العين قريبة، أو الخياشيم وهي مفتوحة', style: TextStyle(fontWeight: FontWeight.w700)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                tr('صوّر العين قريبة، أو الخياشيم وهي مفتوحة', 'Take a close-up of the eye, or of the open gills'),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('الكاميرا'),
+              title: Text(tr('الكاميرا', 'Camera')),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('من الصور'),
+              title: Text(tr('من الصور', 'From photos')),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
           ],
@@ -77,7 +81,7 @@ class _ResultScreenState extends State<ResultScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('نتيجة التحليل')),
+    appBar: AppBar(title: Text(tr('نتيجة التحليل', 'Result'))),
     // أندرويد الحديث يرسم التطبيق تحت شريط التنقل، فنضيف مسافته تحت حتى ما يغطي آخر بطاقة.
     body: ListView(
       padding: EdgeInsets.fromLTRB(12, 12, 12, MediaQuery.paddingOf(context).bottom + 8),
@@ -123,7 +127,8 @@ class _ResultScreenState extends State<ResultScreen> {
     if (!r.isFish) {
       return _Message(
         icon: Icons.search_off,
-        text: 'ما ظهرت سمكة واضحة في الصورة.${r.subject.isEmpty ? '' : ' ${r.subject}'}',
+        text:
+            '${tr('ما ظهرت سمكة واضحة في الصورة.', 'No clear fish in the photo.')}${r.subject.isEmpty ? '' : ' ${r.subject}'}',
         tip: r.photoTip,
       );
     }
@@ -141,9 +146,9 @@ class _ResultScreenState extends State<ResultScreen> {
             child: Text('وضع التجربة: هذه نتيجة مثال.', style: TextStyle(color: AppColors.muted)),
           ),
         if (cands.length > 1) ...[
-          const Text(
-            'الاحتمالات',
-            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.muted),
+          Text(
+            tr('الاحتمالات', 'Possible species'),
+            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.muted),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -169,7 +174,7 @@ class _ResultScreenState extends State<ResultScreen> {
             children: [
               const Icon(Icons.lightbulb_outline, color: AppColors.warn, size: 20),
               const SizedBox(width: 8),
-              Expanded(child: Text('نصيحة: ${r.photoTip}', style: const TextStyle(height: 1.5))),
+              Expanded(child: Text('${tr('نصيحة', 'Tip')}: ${r.photoTip}', style: const TextStyle(height: 1.5))),
             ],
           ),
           const SizedBox(height: 8),
@@ -178,7 +183,11 @@ class _ResultScreenState extends State<ResultScreen> {
           OutlinedButton.icon(
             onPressed: _addPhoto,
             icon: const Icon(Icons.add_a_photo_outlined),
-            label: Text(_images.length == 1 ? 'أضف صورة العين أو الخياشيم' : 'أضف صورة ثالثة'),
+            label: Text(
+              _images.length == 1
+                  ? tr('أضف صورة العين أو الخياشيم', 'Add a photo of the eye or gills')
+                  : tr('أضف صورة ثالثة', 'Add a third photo'),
+            ),
           ),
           const SizedBox(height: 12),
         ],
@@ -193,8 +202,14 @@ class _ResultScreenState extends State<ResultScreen> {
           _Message(
             icon: Icons.help_outline,
             text: r.outsideListGuess.isNotEmpty
-                ? 'يبدو أنها ليست ضمن أنواع الموسوعة. أقرب تخمين: ${r.outsideListGuess}'
-                : 'ما قدرنا نحدد النوع من أنواع الموسوعة.',
+                ? tr(
+                    'يبدو أنها ليست ضمن أنواع الموسوعة. أقرب تخمين: ${r.outsideListGuess}',
+                    'It seems not to be in the encyclopedia. Closest guess: ${r.outsideListGuess}',
+                  )
+                : tr(
+                    'ما قدرنا نحدد النوع من أنواع الموسوعة.',
+                    'We could not match it to a species in the encyclopedia.',
+                  ),
           ),
         const SizedBox(height: 12),
         ShelfLifeCard(
@@ -222,15 +237,25 @@ class _Loading extends StatelessWidget {
   const _Loading();
 
   @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 32),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 32),
     child: Column(
       children: [
-        CircularProgressIndicator(color: AppColors.navy),
-        SizedBox(height: 16),
-        Text('نحلل الصورة…', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-        SizedBox(height: 4),
-        Text('نقارنها بـ 447 نوعًا ونفحص العين والخياشيم والجلد', style: TextStyle(color: AppColors.muted)),
+        const CircularProgressIndicator(color: AppColors.navy),
+        const SizedBox(height: 16),
+        Text(
+          tr('نحلل الصورة…', 'Analyzing the photo…'),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          tr(
+            'نقارنها بـ 447 نوعًا ونفحص العين والخياشيم والجلد',
+            'Comparing with 447 species and checking the eyes, gills and skin',
+          ),
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.muted),
+        ),
       ],
     ),
   );
@@ -247,7 +272,11 @@ class _Error extends StatelessWidget {
     children: [
       _Message(icon: Icons.error_outline, text: message),
       const SizedBox(height: 12),
-      FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('حاول مرة ثانية')),
+      FilledButton.icon(
+        onPressed: onRetry,
+        icon: const Icon(Icons.refresh),
+        label: Text(tr('حاول مرة ثانية', 'Try again')),
+      ),
     ],
   );
 }
@@ -273,16 +302,23 @@ class _Subscribe extends StatelessWidget {
             style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700, height: 1.5),
           ),
           const SizedBox(height: 14),
-          const _Plan(title: 'شهري', price: '10 ريال', note: 'بالشهر'),
+          _Plan(title: tr('شهري', 'Monthly'), price: tr('10 ريال', 'SAR 10'), note: tr('بالشهر', 'per month')),
           const SizedBox(height: 8),
-          const _Plan(title: 'سنوي', price: '90 ريال', note: 'بالسنة، توفّر 25%'),
+          _Plan(
+            title: tr('سنوي', 'Yearly'),
+            price: tr('90 ريال', 'SAR 90'),
+            note: tr('بالسنة، توفّر 25%', 'per year, save 25%'),
+          ),
           const SizedBox(height: 14),
-          const FilledButton(onPressed: null, child: Text('الاشتراك من المتجر قريبًا')),
+          FilledButton(
+            onPressed: null,
+            child: Text(tr('الاشتراك من المتجر قريبًا', 'Store subscriptions coming soon')),
+          ),
           const SizedBox(height: 8),
-          const Text(
-            'الموسوعة وحاسبة الصلاحية تبقى مجانية.',
+          Text(
+            tr('الموسوعة وحاسبة الصلاحية تبقى مجانية.', 'The encyclopedia and shelf-life calculator stay free.'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.onNavyMuted, fontSize: 14),
+            style: const TextStyle(color: AppColors.onNavyMuted, fontSize: 14),
           ),
         ],
       ),
@@ -342,7 +378,7 @@ class _Message extends StatelessWidget {
           if (tip.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text('نصيحة: $tip', style: const TextStyle(color: AppColors.muted)),
+              child: Text('${tr('نصيحة', 'Tip')}: $tip', style: const TextStyle(color: AppColors.muted)),
             ),
         ],
       ),

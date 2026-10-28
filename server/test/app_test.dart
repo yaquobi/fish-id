@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -72,6 +73,17 @@ void main() {
     expect(body['model'], 'claude-opus-5-5');
     final content = ((body['messages'] as List).single as Map)['content'] as List;
     expect((content.first as Map)['type'], 'image');
+  });
+
+  test('asks for English text when the app is in English, without changing the cached system prompt', () {
+    final ai = FishIdAi(key: 'k', speciesList: '');
+    final photo = [Photo(Uint8List.fromList([1, 2]), 'image/png')];
+    String lastText(Map<String, Object> body) => ((((body['messages'] as List).single as Map)['content'] as List).last as Map)['text'] as String;
+    final ar = ai.requestBody(photo);
+    final en = runZoned(() => ai.requestBody(photo), zoneValues: {langKey: 'en'});
+    expect(lastText(ar), 'حلّل هذه الصورة.');
+    expect(lastText(en), contains('in clear English'));
+    expect(jsonEncode(en['system']), jsonEncode(ar['system']));
   });
 
   test('prompt v2 asks for observed features before the candidates', () {

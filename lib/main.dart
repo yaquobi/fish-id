@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'l10n.dart';
 import 'screens/home_screen.dart';
 import 'theme.dart';
 
-void main() => runApp(const FishIdApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await L10n.load();
+  runApp(const FishIdApp());
+}
 
 class FishIdApp extends StatelessWidget {
   const FishIdApp({super.key, this.home = const HomeScreen()});
@@ -13,12 +18,17 @@ class FishIdApp extends StatelessWidget {
   final Widget home;
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) =>
+      ValueListenableBuilder(valueListenable: L10n.lang, builder: (context, lang, _) => _app(lang));
+
+  // تغيير اللغة يبني التطبيق كله من جديد، فتتبدل النصوص واتجاه الصفحة.
+  Widget _app(String lang) => MaterialApp(
+    key: ValueKey(lang),
     title: 'FISH ID',
     debugShowCheckedModeBanner: false,
     theme: buildTheme(),
-    locale: const Locale('ar'),
-    supportedLocales: const [Locale('ar')],
+    locale: Locale(lang),
+    supportedLocales: const [Locale('ar'), Locale('en')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
     // خط الجوال المكبَّر يكسر التصميم فوق حد معيّن، فنقيّده. وعلى الأجهزة العريضة نحصر المحتوى في الوسط.
     builder: (context, child) {

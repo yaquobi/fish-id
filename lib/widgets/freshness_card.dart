@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/result.dart';
+import '../l10n.dart';
 import '../theme.dart';
 
 /// تقدير الطزاجة بطريقة مؤشر الجودة (QIM): الدرجة من 100، والتصنيف، والأيام التقريبية، ونقاط كل علامة.
@@ -13,10 +14,10 @@ class FreshnessCard extends StatelessWidget {
     final f = freshness;
     final color = f.score >= 65 ? AppColors.good : (f.score >= 40 ? AppColors.warn : AppColors.bad);
     final notes = [
-      ('العين', f.eyes),
-      ('الخياشيم', f.gills),
-      ('الجلد', f.skin),
-      ('ملاحظات', f.other),
+      (tr('العين', 'Eyes'), f.eyes),
+      (tr('الخياشيم', 'Gills'), f.gills),
+      (tr('الجلد', 'Skin'), f.skin),
+      (tr('ملاحظات', 'Notes'), f.other),
     ].where((n) => n.$2.isNotEmpty);
 
     return Card(
@@ -29,8 +30,11 @@ class FreshnessCard extends StatelessWidget {
               children: [
                 const Icon(Icons.water_drop_outlined, color: AppColors.navy),
                 const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('تقدير الطزاجة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                Expanded(
+                  child: Text(
+                    tr('تقدير الطزاجة', 'Freshness estimate'),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
                 ),
               ],
             ),
@@ -39,7 +43,7 @@ class FreshnessCard extends StatelessWidget {
               Text.rich(
                 TextSpan(
                   children: [
-                    TextSpan(text: '${f.level}  '),
+                    TextSpan(text: '${f.levelLabel}  '),
                     TextSpan(
                       text: '${f.score}/100',
                       style: const TextStyle(fontFamily: 'ChakraPetch'),
@@ -52,20 +56,22 @@ class FreshnessCard extends StatelessWidget {
             const SizedBox(height: 14),
             if (!f.assessable)
               Text(
-                f.summary.isNotEmpty ? f.summary : 'ما نقدر نقدّر الطزاجة من هذه الصورة.',
+                f.summary.isNotEmpty
+                    ? f.summary
+                    : tr('ما نقدر نقدّر الطزاجة من هذه الصورة.', 'We cannot judge freshness from this photo.'),
                 style: const TextStyle(height: 1.6),
               )
             else ...[
               Semantics(
-                label: 'مؤشر الطزاجة ${f.score} من 100',
+                label: tr('مؤشر الطزاجة ${f.score} من 100', 'Freshness score ${f.score} out of 100'),
                 child: _Meter(score: f.score),
               ),
               const SizedBox(height: 6),
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('غير طازجة', style: TextStyle(color: AppColors.muted, fontSize: 14)),
-                  Text('طازجة جدًا', style: TextStyle(color: AppColors.muted, fontSize: 14)),
+                  Text(tr('غير طازجة', 'Not fresh'), style: const TextStyle(color: AppColors.muted, fontSize: 14)),
+                  Text(tr('طازجة جدًا', 'Very fresh'), style: const TextStyle(color: AppColors.muted, fontSize: 14)),
                 ],
               ),
               if (f.gradeLabel.isNotEmpty || f.daysLabel.isNotEmpty) ...[
@@ -75,7 +81,11 @@ class FreshnessCard extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     if (f.gradeLabel.isNotEmpty)
-                      _Badge(icon: Icons.verified_outlined, text: 'التصنيف: ${f.gradeLabel}', color: color),
+                      _Badge(
+                        icon: Icons.verified_outlined,
+                        text: '${tr('التصنيف', 'Grade')}: ${f.gradeLabel}',
+                        color: color,
+                      ),
                     if (f.daysLabel.isNotEmpty) _Badge(icon: Icons.schedule, text: f.daysLabel, color: AppColors.navy),
                   ],
                 ),
@@ -106,15 +116,23 @@ class FreshnessCard extends StatelessWidget {
                   children: [
                     const Icon(Icons.back_hand_outlined, size: 18, color: AppColors.warn),
                     const SizedBox(width: 8),
-                    Expanded(child: Text('افحص بيدك: ${f.manualChecks}', style: const TextStyle(height: 1.5))),
+                    Expanded(
+                      child: Text(
+                        '${tr('افحص بيدك', 'Check by hand')}: ${f.manualChecks}',
+                        style: const TextStyle(height: 1.5),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ],
             const SizedBox(height: 14),
-            const Text(
-              'تقدير بصري بالذكاء الاصطناعي، وليس بديلًا عن الفحص بالشم واللمس.',
-              style: TextStyle(color: AppColors.muted, fontSize: 14, height: 1.5),
+            Text(
+              tr(
+                'تقدير بصري بالذكاء الاصطناعي، وليس بديلًا عن الفحص بالشم واللمس.',
+                'A visual AI estimate, not a substitute for checking by smell and touch.',
+              ),
+              style: const TextStyle(color: AppColors.muted, fontSize: 14, height: 1.5),
             ),
           ],
         ),
@@ -208,9 +226,15 @@ class _QimDetails extends StatelessWidget {
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(bottom: 4),
-        title: Text('تفاصيل التقييم (QIM)', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        title: Text(
+          tr('تفاصيل التقييم (QIM)', 'Score details (QIM)'),
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
         subtitle: Text(
-          'انفحصت $seen علامات من ${rows.length}. كل نقطة تعني عيبًا، والصفر أفضل.',
+          tr(
+            'انفحصت $seen علامات من ${rows.length}. كل نقطة تعني عيبًا، والصفر أفضل.',
+            '$seen of ${rows.length} signs checked. Each point is a defect; zero is best.',
+          ),
           style: const TextStyle(color: AppColors.muted, fontSize: 14),
         ),
         children: [
@@ -220,13 +244,13 @@ class _QimDetails extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(r.label, style: TextStyle(color: r.seen ? AppColors.ink : AppColors.muted)),
+                    child: Text(r.title, style: TextStyle(color: r.seen ? AppColors.ink : AppColors.muted)),
                   ),
                   if (!r.seen)
-                    const Text('ما بانت', style: TextStyle(color: AppColors.muted, fontSize: 14))
+                    Text(tr('ما بانت', 'Not visible'), style: const TextStyle(color: AppColors.muted, fontSize: 14))
                   else
                     Semantics(
-                      label: '${r.points} من ${r.max}',
+                      label: tr('${r.points} من ${r.max}', '${r.points} of ${r.max}'),
                       child: Row(
                         children: [
                           for (var i = 0; i < r.max; i++)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/shelf_life.dart';
+import '../l10n.dart';
 import '../theme.dart';
 
 /// حاسبة المدة المتبقية: المستخدم يختار وين انحفظت السمكة وكم مدة، ونحسب الباقي بنموذج الحرارة.
@@ -29,9 +30,11 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
   static String _durationLabel(double h) {
     if (h < 24) {
       final n = h.round();
+      if (L10n.en) return n == 1 ? '1 hour' : '$n hours';
       return n == 1 ? 'ساعة' : (n == 2 ? 'ساعتين' : '$n ساعات');
     }
     final d = (h / 24).round();
+    if (L10n.en) return d == 1 ? '1 day' : '$d days';
     return d == 1 ? 'يوم' : (d == 2 ? 'يومين' : (d <= 10 ? '$d أيام' : '$d يومًا'));
   }
 
@@ -47,19 +50,25 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.thermostat_outlined, color: AppColors.navy),
-                SizedBox(width: 8),
+                const Icon(Icons.thermostat_outlined, color: AppColors.navy),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text('كم باقي لها؟', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  child: Text(
+                    tr('كم باقي لها؟', 'How long will it last?'),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-            const Text(
-              'اختر وين انحفظت السمكة من وقت الصيد وكم مدة. الحرارة تحدد سرعة التلف أكثر من أي شيء ثاني.',
-              style: TextStyle(color: AppColors.muted, height: 1.5, fontSize: 14),
+            Text(
+              tr(
+                'اختر وين انحفظت السمكة من وقت الصيد وكم مدة. الحرارة تحدد سرعة التلف أكثر من أي شيء ثاني.',
+                'Choose where the fish was kept since it was caught, and for how long. Temperature drives spoilage more than anything else.',
+              ),
+              style: const TextStyle(color: AppColors.muted, height: 1.5, fontSize: 14),
             ),
             const SizedBox(height: 12),
             for (final (i, s) in _steps.indexed)
@@ -91,7 +100,7 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
                     ),
                     if (_steps.length > 1)
                       IconButton(
-                        tooltip: 'احذف',
+                        tooltip: tr('احذف', 'Remove'),
                         icon: const Icon(Icons.close, size: 20),
                         onPressed: () => setState(() => _steps.removeAt(i)),
                       ),
@@ -104,7 +113,7 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
                 child: TextButton.icon(
                   onPressed: () => setState(() => _steps.add(StorageStep(Storage.room, 1))),
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('أضف مرحلة'),
+                  label: Text(tr('أضف مرحلة', 'Add a step')),
                 ),
               ),
             const SizedBox(height: 8),
@@ -122,9 +131,18 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
                   Text(
                     r.discard
                         ? (r.hotHours >= 2
-                              ? 'بقيت ساعتين أو أكثر فوق 30 °م. في هالحرارة التلف سريع جدًا، والأسلم لا تشتريها ولا تاكلها.'
-                              : 'حسب سجل التخزين، صرفت السمكة مدتها كلها. لا تشتريها.')
-                        : 'صرفت ما يعادل ${_usedLabel(r.usedDays)} على الثلج. حطها على الثلج أو في الثلاجة على طول.',
+                              ? tr(
+                                  'بقيت ساعتين أو أكثر فوق 30 °م. في هالحرارة التلف سريع جدًا، والأسلم لا تشتريها ولا تاكلها.',
+                                  'It spent two hours or more above 30 °C. Spoilage is very fast in that heat; the safe choice is not to buy or eat it.',
+                                )
+                              : tr(
+                                  'حسب سجل التخزين، صرفت السمكة مدتها كلها. لا تشتريها.',
+                                  'Based on how it was stored, the fish has used up all its time. Do not buy it.',
+                                ))
+                        : tr(
+                            'صرفت ما يعادل ${_usedLabel(r.usedDays)} على الثلج. حطها على الثلج أو في الثلاجة على طول.',
+                            'It has used the equivalent of ${_usedLabel(r.usedDays)} on ice. Put it on ice or in the fridge right away.',
+                          ),
                     style: const TextStyle(height: 1.5),
                   ),
                 ],
@@ -140,8 +158,14 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
                   Expanded(
                     child: Text(
                       r.histamineRisk
-                          ? 'خطر الهيستامين: هذا النوع بقي ساعتين أو أكثر بدون تبريد. الهيستامين ما يبان بالشكل ولا الريحة وما يزول بالطبخ، ويسبب تسممًا.'
-                          : 'هذا النوع من الأسماك اللي يتكوّن فيها الهيستامين إذا ما بُرّدت. اشترها على الثلج وبرّدها على طول.',
+                          ? tr(
+                              'خطر الهيستامين: هذا النوع بقي ساعتين أو أكثر بدون تبريد. الهيستامين ما يبان بالشكل ولا الريحة وما يزول بالطبخ، ويسبب تسممًا.',
+                              'Histamine risk: this species spent two hours or more unchilled. Histamine cannot be seen or smelled, is not destroyed by cooking, and causes poisoning.',
+                            )
+                          : tr(
+                              'هذا النوع من الأسماك اللي يتكوّن فيها الهيستامين إذا ما بُرّدت. اشترها على الثلج وبرّدها على طول.',
+                              'This species forms histamine when not chilled. Buy it on ice and keep it cold.',
+                            ),
                       style: const TextStyle(height: 1.5),
                     ),
                   ),
@@ -149,9 +173,12 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
               ),
             ],
             const SizedBox(height: 12),
-            const Text(
-              'محسوبة بنموذج FAO وجامعة DTU لتلف الأسماك الاستوائية، المختبر من 0 إلى 30 °م. تقدير تقريبي، وليس بديلًا عن الفحص.',
-              style: TextStyle(color: AppColors.muted, fontSize: 14, height: 1.5),
+            Text(
+              tr(
+                'محسوبة بنموذج FAO وجامعة DTU لتلف الأسماك الاستوائية، المختبر من 0 إلى 30 °م. تقدير تقريبي، وليس بديلًا عن الفحص.',
+                'Based on the FAO and DTU spoilage model for tropical fish, tested from 0 to 30 °C. A rough estimate, not a substitute for inspection.',
+              ),
+              style: const TextStyle(color: AppColors.muted, fontSize: 14, height: 1.5),
             ),
           ],
         ),
@@ -160,9 +187,10 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
   }
 
   static String _usedLabel(double d) {
-    if (d < 1) return 'أقل من يوم';
+    if (d < 1) return tr('أقل من يوم', 'less than a day');
     final n = (d * 2).round() / 2;
     final t = n == n.roundToDouble() ? n.toInt().toString() : n.toString();
+    if (L10n.en) return n == 1 ? '1 day' : '$t days';
     return n == 1 ? 'يوم واحد' : (n == 2 ? 'يومين' : '$t أيام');
   }
 

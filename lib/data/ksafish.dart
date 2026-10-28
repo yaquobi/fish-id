@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import '../l10n.dart';
+
 /// نوع من موسوعة KSAFish، محمّل من assets/data/ksafish.json (تصدير الموسوعة).
 class Species {
   const Species({
@@ -27,8 +29,10 @@ class Species {
   final String code;
   final String url;
 
-  /// الاسم المعروض: أول اسم محلي، وإلا الإنجليزي، وإلا العلمي.
-  String get name => redSea.firstOrNull ?? gulf.firstOrNull ?? (english.isNotEmpty ? english : sci);
+  /// الاسم المعروض: بالعربي أول اسم محلي، وبالإنجليزي الاسم الإنجليزي، وإلا العلمي.
+  String get name => L10n.en
+      ? (english.isNotEmpty ? english : sci)
+      : redSea.firstOrNull ?? gulf.firstOrNull ?? (english.isNotEmpty ? english : sci);
 
   factory Species.fromJson(Map<String, dynamic> j) => Species(
     id: j['id'] as String,
@@ -86,9 +90,16 @@ class Ksafish {
   List<Species> search(String q) {
     final t = _norm(q);
     if (t.isEmpty) return species;
-    return species.where((s) => [s.sci, s.english, s.familyAr, s.family, ...s.redSea, ...s.gulf].any((n) => _norm(n).contains(t))).toList();
+    return species
+        .where((s) => [s.sci, s.english, s.familyAr, s.family, ...s.redSea, ...s.gulf].any((n) => _norm(n).contains(t)))
+        .toList();
   }
 
-  static String _norm(String s) =>
-      s.toLowerCase().replaceAll(RegExp('[أإآ]'), 'ا').replaceAll('ة', 'ه').replaceAll('ى', 'ي').replaceAll(RegExp('[ً-ْـ]'), '').trim();
+  static String _norm(String s) => s
+      .toLowerCase()
+      .replaceAll(RegExp('[أإآ]'), 'ا')
+      .replaceAll('ة', 'ه')
+      .replaceAll('ى', 'ي')
+      .replaceAll(RegExp('[ً-ْـ]'), '')
+      .trim();
 }
