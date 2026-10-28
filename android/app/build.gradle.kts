@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -35,7 +37,7 @@ android {
     // نسخة Google Play تنبني على السيرفر (server/build-aab.sh) بمفتاح الرفع، و FISHID_UPLOAD_KEY يشير لملف خصائصه.
     val testKeystore = file("test-builds.keystore")
     val upload = System.getenv("FISHID_UPLOAD_KEY")?.let { file(it) }?.takeIf { it.exists() }?.let { f ->
-        java.util.Properties().apply { f.inputStream().use { load(it) } }
+        Properties().apply { f.inputStream().use { load(it) } }
     }
     signingConfigs {
         create("testBuilds") {
