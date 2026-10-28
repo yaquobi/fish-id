@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fish_id_server/accounts.dart';
 import 'package:fish_id_server/app.dart';
 import 'package:fish_id_server/claude.dart';
 import 'package:fish_id_server/contrib.dart';
@@ -9,6 +10,7 @@ import 'package:shelf/shelf_io.dart' as io;
 
 /// الإعدادات من متغيرات البيئة (ملف .env في docker compose):
 /// ANTHROPIC_API_KEY إلزامي، و FISHID_MODEL و FISHID_EFFORT و FISHID_PROMPT و FISHID_PER_MINUTE و PORT اختيارية.
+/// FISHID_ADMIN_TOKEN يفتح لوحة الأدمن، و FISHID_RC_SECRET يفتح أحداث اشتراكات RevenueCat.
 Future<void> main() async {
   final env = Platform.environment;
   final key = env['ANTHROPIC_API_KEY'] ?? '';
@@ -33,6 +35,14 @@ Future<void> main() async {
     identify: ai?.identify,
     // مجلد مساهمات المستخدمين (مربوط بـ data/contrib على السيرفر في docker-compose).
     contrib: ContribStore.open(env['FISHID_CONTRIB'] ?? 'contrib'),
+    // الحسابات والفحوصات والإعدادات (مربوطة بـ data/accounts على السيرفر).
+    accounts: AccountStore.open(env['FISHID_ACCOUNTS'] ?? 'accounts'),
+    adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
+    revenueCatSecret: env['FISHID_RC_SECRET'] ?? '',
+    speciesNames: {
+      for (final s in data['species'] as List)
+        (s['id'] as String).split('-').last: '${[s['red'], s['gulf'], s['sci']].firstWhere((n) => '${n ?? ''}'.isNotEmpty)}'.split('|').first.trim(),
+    },
     perMinute: int.tryParse(env['FISHID_PER_MINUTE'] ?? '') ?? 30,
   );
   final port = int.tryParse(env['PORT'] ?? '') ?? 8080;

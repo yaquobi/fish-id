@@ -12,3 +12,5 @@ services:
     # صور يساهم فيها المستخدمون بموافقتهم (fishId/contribute)، تنحفظ على السيرفر في /opt/fish-id/data/contrib.
     volumes:
       - ../data/contrib:/app/contrib
+      # الحسابات وسجل الفحوصات وإعدادات الباقات (لوحة الأدمن على https://hawat.id/api/admin).
+      - ../data/accounts:/app/accounts

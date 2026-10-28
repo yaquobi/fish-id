@@ -32,6 +32,50 @@ class ContribStore {
     ).writeAsString(const JsonEncoder.withIndent(' ').convert({'id': id, 'at': now.toUtc().toIso8601String(), 'photos': photos.length, ...meta}));
     return id;
   }
+
+  static final _part = RegExp(r'^[a-z0-9-]{1,40}$');
+  static final _file = RegExp(r'^[1-3]\.(jpg|png)$');
+
+  /// آخر المساهمات للوحة الأدمن، الأحدث أولًا، مع مسار كل صورة (يوم/رقم/ملف).
+  List<Map<String, dynamic>> latest({int limit = 60, String status = ''}) {
+    final out = <Map<String, dynamic>>[];
+    final days = Directory(dir).listSync().whereType<Directory>().map((d) => d.uri.pathSegments.reversed.elementAt(1)).toList()..sort();
+    for (final day in days.reversed) {
+      final ids = Directory('$dir/$day').listSync().whereType<Directory>().map((d) => d.uri.pathSegments.reversed.elementAt(1)).toList()..sort();
+      for (final id in ids.reversed) {
+        final meta = File('$dir/$day/$id/meta.json');
+        if (!meta.existsSync()) continue;
+        final m = jsonDecode(meta.readAsStringSync()) as Map<String, dynamic>;
+        if (status.isNotEmpty && (m['review'] ?? 'new') != status) continue;
+        final files = Directory('$dir/$day/$id').listSync().map((f) => f.uri.pathSegments.last).where(_file.hasMatch).toList()..sort();
+        out.add({...m, 'day': day, 'files': files});
+        if (out.length >= limit) return out;
+      }
+    }
+    return out;
+  }
+
+  /// ملف صورة لمساهمة، بعد التأكد إن المسار ما يطلع برا المجلد.
+  File? file(String day, String id, String name) {
+    if (!_part.hasMatch(day) || !_part.hasMatch(id) || !_file.hasMatch(name)) return null;
+    final f = File('$dir/$day/$id/$name');
+    return f.existsSync() ? f : null;
+  }
+
+  /// مراجعة الأدمن: قبول أو رفض، وتصحيح النوع إذا لزم.
+  Future<Map<String, dynamic>?> review(String day, String id, {required String status, String? species}) async {
+    if (!_part.hasMatch(day) || !_part.hasMatch(id) || !const {'approved', 'rejected', 'new'}.contains(status)) return null;
+    final f = File('$dir/$day/$id/meta.json');
+    if (!f.existsSync()) return null;
+    final m = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+    m['review'] = status;
+    if (species != null && RegExp(r'^\d{4}$').hasMatch(species)) {
+      m['species'] = species;
+      m['species_confirmed'] = true;
+    }
+    await f.writeAsString(const JsonEncoder.withIndent(' ').convert(m));
+    return m;
+  }
 }
 
 /// يحذف البيانات الوصفية: في JPEG أقسام APP1 إلى APP15 والتعليقات (EXIF و XMP فيها الموقع والجهاز)،
