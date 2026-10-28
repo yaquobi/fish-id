@@ -52,6 +52,7 @@ main{padding:24px clamp(16px,3vw,36px);max-width:1200px;width:100%}
 .kpi.hero .v,.kpi.hero .pos{color:var(--gold)!important}.kpi.hero .neg{color:#FF9A8F!important}
 .pos{color:var(--good)!important}.neg{color:var(--bad)!important}
 .k{color:var(--muted);font-size:14px}
+.sr{width:.9em;height:.9em;vertical-align:-.1em;display:inline-block}
 table{width:100%;border-collapse:collapse}
 th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:start;font-size:14px;vertical-align:middle}
 th{color:var(--muted);font-weight:700;font-size:13px}
@@ -254,7 +255,9 @@ function applyLang() {
 applyLang();
 
 const money = n => (Math.round((n || 0) * 100) / 100).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-const sar = n => money(n) + ` <small>${T('ر.س', 'SAR')}</small>`;
+// رمز الريال السعودي الرسمي (من خط saudi_riyal، رخصة SIL OFL).
+const RIYAL = '<svg class="sr" viewBox="0 0 1256 1256" role="img" aria-label="SAR"><path fill="currentColor" d="M750,1119 C730,1163,716,1211,711,1262 C711,1262,1136,1172,1136,1172 C1156,1127,1169,1079,1174,1028 C1174,1028,750,1119,750,1119Z M1136,901 C1136,901,1136,901,1136,901 C1156,857,1169,809,1174,758 C1174,758,843,828,843,828 C843,828,843,693,843,693 C843,693,1136,631,1136,631 C1156,587,1169,538,1174,488 C1174,488,843,558,843,558 C843,558,843,72,843,72 C793,100,748,138,711,183 C711,183,711,586,711,586 C711,586,579,614,579,614 C579,614,579,6,579,6 C528,34,483,72,447,117 C447,117,447,642,447,642 C447,642,151,705,151,705 C131,750,117,798,112,849 C112,849,447,777,447,777 C447,777,447,948,447,948 C447,948,88,1024,88,1024 C68,1068,55,1117,50,1167 C50,1167,425,1088,425,1088 C456,1081,482,1063,499,1038 C499,1038,568,936,568,936 C568,936,568,936,568,936 C575,926,579,913,579,899 C579,899,579,749,579,749 C579,749,711,721,711,721 C711,721,711,992,711,992 C711,992,1136,901,1136,901Z"/></svg>';
+const sar = n => money(n) + ` <small>${RIYAL}</small>`;
 const num = n => (n || 0).toLocaleString('en-US');
 const when = s => s ? new Date(s).toLocaleString(loc(), {dateStyle: 'medium', timeStyle: 'short'}) : '';
 const dayName = d => new Date(d + 'T00:00:00Z').toLocaleDateString(loc(), {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'});
@@ -398,7 +401,7 @@ window.addEventListener('beforeprint', () => {
 });
 
 const logoSvg = size => `<svg width="${size}" height="${size}" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#0B2236"/><path d="M6 11V7h4M28 11V7h-4M6 23v4h4M28 23v4h-4" stroke="#F2C14E" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M9 17c3-4 8-5 12-2l4-3v10l-4-3c-4 3-9 2-12-2z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
-const docSar = n => `${money(n)} <small>${T('ر.س', 'SAR')}</small>`;
+const docSar = n => `${money(n)} <small>${RIYAL}</small>`;
 
 // هيكل المستند: الترويسة، بيانات المستند، المحتوى، التوقيعات والتذييل.
 function docShell({title, en, number, period, body}) {
@@ -449,7 +452,7 @@ function statementDoc(r) {
           <div><span>${T('الضريبة والعمولة', 'VAT and fees')}</span><b>−${money(r.storeTaxSar + r.storeFeeSar)}</b></div>
           <div><span>${T('الدخل الصافي', 'Net income')}</span><b>${money(r.incomeSar)}</b></div>
           <div><span>${T('المصاريف', 'Expenses')}</span><b>−${money(r.expensesSar)}</b></div>
-          <div class="net"><span>${T('صافي الربح', 'Net profit')}</span><b>${money(r.netSar)} ${T('ر.س', 'SAR')}</b></div>
+          <div class="net"><span>${T('صافي الربح', 'Net profit')}</span><b>${money(r.netSar)} ${RIYAL}</b></div>
         </div></div>`,
   });
 }
@@ -462,10 +465,10 @@ function reportDoc(r, period, key) {
     const x = Math.round((c - v) / Math.abs(v) * 100);
     return `<span class="${(low ? x < 0 : x > 0) ? 'pos' : x ? 'neg' : ''}">${x > 0 ? '+' : ''}${num(x)}%</span>`;
   };
-  const rows = [[T('الدخل الصافي (ر.س)', 'Net income (SAR)'), 'incomeSar', money], [T('المصاريف (ر.س)', 'Expenses (SAR)'), 'expensesSar', money, true], [T('صافي الربح (ر.س)', 'Net profit (SAR)'), 'netSar', money],
-    [T('مبيعات المتجر (ر.س)', 'Store gross (SAR)'), 'grossSar', money], [T('اشتراكات جديدة', 'New subscriptions'), 'newSubs', num], [T('تجديدات', 'Renewals'), 'renewals', num],
+  const rows = [[T(`الدخل الصافي (${RIYAL})`, `Net income (${RIYAL})`), 'incomeSar', money], [T(`المصاريف (${RIYAL})`, `Expenses (${RIYAL})`), 'expensesSar', money, true], [T(`صافي الربح (${RIYAL})`, `Net profit (${RIYAL})`), 'netSar', money],
+    [T(`مبيعات المتجر (${RIYAL})`, `Store gross (${RIYAL})`), 'grossSar', money], [T('اشتراكات جديدة', 'New subscriptions'), 'newSubs', num], [T('تجديدات', 'Renewals'), 'renewals', num],
     [T('مستخدمون جدد', 'New users'), 'newUsers', num], [T('مستخدمون نشطون', 'Active users'), 'activeUsers', num], [T('الفحوصات', 'Scans'), 'scans', num],
-    [T('تكلفة Claude (ر.س)', 'Claude cost (SAR)'), 'claudeSar', money, true]];
+    [T(`تكلفة Claude (${RIYAL})`, `Claude cost (${RIYAL})`), 'claudeSar', money, true]];
   const paying = Object.values(r.payingNow).reduce((t, n) => t + n, 0);
   const title = {day: T('ملخص الأداء اليومي', 'Daily performance summary'), month: T('ملخص الأداء الشهري', 'Monthly performance summary'), year: T('ملخص الأداء السنوي', 'Annual performance summary')}[period];
   return docShell({
@@ -486,7 +489,7 @@ function reportDoc(r, period, key) {
           <div><span>${T('المشتركون السنويون', 'Yearly plans')}</span><b>${num(r.payingNow.yearly)}</b></div>
           <div><span>${T('المحلات', 'Shops')}</span><b>${num(r.payingNow.shop)}</b></div>
           <div><span>${T('متوسط ثقة التعرّف', 'Average ID confidence')}</span><b>${r.avgConfidence != null ? num(Math.round(r.avgConfidence)) + '%' : '—'}</b></div>
-          <div class="net"><span>${T('صافي الربح', 'Net profit')}</span><b>${money(r.netSar)} ${T('ر.س', 'SAR')}</b></div>
+          <div class="net"><span>${T('صافي الربح', 'Net profit')}</span><b>${money(r.netSar)} ${RIYAL}</b></div>
         </div></div>
       <div class="d-notes" style="margin-top:14px"><b>${T('ملاحظات', 'Notes')}</b>${T('المبالغ بالريال السعودي بعد ضريبة المتجر وعمولته. المقارنة مع الفترة السابقة المماثلة.', 'Amounts in SAR after store VAT and fees. Compared with the previous equal period.')} ${period === 'day' ? T('الملخص اليومي لا يوزّع المصاريف الشهرية على الأيام.', 'The daily summary does not spread monthly costs across days.') : ''}</div>`,
   });
@@ -501,7 +504,7 @@ function alertText(a) {
     case 'balance_out': return T(`<b>رصيد Claude المتوقع خلص</b> (صرفنا ${usd(a.spentUsd)} من ${usd(a.usd)}). اشحن الحين وحدّث الرصيد هنا.`, `<b>Expected Claude balance is used up</b> (spent ${usd(a.spentUsd)} of ${usd(a.usd)}). Top up now and update the balance here.`);
     case 'balance_low': return T(`<b>رصيد Claude قرب يخلص:</b> باقي تقريبًا ${usd(a.leftUsd)}${a.daysLeft != null ? `، يكفي ${num(a.daysLeft)} يوم` : ''}.`, `<b>Claude balance is running low:</b> about ${usd(a.leftUsd)} left${a.daysLeft != null ? `, enough for ${num(a.daysLeft)} days` : ''}.`);
     case 'balance_unset': return T('سجّل رصيد Claude الحالي عشان ننبهك قبل ما يخلص.', 'Enter the current Claude balance so you get warned before it runs out.');
-    case 'bill_due': return T(`<b>فاتورة قريبة:</b> ${esc(a.label)} (${esc(a.provider)}) بتاريخ ${shortDay(a.due)}، ${money(a.sar)} ر.س`, `<b>Bill due:</b> ${esc(a.label)} (${esc(a.provider)}) on ${shortDay(a.due)}, ${money(a.sar)} SAR`);
+    case 'bill_due': return T(`<b>فاتورة قريبة:</b> ${esc(a.label)} (${esc(a.provider)}) بتاريخ ${shortDay(a.due)}، ${money(a.sar)} ${RIYAL}`, `<b>Bill due:</b> ${esc(a.label)} (${esc(a.provider)}) on ${shortDay(a.due)}, ${money(a.sar)} ${RIYAL}`);
     default: return esc(a.code);
   }
 }
@@ -593,7 +596,7 @@ const views = {
         <div class="card"><h3>${T('الفحوصات', 'Scans')} <span class="k">${{day: T('بالساعة', 'by hour'), month: T('باليوم', 'by day'), year: T('بالشهر', 'by month')}[period]}</span></h3>${bars(r.series, 'scans', label)}</div>
         <div class="card"><h3>${T('المستخدمين الجدد', 'New users')}</h3>${bars(r.series, 'newUsers', label)}</div>
       </div>
-      ${period === 'year' ? `<div class="card" style="margin-top:14px"><h3>${T('صافي الربح بالشهر', 'Net profit by month')} <span class="k">${T('ر.س', 'SAR')}</span></h3>${bars(r.series, 'netSar', label, money)}</div>` : ''}
+      ${period === 'year' ? `<div class="card" style="margin-top:14px"><h3>${T('صافي الربح بالشهر', 'Net profit by month')} <span class="k">${RIYAL}</span></h3>${bars(r.series, 'netSar', label, money)}</div>` : ''}
       <div class="cols">
         <div class="card"><h3>${T('أكثر الأنواع فحصًا', 'Top species')}</h3>
           <table>${r.topSpecies.map(t => `<tr><td>${sp(t.id)}<div class="meter"><i style="width:${t.n / r.topSpecies[0].n * 100}%"></i></div></td><td class="num">${num(t.n)}</td></tr>`).join('') || `<tr><td class="msg">${T('ما فيه فحوصات بهالفترة', 'No scans in this period')}</td></tr>`}</table></div>
@@ -783,9 +786,9 @@ const views = {
       ['freeScans', T('الفحوصات المجانية لكل حساب (مرة وحدة)', 'Free scans per account (one time)')],
       ['monthlyCap', T('سقف الفحوصات بالشهر للشهري والسنوي', 'Monthly scan cap, monthly and yearly plans')],
       ['shopCap', T('سقف الفحوصات بالشهر للمحلات', 'Monthly scan cap, shops')],
-      ['priceMonthly', T('سعر الشهري (ريال)', 'Monthly price (SAR)')],
-      ['priceYearly', T('سعر السنوي (ريال)', 'Yearly price (SAR)')],
-      ['priceShop', T('سعر باقة المحل بالشهر (ريال)', 'Shop plan per month (SAR)')],
+      ['priceMonthly', T(`سعر الشهري (${RIYAL})`, `Monthly price (${RIYAL})`)],
+      ['priceYearly', T(`سعر السنوي (${RIYAL})`, `Yearly price (${RIYAL})`)],
+      ['priceShop', T(`سعر باقة المحل بالشهر (${RIYAL})`, `Shop plan per month (${RIYAL})`)],
       ['netShare', T('نسبة الصافي التقديرية بعد العمولة والضريبة (0.74 = 74%)', 'Estimated net share after fees and VAT (0.74 = 74%)')],
       ['usdToSar', T('سعر الدولار بالريال', 'USD to SAR rate')],
     ];
