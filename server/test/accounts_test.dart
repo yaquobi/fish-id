@@ -6,6 +6,7 @@ import 'package:fish_id_server/accounts.dart';
 import 'package:fish_id_server/app.dart';
 import 'package:fish_id_server/claude.dart';
 import 'package:fish_id_server/ledger.dart';
+import 'package:fish_id_server/staff.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -35,6 +36,7 @@ void main() {
       identify: fakeIdentify,
       accounts: accounts,
       ledger: Ledger.open(accounts),
+      staff: StaffStore.open(accounts.dir),
       adminToken: admin,
       revenueCat: (id) async => {'subscriber': {'entitlements': subscribers[id] ?? {}}},
       clock: () => t,
@@ -230,5 +232,71 @@ void main() {
     final stats = jsonDecode(await (await admin(a, 'stats')).readAsString());
     expect(stats['ledger']['incomeSar'], closeTo(350, 0.01));
     expect((stats['daily'] as List).length, 30);
+  });
+
+  test('staff tokens get only their role\'s sections', () async {
+    final a = app();
+    final acc = jsonDecode(await (await admin(a, 'staff', body: {'add': {'name': 'المحاسب', 'role': 'accountant'}})).readAsString());
+    final inv = jsonDecode(await (await admin(a, 'staff', body: {'add': {'name': 'مستثمر', 'role': 'investor'}})).readAsString());
+    expect(acc['token'], startsWith('fs_'));
+    Future<int> as(Map t, String path, {Object? body}) async => (await admin(a, path, body: body, token: t['token'] as String)).statusCode;
+    expect(await as(acc, 'ledger'), 200);
+    expect(await as(acc, 'users'), 403);
+    expect(await as(acc, 'staff'), 403);
+    expect(await as(inv, 'report?period=month&key=2026-10'), 200);
+    expect(await as(inv, 'ledger'), 403);
+    expect(await as(inv, 'alerts', body: {'balanceUsd': 5}), 403);
+    final me = jsonDecode(await (await admin(a, 'me', token: inv['token'] as String)).readAsString());
+    expect(me, {'id': inv['id'], 'name': 'مستثمر', 'role': 'investor', 'created': isA<String>()});
+    // بعد الحذف يوقف الرمز.
+    await admin(a, 'staff', body: {'delete': inv['id']});
+    expect(await as(inv, 'report?period=month&key=2026-10'), 401);
+  });
+
+  test('period reports compare with the previous period', () async {
+    final a = app();
+    await scan(a);
+    await scan(a, id: 'u_second_account_123456');
+    t = DateTime.utc(2026, 9, 3, 12);
+    await scan(a, id: 'u_third_account_1234567');
+    t = DateTime.utc(2026, 10, 28, 12);
+    var r = jsonDecode(await (await admin(a, 'report?period=month&key=2026-10')).readAsString());
+    expect(r['scans'], 2);
+    expect(r['newUsers'], 2);
+    expect(r['activeUsers'], 2);
+    expect(r['users'], 3);
+    expect(r['previous']['scans'], 1);
+    expect((r['series'] as List).length, 31);
+    r = jsonDecode(await (await admin(a, 'report?period=year&key=2026')).readAsString());
+    expect(r['scans'], 3);
+    expect((r['series'] as List).length, 12);
+    r = jsonDecode(await (await admin(a, 'report?period=day&key=2026-10-28')).readAsString());
+    expect(r['scans'], 2);
+    expect((r['series'] as List)[12]['scans'], 2);
+    expect((await admin(a, 'report?period=week&key=2026')).statusCode, 400);
+  });
+
+  test('alerts: Claude refusing, a low balance and bills due soon', () async {
+    final a = FishIdApp(
+      identify: (_) async => throw const FishIdError('claude_credit', 'x', status: 503),
+      accounts: AccountStore.open(dir.path),
+      ledger: Ledger.open(AccountStore.open(dir.path)!),
+      adminToken: 'secret-token',
+      clock: () => t,
+    );
+    expect((await scan(a)).statusCode, 503);
+    var al = jsonDecode(await (await admin(a, 'alerts')).readAsString());
+    expect([for (final x in al['alerts']) x['code']], ['claude_credit', 'balance_unset']);
+    await admin(a, 'alerts', body: {'balanceUsd': 0.05});
+    await admin(a, 'ledger', body: {
+      'add': {'kind': 'expense', 'provider': 'Hostinger', 'label': 'الخادم', 'amount': 20, 'currency': 'USD', 'date': '2026-06-02', 'repeat': 'monthly'},
+    });
+    // فحص ناجح يمسح تنبيه الرصيد اللي خلص، وتكلفته 0.073 دولار تخلّص الرصيد.
+    final b = app();
+    t = t.add(const Duration(minutes: 1));
+    await scan(b);
+    al = jsonDecode(await (await admin(b, 'alerts')).readAsString());
+    expect([for (final x in al['alerts']) x['code']], ['balance_out', 'bill_due']);
+    expect(al['upcoming'][0]['due'], '2026-11-02');
   });
 }

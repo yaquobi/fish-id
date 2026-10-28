@@ -266,6 +266,11 @@ Work like a taxonomist, and write your notes in observed_features before choosin
       if (res.statusCode == 429 || res.statusCode == 529) throw const FishIdError('busy', 'الخدمة مشغولة، حاول بعد شوي', status: 503);
       if (res.statusCode >= 300) {
         stderr.writeln('FishId: Claude ${res.statusCode}: $text');
+        // الرصيد خلص أو المفتاح موقوف: نرمز لها برمز خاص عشان تطلع تنبيه في لوحة الأدمن.
+        if (res.statusCode == 400 && text.contains('credit balance')) {
+          throw const FishIdError('claude_credit', 'الخدمة متوقفة مؤقتًا، حاول بعد شوي', status: 503);
+        }
+        if (res.statusCode == 401 || res.statusCode == 403) throw const FishIdError('claude_account', 'الخدمة متوقفة مؤقتًا، حاول بعد شوي', status: 503);
         throw const FishIdError('fishid_error', 'تعذّر تحليل الصورة، حاول مرة ثانية', status: 502);
       }
       final msg = jsonDecode(text) as Map<String, dynamic>;
