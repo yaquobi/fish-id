@@ -11,6 +11,9 @@ import 'contrib.dart';
 
 typedef Identify = Future<String> Function(List<Photo> photos);
 
+/// يجيب بيانات المشترك من RevenueCat (GET /v1/subscribers/{id})، و null إذا تعذّر الاتصال.
+typedef SubscriberLookup = Future<Map<String, dynamic>?> Function(String user);
+
 /// مسارات الخادم. نفس بروتوكول Serverpod اللي يكلمه التطبيق:
 /// POST fishId/identify بجسم `{"image": "decode('BASE64', 'base64')", "mediaType": "image/jpeg"}`،
 /// أو `{"images": [{"image": ..., "mediaType": ...}, ...]}` حتى [maxPhotos] صور لنفس السمكة.
@@ -20,14 +23,16 @@ typedef Identify = Future<String> Function(List<Photo> photos);
 /// التطبيق يرسل رقم حسابه في `x-fishid-user` ولغته في `x-fishid-lang` (ar أو en)، والرد فيه `x-fishid-remaining` (الفحوصات المتبقية).
 /// GET fishId/me يرجّع الباقة والمتبقي. إذا خلصت الفحوصات يرجع 402 بالرمز quota.
 /// POST fishId/redeem بجسم {"code"} يضيف فحوصات رمز الهدية ويرجّع المتبقي.
-/// admin/... لوحة الأدمن ([adminToken])، و revenuecat يستقبل أحداث الاشتراك ([revenueCatSecret]).
+/// POST fishId/sync يتأكد من اشتراك الحساب في RevenueCat بعد الشراء ويرجّع المتبقي.
+/// admin/... لوحة الأدمن ([adminToken])، و revenuecat يستقبل أحداث الاشتراك. الحدث مجرد تنبيه: الخادم ما يصدّق
+/// محتواه، ويسأل RevenueCat ([revenueCat]) عن الاشتراك الحقيقي، فما نحتاج سر مشترك.
 class FishIdApp {
   FishIdApp({
     required this.identify,
     this.contrib,
     this.accounts,
     this.adminToken = '',
-    this.revenueCatSecret = '',
+    this.revenueCat,
     this.speciesNames = const {},
     this.perMinute = 30,
     DateTime Function()? clock,
@@ -37,7 +42,7 @@ class FishIdApp {
   final ContribStore? contrib;
   final AccountStore? accounts;
   final String adminToken;
-  final String revenueCatSecret;
+  final SubscriberLookup? revenueCat;
 
   /// رقم حوات (4 أرقام) والاسم المحلي، للوحة الأدمن.
   final Map<String, String> speciesNames;
@@ -98,6 +103,17 @@ class FishIdApp {
         }
         final v = await store.redeem(user, code, _clock());
         return _json(200, {'remaining': v['remaining']}, headers: _remaining(user));
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (req.method == 'POST' && path == 'fishId/sync') {
+      try {
+        final user = _user(req);
+        if (user == null || accounts == null || revenueCat == null) return _json(200, {'remaining': null});
+        _limit();
+        await _syncSubscription(user);
+        return _json(200, {'remaining': accounts!.remaining(user, _clock())}, headers: _remaining(user));
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
@@ -241,30 +257,53 @@ class FishIdApp {
     throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
   }
 
-  /// أحداث RevenueCat (اشتراك جديد، تجديد، انتهاء). الرابط يتسجل في لوحة RevenueCat مع نفس السر في Authorization.
+  /// أحداث RevenueCat (اشتراك جديد، تجديد، إلغاء، استرجاع). نقرأ منها أرقام الحسابات بس، ونتأكد من كل حساب عند RevenueCat.
   Future<Response> _revenueCat(Request req) async {
-    final store = accounts;
-    if (revenueCatSecret.isEmpty || store == null) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
-    if (!_same(req.headers['authorization'] ?? '', 'Bearer $revenueCatSecret')) throw const FishIdError('unauthorized', 'غير مصرح', status: 401);
+    if (revenueCat == null || accounts == null) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
     final Map event;
     try {
       event = (jsonDecode(await req.readAsString()) as Map)['event'] as Map;
     } on Object {
       throw const FishIdError('bad_request', 'الطلب غير صالح');
     }
-    final user = '${event['app_user_id']}';
-    if (!AccountStore.idPattern.hasMatch(user)) return _json(200, {'ok': true, 'ignored': 'user'});
-    final product = '${event['product_id']}'.toLowerCase();
-    final plan = product.contains('shop') ? 'shop' : (product.contains('year') || product.contains('annual') ? 'yearly' : 'monthly');
-    final exp = (event['expiration_at_ms'] as num?)?.toInt();
-    final now = _clock();
-    if (event['type'] == 'EXPIRATION') {
-      await store.update(user, now, plan: 'free');
-    } else if (exp != null) {
-      // الإلغاء ما يوقف الاشتراك فورًا: يكمل لين تاريخ الانتهاء.
-      await store.update(user, now, plan: plan, until: DateTime.fromMillisecondsSinceEpoch(exp, isUtc: true));
+    final users = {
+      for (final k in const ['app_user_id', 'original_app_user_id']) '${event[k]}',
+      for (final k in const ['aliases', 'transferred_from', 'transferred_to'])
+        if (event[k] is List) for (final id in event[k] as List) '$id',
+    }.where(AccountStore.idPattern.hasMatch).take(5);
+    for (final user in users) {
+      await _syncSubscription(user);
     }
     return _json(200, {'ok': true});
+  }
+
+  /// ياخذ أبعد تاريخ انتهاء من صلاحيات المشترك الفعّالة في RevenueCat ويحطه على الحساب.
+  /// إذا ما عنده صلاحية فعّالة (انتهى أو استرجع فلوسه) والباقة جت من المتجر، يرجع مجاني.
+  /// الباقات اللي يعطيها الأدمن ما تتأثر.
+  Future<void> _syncSubscription(String user) async {
+    final store = accounts!;
+    final sub = await revenueCat!(user);
+    if (sub == null) return;
+    final now = _clock();
+    final entitlements = (sub['subscriber'] as Map?)?['entitlements'];
+    DateTime? until;
+    var product = '';
+    if (entitlements is Map) {
+      for (final e in entitlements.values.whereType<Map>()) {
+        // بدون تاريخ انتهاء يعني دائم، فنعطيه سنة ونجدده مع كل حدث.
+        final exp = e['expires_date'] == null ? now.add(const Duration(days: 366)) : DateTime.tryParse('${e['expires_date']}');
+        if (exp != null && exp.isAfter(now) && (until == null || exp.isAfter(until))) {
+          until = exp;
+          product = '${e['product_identifier']}'.toLowerCase();
+        }
+      }
+    }
+    if (until != null) {
+      final plan = product.contains('shop') ? 'shop' : (product.contains('year') || product.contains('annual') ? 'yearly' : 'monthly');
+      await store.update(user, now, plan: plan, until: until, source: 'store');
+    } else if (store.find(user)?['source'] == 'store') {
+      await store.update(user, now, plan: 'free');
+    }
   }
 
   /// مقارنة بوقت ثابت عشان ما ينعرف الرمز من سرعة الرد.

@@ -10,7 +10,7 @@ import 'package:shelf/shelf_io.dart' as io;
 
 /// الإعدادات من متغيرات البيئة (ملف .env في docker compose):
 /// ANTHROPIC_API_KEY إلزامي، و FISHID_MODEL و FISHID_EFFORT و FISHID_PROMPT و FISHID_PER_MINUTE و PORT اختيارية.
-/// FISHID_ADMIN_TOKEN يفتح لوحة الأدمن، و FISHID_RC_SECRET يفتح أحداث اشتراكات RevenueCat.
+/// FISHID_ADMIN_TOKEN يفتح لوحة الأدمن. FISHID_RC_KEY مفتاح RevenueCat العام (نفس اللي في التطبيق) للتأكد من الاشتراكات.
 Future<void> main() async {
   final env = Platform.environment;
   final key = env['ANTHROPIC_API_KEY'] ?? '';
@@ -38,7 +38,7 @@ Future<void> main() async {
     // الحسابات والفحوصات والإعدادات (مربوطة بـ data/accounts على السيرفر).
     accounts: AccountStore.open(env['FISHID_ACCOUNTS'] ?? 'accounts'),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
-    revenueCatSecret: env['FISHID_RC_SECRET'] ?? '',
+    revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {
       for (final s in data['species'] as List)
         (s['id'] as String).split('-').last: '${[s['red'], s['gulf'], s['sci']].firstWhere((n) => '${n ?? ''}'.isNotEmpty)}'.split('|').first.trim(),
@@ -48,4 +48,28 @@ Future<void> main() async {
   final port = int.tryParse(env['PORT'] ?? '') ?? 8080;
   final server = await io.serve(app.handler, InternetAddress.anyIPv4, port);
   stdout.writeln('FishId: يستمع على المنفذ ${server.port}، ${(data['species'] as List).length} نوعًا');
+}
+
+/// يسأل RevenueCat عن المشترك بالمفتاح العام، مثل ما يسوي التطبيق. المفتاح العام يقرأ بيانات المشترك بس.
+SubscriberLookup? _revenueCat(String key) {
+  if (key.isEmpty) return null;
+  final http = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+  return (user) async {
+    try {
+      final req = await http.getUrl(Uri.https('api.revenuecat.com', '/v1/subscribers/${Uri.encodeComponent(user)}'));
+      req.headers
+        ..set('authorization', 'Bearer $key')
+        ..set('x-platform', 'android');
+      final res = await req.close().timeout(const Duration(seconds: 15));
+      final body = await res.transform(utf8.decoder).join();
+      if (res.statusCode != 200) {
+        stderr.writeln('FishId: RevenueCat رد ${res.statusCode} للحساب $user');
+        return null;
+      }
+      return jsonDecode(body) as Map<String, dynamic>;
+    } on Object catch (e) {
+      stderr.writeln('FishId: تعذّر الاتصال بـ RevenueCat: $e');
+      return null;
+    }
+  };
 }

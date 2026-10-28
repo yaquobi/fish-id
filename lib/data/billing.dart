@@ -5,8 +5,8 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../l10n.dart';
 import 'fish_id_api.dart';
 
-/// اشتراكات المتجر عن طريق RevenueCat. الشراء يصير في Google Play، و RevenueCat يبلّغ خادمنا
-/// (/api/revenuecat) برقم الحساب نفسه، فالخادم هو اللي يفتح الفحوصات.
+/// اشتراكات المتجر عن طريق RevenueCat. الشراء يصير في Google Play برقم الحساب نفسه، وبعده يسأل الخادم
+/// RevenueCat (POST fishId/sync، وكل حدث على /api/revenuecat) ويفتح الفحوصات.
 abstract final class Billing {
   /// مفتاح RevenueCat العام لتطبيق Google Play. مفتاح عام ينحط في التطبيق، وما يسمح إلا بالشراء.
   static const _androidKey = 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ';
@@ -67,7 +67,7 @@ abstract final class Billing {
   static Future<void> _refreshAfterPurchase() async {
     for (var i = 0; i < 5; i++) {
       await Future<void>.delayed(const Duration(seconds: 2));
-      await FishIdApi.refreshRemaining();
+      await FishIdApi.sync();
       if ((FishIdApi.remaining.value ?? 0) > 0) return;
     }
   }

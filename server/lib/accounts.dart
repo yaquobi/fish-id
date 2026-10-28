@@ -138,11 +138,17 @@ class AccountStore {
   }
 
   /// تعديل من الأدمن أو من RevenueCat: هدية فحوصات، أو باقة لعدد أيام، أو إيقاف.
-  Future<Map<String, dynamic>> update(String id, DateTime now, {int? grant, String? plan, DateTime? until, bool? blocked}) async {
+  Future<Map<String, dynamic>> update(String id, DateTime now, {int? grant, String? plan, DateTime? until, bool? blocked, String? source}) async {
     final a = account(id, now);
     if (grant != null) a['bonus'] = ((a['bonus'] as int? ?? 0) + grant).clamp(0, 100000);
     if (plan != null && plans.contains(plan)) {
       a['plan'] = plan;
+      // من وين جت الباقة: store من RevenueCat، وبدونها من الأدمن.
+      if (source != null) {
+        a['source'] = source;
+      } else {
+        a.remove('source');
+      }
       if (plan == 'free') {
         a.remove('until');
       } else if (until != null) {

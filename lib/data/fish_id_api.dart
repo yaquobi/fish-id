@@ -69,6 +69,20 @@ abstract final class FishIdApi {
     }
   }
 
+  /// بعد الشراء: يطلب من الخادم يتأكد من الاشتراك عند RevenueCat ويحدّث المتبقي.
+  static Future<void> sync() async {
+    if (isDemo) return;
+    try {
+      final base = apiUrl.endsWith('/') ? apiUrl : '$apiUrl/';
+      final res = await http
+          .post(Uri.parse('${base}fishId/sync'), headers: await _headers())
+          .timeout(const Duration(seconds: 20));
+      _readRemaining(res);
+    } on Object {
+      return;
+    }
+  }
+
   static Future<FishResult> identify(List<Uint8List> images) async {
     if (isDemo) {
       await Future<void>.delayed(const Duration(seconds: 2));

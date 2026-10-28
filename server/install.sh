@@ -20,11 +20,6 @@ if ! grep -q '^FISHID_ADMIN_TOKEN=' .env; then
   printf 'FISHID_ADMIN_TOKEN=%s\n' "$(openssl rand -hex 24)" >> .env
   echo "رمز لوحة الأدمن الجديد: $(grep '^FISHID_ADMIN_TOKEN=' .env | cut -d= -f2)"
 fi
-# سر أحداث RevenueCat: ينحط في RevenueCat ← Integrations ← Webhooks ← Authorization header بالشكل: Bearer السر
-if ! grep -q '^FISHID_RC_SECRET=' .env; then
-  printf 'FISHID_RC_SECRET=%s\n' "$(openssl rand -hex 24)" >> .env
-  echo "سر RevenueCat الجديد (اطبعه: grep RC_SECRET server/.env)"
-fi
 mkdir -p ../data/accounts
 
 # 2. الحاوية.
