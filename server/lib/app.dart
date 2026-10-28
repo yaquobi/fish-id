@@ -17,8 +17,9 @@ typedef Identify = Future<String> Function(List<Photo> photos);
 /// والرد نص JSON داخل سلسلة JSON. الخطأ 4xx/5xx بجسم {"code", "message"}.
 /// POST fishId/contribute: نفس الصور مع النوع المؤكد والأيام وطريقة الحفظ وموافقة المستخدم، وتنحفظ في [contrib].
 ///
-/// التطبيق يرسل رقم حسابه في `x-fishid-user`، والرد فيه `x-fishid-remaining` (الفحوصات المتبقية).
+/// التطبيق يرسل رقم حسابه في `x-fishid-user` ولغته في `x-fishid-lang` (ar أو en)، والرد فيه `x-fishid-remaining` (الفحوصات المتبقية).
 /// GET fishId/me يرجّع الباقة والمتبقي. إذا خلصت الفحوصات يرجع 402 بالرمز quota.
+/// POST fishId/redeem بجسم {"code"} يضيف فحوصات رمز الهدية ويرجّع المتبقي.
 /// admin/... لوحة الأدمن ([adminToken])، و revenuecat يستقبل أحداث الاشتراك ([revenueCatSecret]).
 class FishIdApp {
   FishIdApp({
@@ -49,7 +50,7 @@ class FishIdApp {
   static const _cors = {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'POST, GET, OPTIONS',
-    'access-control-allow-headers': 'content-type, x-fishid-user',
+    'access-control-allow-headers': 'content-type, x-fishid-user, x-fishid-lang',
     'access-control-expose-headers': 'x-fishid-remaining',
   };
 
@@ -79,6 +80,24 @@ class FishIdApp {
         if (user == null || store == null) return _json(200, {'plan': 'free', 'remaining': null});
         final v = store.view(user, _clock());
         return _json(200, {'plan': v['active'] == true ? v['plan'] : 'free', 'until': v['until'], 'remaining': v['remaining']});
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (req.method == 'POST' && path == 'fishId/redeem') {
+      try {
+        final user = _user(req);
+        final store = accounts;
+        if (user == null || store == null) throw const FishIdError('bad_code', 'الرمز غير صحيح');
+        _limit();
+        final String code;
+        try {
+          code = '${(jsonDecode(await req.readAsString()) as Map)['code']}';
+        } on Object {
+          throw const FishIdError('bad_request', 'الطلب غير صالح');
+        }
+        final v = await store.redeem(user, code, _clock());
+        return _json(200, {'remaining': v['remaining']}, headers: _remaining(user));
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
@@ -134,7 +153,8 @@ class FishIdApp {
     final usage = <Map<String, dynamic>>[];
     final watch = Stopwatch()..start();
     // كل استدعاء لـ Claude داخل الفحص يضيف استهلاكه لـ usage (claude.dart)، فنعرف تكلفة الفحص كاملة.
-    final result = await runZoned(() => run(photos), zoneValues: {usageKey: usage});
+    final lang = req.headers['x-fishid-lang'] == 'en' ? 'en' : 'ar';
+    final result = await runZoned(() => run(photos), zoneValues: {usageKey: usage, langKey: lang});
     await store?.record(user, _clock(), result: result, usd: usageCost(usage), ms: watch.elapsedMilliseconds, photos: photos.length);
     return result;
   }
@@ -197,6 +217,12 @@ class FishIdApp {
       case ('POST', 'settings') when store != null:
         await store.saveSettings(await body());
         return _json(200, store.settings);
+      case ('GET', 'codes') when store != null:
+        return _json(200, store.codes());
+      case ('POST', 'codes') when store != null:
+        final b = await body();
+        await store.saveCode('${b['code']}', scans: (b['scans'] as num?)?.toInt() ?? 0, max: (b['max'] as num?)?.toInt() ?? 0);
+        return _json(200, store.codes());
       case ('GET', 'contrib') when contrib != null && parts.length == 2:
         return _json(200, contrib!.latest(status: q['status'] ?? ''));
       case ('GET', 'contrib') when contrib != null && parts.length == 5:

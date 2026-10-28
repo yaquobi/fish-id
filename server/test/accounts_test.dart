@@ -126,4 +126,20 @@ void main() {
     final a = app(admin: '');
     expect((await a.handler(Request('GET', Uri.parse('http://x/api/admin')))).statusCode, 404);
   });
+
+  test('a gift code adds scans once per account, up to its limit', () async {
+    final a = app();
+    Future<Response> redeem(String code, {String id = user}) async =>
+        a.handler(Request('POST', Uri.parse('http://x/api/fishId/redeem'), body: jsonEncode({'code': code}), headers: {'x-fishid-user': id}));
+    expect((await redeem('NOPE-1234')).statusCode, 400);
+    await admin(a, 'codes', body: {'code': 'play-review', 'scans': 50, 'max': 1});
+    final r = await redeem(' play-review ');
+    expect(r.statusCode, 200);
+    expect(jsonDecode(await r.readAsString())['remaining'], 53);
+    expect(jsonDecode(await (await redeem('PLAY-REVIEW')).readAsString())['code'], 'code_used');
+    expect(jsonDecode(await (await redeem('PLAY-REVIEW', id: 'u_zzzzzzzzzzzzzzzz9999')).readAsString())['code'], 'code_full');
+    final codes = jsonDecode(await (await admin(a, 'codes')).readAsString()) as List;
+    expect(codes.single, {'code': 'PLAY-REVIEW', 'scans': 50, 'max': 1, 'used': 1});
+    expect(AccountStore.open(dir.path)!.codes().single['used'], 1);
+  });
 }

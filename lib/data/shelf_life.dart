@@ -1,19 +1,24 @@
 import 'dart:math' as math;
 
+import '../l10n.dart';
+
 /// المدة المتبقية للسمكة من سجل التخزين، بنموذج معدّل التلف النسبي للأسماك الاستوائية
 /// (FAO، Huss 1995، الفصل 6؛ ونموذج FSSP-RRS-tropical من DTU):
 /// ln(RRS) = 0.12 × T، يعني كل ساعة على حرارة T تعادل exp(0.12·T) ساعة على الثلج.
 /// النموذج مختبر من 0 إلى 30 °م فقط، وفوقها نعطي تحذيرًا بدل رقم.
 enum Storage {
-  ice('على الثلج', 0),
-  fridge('في الثلاجة', 4),
-  room('في غرفة مكيّفة', 25),
-  hot('برّا أو في السيارة', 35),
-  frozen('مجمّدة', -18);
+  ice('على الثلج', 'On ice', 0),
+  fridge('في الثلاجة', 'In the fridge', 4),
+  room('في غرفة مكيّفة', 'In an air-conditioned room', 25),
+  hot('برّا أو في السيارة', 'Outside or in the car', 35),
+  frozen('مجمّدة', 'Frozen', -18);
 
-  const Storage(this.label, this.temp);
-  final String label;
+  const Storage(this._ar, this._en, this.temp);
+  final String _ar;
+  final String _en;
   final double temp;
+
+  String get label => tr(_ar, _en);
 
   /// كم ساعة على الثلج تعادل ساعة واحدة هنا. التجميد يوقف التلف تقريبًا.
   double get rate => temp < 0 ? 0 : math.exp(0.12 * temp);
@@ -92,12 +97,12 @@ class ShelfLife {
 
   /// نص المتبقي مثل «من 3 إلى 9 أيام على الثلج».
   String get remainingLabel {
-    if (discard) return 'انتهت مدتها الآمنة';
+    if (discard) return tr('انتهت مدتها الآمنة', 'Past its safe time');
     final lo = minDays.floor(), hi = maxDays.floor();
-    if (hi < 1) return 'أقل من يوم';
-    if (hi <= 2) return 'يوم أو يومين على الثلج كحد أقصى';
-    if (lo < 1) return 'أقل من $hi ${_days(hi)} على الثلج';
-    return 'من $lo إلى $hi ${_days(hi)} على الثلج';
+    if (hi < 1) return tr('أقل من يوم', 'Less than a day');
+    if (hi <= 2) return tr('يوم أو يومين على الثلج كحد أقصى', 'One or two days on ice at most');
+    if (lo < 1) return tr('أقل من $hi ${_days(hi)} على الثلج', 'Less than $hi days on ice');
+    return tr('من $lo إلى $hi ${_days(hi)} على الثلج', '$lo to $hi days on ice');
   }
 
   static String _days(int n) => n <= 10 ? 'أيام' : 'يومًا';

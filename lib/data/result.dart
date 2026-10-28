@@ -1,3 +1,5 @@
+import '../l10n.dart';
+
 /// نتيجة تحليل الصورة كما يرجعها خادم FISH ID (fishId/identify).
 class Candidate {
   const Candidate(this.id, this.confidence, this.reason);
@@ -15,6 +17,20 @@ class QimRow {
   final int max;
 
   bool get seen => points >= 0;
+
+  /// اسم العلامة بلغة التطبيق. الخادم يرسله بالعربي.
+  String get title => L10n.en ? _en[key] ?? key : label;
+
+  static const _en = {
+    'skin_appearance': 'Skin shine',
+    'skin_mucus': 'Skin slime',
+    'eye_clarity': 'Eye clarity',
+    'eye_shape': 'Eye shape',
+    'gill_colour': 'Gill colour',
+    'gill_mucus': 'Gill slime',
+    'abdomen': 'Belly',
+    'blood_discolouration': 'Blood and discolouration',
+  };
 }
 
 class Freshness {
@@ -52,19 +68,36 @@ class Freshness {
   final String manualChecks;
   final String summary;
 
+  /// مستوى الطزاجة بلغة التطبيق، بنفس حدود الخادم (server/lib/qim.dart).
+  String get levelLabel {
+    if (!L10n.en) return level;
+    if (!assessable) return 'Unknown';
+    return score >= 85
+        ? 'Very fresh'
+        : score >= 65
+        ? 'Fresh'
+        : score >= 40
+        ? 'Fair'
+        : 'Not fresh';
+  }
+
   String get gradeLabel => switch (grade) {
-    'E' => 'ممتازة (Extra)',
-    'A' => 'جيدة (A)',
-    'B' => 'مقبولة (B)',
-    'X' => 'غير صالحة للبيع',
+    'E' => tr('ممتازة (Extra)', 'Excellent (Extra)'),
+    'A' => tr('جيدة (A)', 'Good (A)'),
+    'B' => tr('مقبولة (B)', 'Acceptable (B)'),
+    'X' => tr('غير صالحة للبيع', 'Not fit for sale'),
     _ => '',
   };
 
   String get daysLabel {
     if (daysMin < 0 || daysMax < 0) return '';
-    if (daysMax == 0) return 'نفس يوم الصيد';
-    if (daysMin == daysMax) return daysMin == 1 ? 'يوم تقريبًا من الصيد' : '$daysMin أيام تقريبًا من الصيد';
-    return 'من $daysMin إلى $daysMax أيام من الصيد';
+    if (daysMax == 0) return tr('نفس يوم الصيد', 'Caught today');
+    if (daysMin == daysMax) {
+      return daysMin == 1
+          ? tr('يوم تقريبًا من الصيد', 'About 1 day since catch')
+          : tr('$daysMin أيام تقريبًا من الصيد', 'About $daysMin days since catch');
+    }
+    return tr('من $daysMin إلى $daysMax أيام من الصيد', '$daysMin to $daysMax days since catch');
   }
 }
 

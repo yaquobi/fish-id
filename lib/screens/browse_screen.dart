@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/ksafish.dart';
+import '../l10n.dart';
 import '../theme.dart';
 import '../widgets/species_card.dart';
 
@@ -18,7 +19,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('أنواع الموسوعة')),
+    appBar: AppBar(title: Text(tr('أنواع الموسوعة', 'Encyclopedia'))),
     body: FutureBuilder(
       future: _db,
       builder: (context, snap) {
@@ -32,7 +33,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
               child: TextField(
                 onChanged: (v) => setState(() => _q = v),
                 decoration: InputDecoration(
-                  hintText: 'ابحث: هامور، Epinephelus، شعري…',
+                  hintText: tr('ابحث: هامور، Epinephelus، شعري…', 'Search: grouper, Epinephelus, emperor…'),
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
                   fillColor: AppColors.surface,
@@ -51,7 +52,10 @@ class _BrowseScreenState extends State<BrowseScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: Text('${list.length} نوعًا', style: const TextStyle(color: AppColors.muted)),
+                child: Text(
+                  tr('${list.length} نوعًا', '${list.length} species'),
+                  style: const TextStyle(color: AppColors.muted),
+                ),
               ),
             ),
             Expanded(
@@ -67,10 +71,10 @@ class _BrowseScreenState extends State<BrowseScreen> {
                       subtitle: Text(
                         s.sci,
                         textDirection: TextDirection.ltr,
-                        textAlign: TextAlign.end,
+                        textAlign: L10n.en ? TextAlign.start : TextAlign.end,
                         style: const TextStyle(fontStyle: FontStyle.italic),
                       ),
-                      trailing: const Icon(Icons.chevron_left),
+                      trailing: Icon(L10n.en ? Icons.chevron_right : Icons.chevron_left),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => Scaffold(

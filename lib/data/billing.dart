@@ -1,0 +1,81 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
+
+import '../l10n.dart';
+import 'fish_id_api.dart';
+
+/// اشتراكات المتجر عن طريق RevenueCat. الشراء يصير في Google Play، و RevenueCat يبلّغ خادمنا
+/// (/api/revenuecat) برقم الحساب نفسه، فالخادم هو اللي يفتح الفحوصات.
+abstract final class Billing {
+  /// مفتاح RevenueCat العام لتطبيق Google Play. مفتاح عام ينحط في التطبيق، وما يسمح إلا بالشراء.
+  static const _androidKey = 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ';
+
+  static Future<bool>? _ready;
+
+  /// المتجر متاح في أندرويد فقط حاليًا، وما يشتغل في وضع التجربة.
+  static bool get supported => !kIsWeb && !isDemo && defaultTargetPlatform == TargetPlatform.android;
+
+  static Future<bool> _configure() => _ready ??= () async {
+    try {
+      await Purchases.configure(PurchasesConfiguration(_androidKey)..appUserID = await FishIdApi.userId());
+      return true;
+    } on Object {
+      _ready = null;
+      return false;
+    }
+  }();
+
+  /// باقات العرض الحالي (شهري وسنوي) بأسعارها من المتجر، أو قائمة فاضية لو المتجر مو جاهز.
+  static Future<List<Package>> packages() async {
+    if (!supported || !await _configure()) return const [];
+    try {
+      final offerings = await Purchases.getOfferings();
+      return offerings.current?.availablePackages ?? const [];
+    } on PlatformException {
+      return const [];
+    }
+  }
+
+  /// يشتري الباقة، ويرجّع false لو المستخدم ألغى. الخادم يوصله الحدث خلال ثواني، فننتظر شوي ونحدّث العدّاد.
+  static Future<bool> buy(Package package) async {
+    try {
+      await Purchases.purchase(PurchaseParams.package(package));
+    } on PlatformException catch (e) {
+      if (PurchasesErrorHelper.getErrorCode(e) == PurchasesErrorCode.purchaseCancelledError) return false;
+      throw FishIdException(
+        tr('تعذّر إتمام الاشتراك، حاول مرة ثانية.', 'Could not complete the purchase. Please try again.'),
+      );
+    }
+    await _refreshAfterPurchase();
+    return true;
+  }
+
+  /// يسترجع اشتراك سابق على نفس حساب Google، مثلًا بعد إعادة تثبيت التطبيق.
+  static Future<void> restore() async {
+    if (!supported || !await _configure()) return;
+    try {
+      await Purchases.restorePurchases();
+    } on PlatformException {
+      throw FishIdException(
+        tr('تعذّر استرجاع الاشتراك، حاول مرة ثانية.', 'Could not restore your subscription. Please try again.'),
+      );
+    }
+    await _refreshAfterPurchase();
+  }
+
+  static Future<void> _refreshAfterPurchase() async {
+    for (var i = 0; i < 5; i++) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      await FishIdApi.refreshRemaining();
+      if ((FishIdApi.remaining.value ?? 0) > 0) return;
+    }
+  }
+
+  /// نوع الباقة بلغة التطبيق.
+  static String title(Package p) => switch (p.packageType) {
+    PackageType.annual => tr('سنوي', 'Yearly'),
+    PackageType.monthly => tr('شهري', 'Monthly'),
+    _ => p.storeProduct.title,
+  };
+}

@@ -21,6 +21,9 @@ class FishIdError implements Exception {
   final int status;
 }
 
+/// مفتاح Zone للغة الرد: 'en' يطلب النصوص بالإنجليزي، وغيرها بالعربي (التطبيق يرسلها في x-fishid-lang).
+const langKey = #fishIdLang;
+
 /// مفتاح Zone لقائمة يتجمع فيها استهلاك كل استدعاء لـ Claude خلال فحص واحد، عشان نحسب تكلفته.
 const usageKey = #fishIdUsage;
 
@@ -194,7 +197,11 @@ Work like a taxonomist, and write your notes in observed_features before choosin
               'type': 'image',
               'source': {'type': 'base64', 'media_type': p.mediaType, 'data': base64Encode(p.bytes)},
             },
-          {'type': 'text', 'text': photos.length == 1 ? 'حلّل هذه الصورة.' : 'حلّل هذه الصور، وكلها لنفس السمكة.'},
+          // اللغة في رسالة المستخدم مو في التعليمات، عشان تبقى التعليمات المحفوظة مؤقتًا نفسها للغتين.
+          if (Zone.current[langKey] == 'en')
+            {'type': 'text', 'text': photos.length == 1 ? 'Analyze this photo. Write every text field in clear English.' : 'Analyze these photos of the same fish. Write every text field in clear English.'}
+          else
+            {'type': 'text', 'text': photos.length == 1 ? 'حلّل هذه الصورة.' : 'حلّل هذه الصور، وكلها لنفس السمكة.'},
         ],
       },
     ],
