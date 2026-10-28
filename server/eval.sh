@@ -5,6 +5,8 @@
 #   bash server/eval.sh refs           # يبني مكتبة الصور المرجعية (data/refs) من iNaturalist، تستبعد صور الاختبار
 #   bash server/eval.sh species --photos /out/species-….jsonl --refs /data/refs --refs-below 101
 #                                       # نفس صور تجربة سابقة، مع المقارنة بالصور المرجعية
+#   bash server/eval.sh bioclip --photos /out/species-….jsonl
+#                                       # BioCLIP 2 على المعالج على نفس الصور (بدون Claude، بدون تكلفة)
 # النتائج تنحفظ في eval-results/ وتنطبع على الشاشة.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -29,5 +31,10 @@ case "$mode" in
     fi
     "${compose[@]}" run --rm --no-deps -v "$PWD/eval-results:/out" -v "$PWD/data/ffe:/data/ffe:ro" fishid /app/fishid-eval fresh --dir /data/ffe "$@"
     ;;
-  *) echo "الاستخدام: bash server/eval.sh species|fresh|refs"; exit 2 ;;
+  bioclip)
+    mkdir -p data/hf
+    docker build -q -f bench/bioclip/Dockerfile -t fishid-bioclip . >/dev/null
+    docker run --rm -v "$PWD/eval-results:/out" -v "$PWD/data/refs:/data/refs:ro" -v "$PWD/data/hf:/hf" fishid-bioclip "$@"
+    ;;
+  *) echo "الاستخدام: bash server/eval.sh species|fresh|refs|bioclip"; exit 2 ;;
 esac
