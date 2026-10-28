@@ -2,10 +2,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../data/fish_id_api.dart';
 import '../data/ksafish.dart';
 import '../data/result.dart';
+import '../data/billing.dart';
 import '../l10n.dart';
 import '../theme.dart';
 import '../widgets/contribute_card.dart';
@@ -281,75 +283,155 @@ class _Error extends StatelessWidget {
   );
 }
 
-/// تظهر لما تخلص الفحوصات: الأسعار، والاشتراك من المتجر (يتفعّل بعد ربط Google Play و App Store).
-class _Subscribe extends StatelessWidget {
+/// تظهر لما تخلص الفحوصات: الباقات بأسعارها من Google Play، أو الأسعار الثابتة لو المتجر مو جاهز.
+class _Subscribe extends StatefulWidget {
   const _Subscribe({required this.message});
   final String message;
+
+  @override
+  State<_Subscribe> createState() => _SubscribeState();
+}
+
+class _SubscribeState extends State<_Subscribe> {
+  late final Future<List<Package>> _packages = Billing.packages();
+  bool _busy = false;
+
+  Future<void> _run(Future<bool> Function() action) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    setState(() => _busy = true);
+    try {
+      if (!await action()) return;
+      final active = (FishIdApi.remaining.value ?? 0) > 0;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            active
+                ? tr('اشتراكك فعّال، صوّر السمكة من جديد', 'You are subscribed. Take the photo again')
+                : tr(
+                    'وصلنا الدفع، والاشتراك يتفعّل خلال دقيقة',
+                    'Payment received. Your subscription will be active within a minute',
+                  ),
+          ),
+        ),
+      );
+      navigator.pop();
+    } on FishIdException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Card(
     color: AppColors.navy,
     child: Padding(
       padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Icon(Icons.workspace_premium_outlined, color: AppColors.gold, size: 36),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700, height: 1.5),
-          ),
-          const SizedBox(height: 14),
-          _Plan(title: tr('شهري', 'Monthly'), price: tr('10 ريال', 'SAR 10'), note: tr('بالشهر', 'per month')),
-          const SizedBox(height: 8),
-          _Plan(
-            title: tr('سنوي', 'Yearly'),
-            price: tr('90 ريال', 'SAR 90'),
-            note: tr('بالسنة، توفّر 25%', 'per year, save 25%'),
-          ),
-          const SizedBox(height: 14),
-          FilledButton(
-            onPressed: null,
-            child: Text(tr('الاشتراك من المتجر قريبًا', 'Store subscriptions coming soon')),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            tr('الموسوعة وحاسبة الصلاحية تبقى مجانية.', 'The encyclopedia and shelf-life calculator stay free.'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.onNavyMuted, fontSize: 14),
-          ),
-        ],
+      child: FutureBuilder(
+        future: _packages,
+        builder: (context, snap) {
+          final packages = snap.data ?? const <Package>[];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.workspace_premium_outlined, color: AppColors.gold, size: 36),
+              const SizedBox(height: 8),
+              Text(
+                widget.message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700, height: 1.5),
+              ),
+              const SizedBox(height: 14),
+              if (snap.connectionState != ConnectionState.done)
+                const Center(child: CircularProgressIndicator(color: AppColors.gold))
+              else if (packages.isNotEmpty) ...[
+                for (final p in packages)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _Plan(
+                      title: Billing.title(p),
+                      price: p.storeProduct.priceString,
+                      note: p.packageType == PackageType.annual ? tr('بالسنة', 'per year') : tr('بالشهر', 'per month'),
+                      onTap: _busy ? null : () => _run(() => Billing.buy(p)),
+                    ),
+                  ),
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() async {
+                          await Billing.restore();
+                          return (FishIdApi.remaining.value ?? 0) > 0;
+                        }),
+                  child: Text(
+                    tr('اشتركت قبل؟ استرجع اشتراكك', 'Subscribed before? Restore'),
+                    style: const TextStyle(color: AppColors.gold),
+                  ),
+                ),
+              ] else ...[
+                _Plan(title: tr('شهري', 'Monthly'), price: tr('10 ريال', 'SAR 10'), note: tr('بالشهر', 'per month')),
+                const SizedBox(height: 8),
+                _Plan(
+                  title: tr('سنوي', 'Yearly'),
+                  price: tr('90 ريال', 'SAR 90'),
+                  note: tr('بالسنة، توفّر 25%', 'per year, save 25%'),
+                ),
+                const SizedBox(height: 14),
+                FilledButton(
+                  onPressed: null,
+                  child: Text(tr('الاشتراك من المتجر قريبًا', 'Store subscriptions coming soon')),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                tr('الموسوعة وحاسبة الصلاحية تبقى مجانية.', 'The encyclopedia and shelf-life calculator stay free.'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.onNavyMuted, fontSize: 14),
+              ),
+            ],
+          );
+        },
       ),
     ),
   );
 }
 
 class _Plan extends StatelessWidget {
-  const _Plan({required this.title, required this.price, required this.note});
+  const _Plan({required this.title, required this.price, required this.note, this.onTap});
   final String title;
   final String price;
   final String note;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-    decoration: BoxDecoration(color: AppColors.navyLight, borderRadius: BorderRadius.circular(12)),
-    child: Row(
-      children: [
-        Text(
-          title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+  Widget build(BuildContext context) => Material(
+    color: AppColors.navyLight,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            Text(
+              title,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+            ),
+            const Spacer(),
+            Text(note, style: const TextStyle(color: AppColors.onNavyMuted, fontSize: 13)),
+            const SizedBox(width: 10),
+            Text(
+              price,
+              style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 6),
+              Icon(L10n.en ? Icons.chevron_right : Icons.chevron_left, color: AppColors.gold),
+            ],
+          ],
         ),
-        const Spacer(),
-        Text(note, style: const TextStyle(color: AppColors.onNavyMuted, fontSize: 13)),
-        const SizedBox(width: 10),
-        Text(
-          price,
-          style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w800, fontSize: 16),
-        ),
-      ],
+      ),
     ),
   );
 }
