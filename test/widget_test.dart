@@ -10,8 +10,8 @@ void main() {
     await tester.pumpWidget(const FishIdApp());
     expect(find.text('صوّر السمكة'), findsOneWidget);
     expect(find.text('اختر صورة من الجوال'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('إحدى مبادرات منظومة حوات'), 200);
-    expect(find.text('إحدى مبادرات منظومة حوات'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('إحدى مبادرات منظومة'), 200);
+    expect(find.text('إحدى مبادرات منظومة'), findsOneWidget);
   });
 
   testWidgets('the menu switches the app to English and left-to-right', (tester) async {

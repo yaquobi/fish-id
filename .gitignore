@@ -53,3 +53,7 @@ app.*.map.json
 
 # نسخ Google Play اللي يبنيها server/build-aab.sh
 /landing/dl/
+
+# Generated store screenshots (tool/shots/*_test.dart output)
+/tool/shots/store/
+/tool/shots/store_ios/
