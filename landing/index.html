@@ -135,18 +135,34 @@ dd{margin:0;font-weight:500}
 /* Features */
 .fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:40px}
 .fcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:8px;position:relative}
-.fcard i{width:44px;height:44px;border-radius:12px;background:var(--navy);display:grid;place-items:center;margin-bottom:6px}
-.fcard i svg{width:24px;height:24px;stroke:var(--gold);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fcard{transition:transform .2s,box-shadow .2s}
+.fcard:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(11,34,54,.10)}
+.fcard i{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#F7D27A,var(--gold));display:grid;place-items:center;margin-bottom:6px;box-shadow:0 8px 18px rgba(242,193,78,.35)}
+.fcard i svg{width:24px;height:24px;stroke:var(--navy);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .fcard h3{margin:0;font-size:19px}
 .fcard p{margin:0;color:var(--muted);font-size:16px}
 .fcard .new{position:absolute;top:34px;inset-inline-end:24px;font-size:12px;font-weight:800;background:#FFF4D6;color:var(--gold-ink);border-radius:999px;padding:2px 10px}
 
 /* Benefits */
 .who{background:var(--surface);border-block:1px solid var(--line)}
+.who.dark{background:radial-gradient(900px 500px at 10% 0,#14375A 0,transparent 60%),linear-gradient(180deg,var(--navy),var(--navy-deep));color:#fff;border:0}
+.who.dark h2{color:#fff}.who.dark .sub{color:var(--on-navy)}.who.dark .kicker{color:var(--gold)}
 .who-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;margin-top:40px}
-.who-card{border-top:4px solid var(--gold);background:var(--bg);border-radius:4px 4px 16px 16px;padding:22px}
+.who-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:24px}
+.who-card i{width:48px;height:48px;border-radius:14px;background:rgba(242,193,78,.14);display:grid;place-items:center;margin-bottom:14px}
+.who-card i svg{width:24px;height:24px;stroke:var(--gold);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .who-card h3{margin:0 0 10px;font-size:19px}
-.who-card ul{margin:0;padding-inline-start:18px;color:var(--muted);font-size:16px;display:flex;flex-direction:column;gap:6px}
+.who-card ul{margin:0;padding-inline-start:18px;color:var(--on-navy);font-size:16px;display:flex;flex-direction:column;gap:6px}
+.who-card li::marker{color:var(--gold)}
+
+/* Showcase */
+.show{background:linear-gradient(180deg,var(--bg),#E2E9EF)}
+.shots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;margin-top:40px}
+.shots figure{margin:0;border-radius:26px;overflow:hidden;box-shadow:0 24px 50px rgba(11,34,54,.22);background:var(--navy);transition:transform .25s}
+.shots figure:nth-child(even){transform:translateY(28px)}
+.shots figure:hover{transform:translateY(-6px)}
+.shots img{width:100%;height:auto;aspect-ratio:600/1300;object-fit:cover}
+.head{text-align:center}.head .sub{margin-inline:auto}
 
 /* Pricing */
 .sr{width:.82em;height:.82em;display:inline-block;vertical-align:-.06em;margin-inline-start:.18em}
@@ -180,7 +196,10 @@ dd{margin:0;font-weight:500}
 .center .sub{margin-inline:auto}
 
 /* Download */
-.dl{text-align:center}
+.dl{text-align:center;background:radial-gradient(800px 400px at 50% 0,#14375A 0,transparent 70%),var(--navy-deep);color:#fff}
+.dl h2{color:#fff}.dl .sub{color:var(--on-navy)}
+.dl .btn.store{background:#fff!important;color:var(--navy)!important}
+.dl .testers{color:var(--on-navy)!important}.dl .testers a{color:var(--gold)!important}
 .dl .sub{margin-inline:auto}
 .dl .cta{justify-content:center;margin-top:28px}
 .dl .btn.store{background:var(--navy);color:#fff}
@@ -206,6 +225,7 @@ footer a{color:var(--on-navy)}
   section{padding-block:56px}
   nav a.k{display:none}
 }
+@media (max-width:880px){.shots{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:36px;margin-inline:-20px;padding-inline:20px}.shots figure{flex:0 0 62%;scroll-snap-align:center}.shots figure:nth-child(even){transform:none}}
 @media (max-width:600px){.who-grid,.plans{grid-template-columns:minmax(0,1fr)}.plan.best{order:-1}}
 @media (max-width:420px){dl{grid-template-columns:minmax(0,1fr)}.res h3{font-size:24px}.stats{gap:22px}.stats b{font-size:26px}.ksa-nums{gap:20px}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
@@ -305,11 +325,29 @@ footer a{color:var(--on-navy)}
     </div>
   </section>
 
+  <section class="show">
+    <div class="wrap">
+      <div class="head">
+        <div class="kicker">من داخل التطبيق</div>
+        <h2>شوفه قبل ما تحمّله</h2>
+        <p class="sub">الطزاجة، وبطاقة النوع، وكم باقي لها، والموسوعة. كلها في شاشات بسيطة وبالعربي.</p>
+      </div>
+      <div class="shots">
+        <figure><img src="/img/shot-2.jpg" alt="شاشة تقدير الطزاجة: درجة من 100 وتصنيف وعدد الأيام من الصيد" loading="lazy" width="600" height="1300"></figure>
+        <figure><img src="/img/shot-3.jpg" alt="بطاقة النوع بالاسم المحلي والعلمي والعائلة" loading="lazy" width="600" height="1300"></figure>
+        <figure><img src="/img/shot-4.jpg" alt="حاسبة كم باقي لها حسب طريقة الحفظ" loading="lazy" width="600" height="1300"></figure>
+        <figure><img src="/img/shot-5.jpg" alt="موسوعة 447 نوعًا من أسماك البحر الأحمر والخليج" loading="lazy" width="600" height="1300"></figure>
+      </div>
+    </div>
+  </section>
+
   <section id="features">
     <div class="wrap">
+      <div class="head">
       <div class="kicker">المميزات</div>
       <h2>كل اللي تحتاجه قبل ما تشتري السمك</h2>
       <p class="sub">تطبيق واحد يعرف النوع، ويقيس الطزاجة، ويقول لك كم تتحمل السمكة، ومعه موسوعة كاملة لأسماك السعودية.</p>
+      </div>
       <div class="fgrid">
         <article class="fcard"><i><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></i><h3>يعرف النوع من صورة</h3><p>يعطيك حتى 3 أنواع محتملة مع نسبة الثقة وسبب كل اختيار، عشان تفرّق بين المتشابهات مثل الهامور والشعور والنقرور.</p></article>
         <article class="fcard"><i><svg viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h12"/></svg></i><h3>الاسم اللي يعرفه البائع</h3><p>الأسماء المحلية في البحر الأحمر والخليج العربي، مع الاسم العلمي والإنجليزي والعائلة والرمز الوطني.</p></article>
@@ -324,16 +362,18 @@ footer a{color:var(--on-navy)}
     </div>
   </section>
 
-  <section id="benefits" class="who">
+  <section id="benefits" class="who dark">
     <div class="wrap">
+      <div class="head">
       <div class="kicker">وش الفائدة؟</div>
       <h2>لمين FISH ID؟</h2>
       <p class="sub">لكل واحد يشتري السمك أو يبيعه أو يصيده، ولكل اللي يهمه يعرف أسماك بحارنا.</p>
+      </div>
       <div class="who-grid">
-        <div class="who-card"><h3>المشتري في السوق</h3><ul><li>تتأكد إن النوع هو اللي يقوله البائع</li><li>تعرف إذا السمكة طازجة قبل ما تدفع</li><li>تعرف كم تتحمل في ثلاجتك</li></ul></div>
-        <div class="who-card"><h3>محلات السمك والمطاعم</h3><ul><li>فحص سريع للشحنة وقت الاستلام</li><li>تسمية صحيحة للأصناف في القائمة</li><li>تنبيه من أسماك الهستامين وسوء التخزين</li></ul></div>
-        <div class="who-card"><h3>الصيادين والهواة</h3><ul><li>تعرف صيدك باسمه المحلي والعلمي</li><li>معلومات النوع وقياساته المنشورة</li><li>الموسوعة تشتغل بدون إنترنت في البحر</li></ul></div>
-        <div class="who-card"><h3>الطلاب والباحثين</h3><ul><li>مرجع سعودي بأسماء معتمدة ومصادر</li><li>تساهم بصورك في أول قاعدة بيانات لأسماك السوق السعودي</li></ul></div>
+        <div class="who-card"><i><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6.2"/></svg></i><h3>المشتري في السوق</h3><ul><li>تتأكد إن النوع هو اللي يقوله البائع</li><li>تعرف إذا السمكة طازجة قبل ما تدفع</li><li>تعرف كم تتحمل في ثلاجتك</li></ul></div>
+        <div class="who-card"><i><svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6"/></svg></i><h3>محلات السمك والمطاعم</h3><ul><li>فحص سريع للشحنة وقت الاستلام</li><li>تسمية صحيحة للأصناف في القائمة</li><li>تنبيه من أسماك الهستامين وسوء التخزين</li></ul></div>
+        <div class="who-card"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H2a10 10 0 0 0 20 0h-3"/></svg></i><h3>الصيادين والهواة</h3><ul><li>تعرف صيدك باسمه المحلي والعلمي</li><li>معلومات النوع وقياساته المنشورة</li><li>الموسوعة تشتغل بدون إنترنت في البحر</li></ul></div>
+        <div class="who-card"><i><svg viewBox="0 0 24 24"><path d="M22 9 12 4 2 9l10 5 10-5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/></svg></i><h3>الطلاب والباحثين</h3><ul><li>مرجع سعودي بأسماء معتمدة ومصادر</li><li>تساهم بصورك في أول قاعدة بيانات لأسماك السوق السعودي</li></ul></div>
       </div>
     </div>
   </section>
