@@ -4,7 +4,7 @@ WORKDIR /src
 COPY server/pubspec.* ./
 RUN dart pub get
 COPY server/ ./
-RUN dart compile exe bin/server.dart -o /out/server
+RUN mkdir -p /out && dart compile exe bin/server.dart -o /out/server
 
 FROM scratch
 COPY --from=build /runtime/ /
