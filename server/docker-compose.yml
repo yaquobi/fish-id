@@ -6,6 +6,6 @@ services:
     container_name: fishid
     restart: unless-stopped
     env_file: .env
-    # يسمع على السيرفر نفسه بس، و nginx يوصّل له من https://hawat.id/api/
+    # يسمع على السيرفر نفسه بس (المنفذ يتغير بـ FISHID_HOST_PORT)، و nginx يوصّل له من https://hawat.id/api/
     ports:
-      - "127.0.0.1:8090:8080"
+      - "127.0.0.1:${FISHID_HOST_PORT:-18490}:8080"

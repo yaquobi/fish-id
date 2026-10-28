@@ -3,6 +3,8 @@
 # الاستخدام: sudo bash server/install.sh   (من داخل /opt/fish-id)
 set -euo pipefail
 DOMAIN=${DOMAIN:-hawat.id}
+PORT=${FISHID_HOST_PORT:-18490}
+export FISHID_HOST_PORT=$PORT
 cd "$(dirname "$0")"
 
 # 1. المفتاح: يُطلب مرة وحدة ويُحفظ في .env بصلاحية للمالك فقط.
@@ -15,14 +17,14 @@ fi
 
 # 2. الحاوية.
 docker compose up -d --build
-for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:8090/health >/dev/null 2>&1 && break; sleep 1; done
-curl -fsS http://127.0.0.1:8090/health; echo
+for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:$PORT/health >/dev/null 2>&1 && break; sleep 1; done
+curl -fsS http://127.0.0.1:$PORT/health; echo
 
 # 3. nginx: موقع جديد للدومين إذا ما له إعداد. إذا له إعداد، نطبع السطور اللي تنضاف له.
 SITE=/etc/nginx/sites-available/fish-id
 if grep -rqs "server_name[^;]*\b$DOMAIN\b" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ && [[ ! -f $SITE ]]; then
   echo "للدومين $DOMAIN إعداد nginx موجود. أضف داخل server { } الخاص به:"
-  echo '  location /api/ { proxy_pass http://127.0.0.1:8090/; client_max_body_size 10m; proxy_read_timeout 120s; proxy_set_header Host $host; }'
+  echo '  location /api/ { proxy_pass http://127.0.0.1:$PORT/; client_max_body_size 10m; proxy_read_timeout 120s; proxy_set_header Host $host; }'
   echo 'ثم: nginx -t && systemctl reload nginx'
   exit 0
 fi
@@ -32,7 +34,7 @@ server {
   listen [::]:80;
   server_name $DOMAIN www.$DOMAIN;
   location /api/ {
-    proxy_pass http://127.0.0.1:8090/;
+    proxy_pass http://127.0.0.1:$PORT/;
     client_max_body_size 10m;
     proxy_read_timeout 120s;
     proxy_set_header Host \$host;

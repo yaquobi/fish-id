@@ -24,7 +24,7 @@ flutter test
 
 ## الخادم (server/)
 
-خادم Dart صغير في Docker، يسمع على `127.0.0.1:8090`، و nginx يوصّل له من `https://hawat.id/api/`.
+خادم Dart صغير في Docker، يسمع على `127.0.0.1:18490`، و nginx يوصّل له من `https://hawat.id/api/`.
 
 التركيب أول مرة على سيرفر KSAFish:
 
