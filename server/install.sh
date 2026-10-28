@@ -15,6 +15,13 @@ if ! grep -q '^ANTHROPIC_API_KEY=sk-' .env 2>/dev/null; then
   unset KEY
 fi
 
+# رمز لوحة الأدمن (https://$DOMAIN/api/admin): يتولّد مرة وحدة، ويطبعه: grep ADMIN server/.env
+if ! grep -q '^FISHID_ADMIN_TOKEN=' .env; then
+  printf 'FISHID_ADMIN_TOKEN=%s\n' "$(openssl rand -hex 24)" >> .env
+  echo "رمز لوحة الأدمن الجديد: $(grep '^FISHID_ADMIN_TOKEN=' .env | cut -d= -f2)"
+fi
+mkdir -p ../data/accounts
+
 # 2. الحاوية.
 docker compose up -d --build
 for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:$PORT/health >/dev/null 2>&1 && break; sleep 1; done
@@ -63,3 +70,4 @@ if [[ ! -d /etc/letsencrypt/live/$DOMAIN ]]; then
 fi
 curl -fsS "https://$DOMAIN/api/health" && echo
 curl -fsS -o /dev/null -w "الصفحة الرئيسية: %{http_code}\n" "https://$DOMAIN/" && echo 'تم ✅'
+echo "لوحة الأدمن: https://$DOMAIN/api/admin  (الرمز: grep ADMIN $(pwd)/.env)"

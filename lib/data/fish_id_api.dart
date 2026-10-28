@@ -1,7 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'result.dart';
 
@@ -17,9 +19,54 @@ class FishIdException implements Exception {
   String toString() => message;
 }
 
+/// خلصت الفحوصات (المجانية أو سقف الشهر)، فنعرض الاشتراك بدل «حاول مرة ثانية».
+class FishIdQuotaException extends FishIdException {
+  const FishIdQuotaException(super.message);
+}
+
 /// يرسل الصورة لخادم FISH ID (مجلد server/) على https://hawat.id/api/.
 /// مفتاح Claude موجود في الخادم فقط، والتطبيق ما يعرفه.
 abstract final class FishIdApi {
+  /// الفحوصات المتبقية للحساب كما يقولها الخادم (null قبل أول رد).
+  static final remaining = ValueNotifier<int?>(null);
+
+  /// رقم حساب عشوائي ينحفظ في الجوال أول مرة، بدون اسم أو جوال أو إيميل. الخادم يحسب عليه الفحوصات.
+  static Future<String> userId() async {
+    final prefs = await SharedPreferences.getInstance();
+    var id = prefs.getString('fishid_user');
+    if (id == null) {
+      final rnd = Random.secure();
+      id = 'u_${List.generate(32, (_) => rnd.nextInt(36).toRadixString(36)).join()}';
+      await prefs.setString('fishid_user', id);
+    }
+    return id;
+  }
+
+  static Future<Map<String, String>> _headers() async => {
+    'content-type': 'application/json; charset=utf-8',
+    'x-fishid-user': await userId(),
+  };
+
+  static void _readRemaining(http.Response res) {
+    final n = int.tryParse(res.headers['x-fishid-remaining'] ?? '');
+    if (n != null) remaining.value = n;
+  }
+
+  /// يسأل الخادم كم فحص باقي، للشاشة الرئيسية. الأخطاء تنتجاهل لأنها معلومة إضافية.
+  static Future<void> refreshRemaining() async {
+    if (isDemo) return;
+    try {
+      final base = apiUrl.endsWith('/') ? apiUrl : '$apiUrl/';
+      final res = await http
+          .get(Uri.parse('${base}fishId/me'), headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+      final n = (jsonDecode(res.body) as Map)['remaining'];
+      if (res.statusCode == 200 && n is int) remaining.value = n;
+    } on Object {
+      return;
+    }
+  }
+
   static Future<FishResult> identify(List<Uint8List> images) async {
     if (isDemo) {
       await Future<void>.delayed(const Duration(seconds: 2));
@@ -31,11 +78,12 @@ abstract final class FishIdApi {
       res = await http
           .post(
             Uri.parse('${base}fishId/identify'),
-            headers: {'content-type': 'application/json; charset=utf-8'},
+            headers: await _headers(),
             // هكذا يرمّز Serverpod نوع ByteData.
             body: jsonEncode({
               'images': [
-                for (final image in images) {'image': "decode('${base64Encode(image)}', 'base64')", 'mediaType': mediaTypeOf(image)},
+                for (final image in images)
+                  {'image': "decode('${base64Encode(image)}', 'base64')", 'mediaType': mediaTypeOf(image)},
               ],
             }),
           )
@@ -44,6 +92,11 @@ abstract final class FishIdApi {
       throw const FishIdException('تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول مرة ثانية.');
     }
     final body = utf8.decode(res.bodyBytes);
+    _readRemaining(res);
+    if (res.statusCode == 402) {
+      remaining.value = 0;
+      throw FishIdQuotaException(_serverMessage(body) ?? 'خلصت فحوصاتك المجانية. اشترك عشان تكمل الفحص.');
+    }
     if (res.statusCode != 200) throw FishIdException(_serverMessage(body) ?? 'تعذّر تحليل الصورة، حاول مرة ثانية.');
     try {
       // الخادم يرجّع نصًا، وهذا النص نفسه JSON للنتيجة.
@@ -75,10 +128,11 @@ abstract final class FishIdApi {
       res = await http
           .post(
             Uri.parse('${base}fishId/contribute'),
-            headers: {'content-type': 'application/json; charset=utf-8'},
+            headers: await _headers(),
             body: jsonEncode({
               'images': [
-                for (final image in images) {'image': "decode('${base64Encode(image)}', 'base64')", 'mediaType': mediaTypeOf(image)},
+                for (final image in images)
+                  {'image': "decode('${base64Encode(image)}', 'base64')", 'mediaType': mediaTypeOf(image)},
               ],
               'species': species,
               'speciesConfirmed': speciesConfirmed,

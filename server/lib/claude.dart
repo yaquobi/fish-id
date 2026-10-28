@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -18,6 +19,24 @@ class FishIdError implements Exception {
   final String code;
   final String message;
   final int status;
+}
+
+/// مفتاح Zone لقائمة يتجمع فيها استهلاك كل استدعاء لـ Claude خلال فحص واحد، عشان نحسب تكلفته.
+const usageKey = #fishIdUsage;
+
+/// الأسعار بالدولار لكل مليون توكن: إدخال، إخراج، قراءة من الكاش، كتابة في الكاش.
+const _prices = {'claude-opus-5-5': (4.0, 20.0, 0.20, 5.0), 'claude-sonnet-5-5': (2.0, 10.0, 0.20, 2.5), 'claude-haiku-5-5': (0.10, 0.50, 0.01, 0.125)};
+
+/// تكلفة الاستدعاءات بالدولار من سطور usage اللي يرجعها Claude.
+double usageCost(List<Map<String, dynamic>> usage) {
+  var usd = 0.0;
+  for (final u in usage) {
+    final model = '${u['model']}';
+    final p = _prices.entries.firstWhere((e) => model.startsWith(e.key), orElse: () => _prices.entries.first).value;
+    int n(String k) => (u[k] as num?)?.toInt() ?? 0;
+    usd += (n('input_tokens') * p.$1 + n('output_tokens') * p.$2 + n('cache_read_input_tokens') * p.$3 + n('cache_creation_input_tokens') * p.$4) / 1e6;
+  }
+  return usd;
 }
 
 /// استدعاء Claude Messages API مباشرة (لا توجد مكتبة Dart رسمية).
@@ -244,6 +263,9 @@ Work like a taxonomist, and write your notes in observed_features before choosin
       }
       final msg = jsonDecode(text) as Map<String, dynamic>;
       stdout.writeln('FishId: ${msg['model']} usage ${jsonEncode(msg['usage'])}');
+      if (Zone.current[usageKey] case final List<Map<String, dynamic>> log when msg['usage'] is Map) {
+        log.add({'model': msg['model'] ?? model, ...(msg['usage'] as Map).cast<String, dynamic>()});
+      }
       if (msg['stop_reason'] == 'refusal') throw const FishIdError('fishid_refused', 'ما قدرنا نحلل هذه الصورة، جرّب صورة ثانية');
       if (msg['stop_reason'] == 'max_tokens') throw const FishIdError('fishid_error', 'تعذّر تحليل الصورة، حاول مرة ثانية', status: 502);
       final out = (msg['content'] as List).where((b) => b['type'] == 'text').map((b) => b['text'] as String).join();

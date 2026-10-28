@@ -18,6 +18,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final _picker = ImagePicker();
   bool _busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    FishIdApi.refreshRemaining();
+  }
+
   Future<void> _pick(ImageSource source) async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -30,8 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ResultScreen(image: bytes)));
     } on Exception {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('ما قدرنا نفتح الكاميرا أو الصور. تأكد من الصلاحيات في إعدادات الجوال.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ما قدرنا نفتح الكاميرا أو الصور. تأكد من الصلاحيات في إعدادات الجوال.')),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -54,7 +61,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 colors: [AppColors.navyDeep, AppColors.navy],
               ),
             ),
-            padding: EdgeInsets.fromLTRB(24, MediaQuery.paddingOf(context).top + (compact ? 20 : 36), 24, compact ? 22 : 32),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              MediaQuery.paddingOf(context).top + (compact ? 20 : 36),
+              24,
+              compact ? 22 : 32,
+            ),
             child: Column(
               children: [
                 FishIdMark(size: compact ? 80 : 104),
@@ -77,7 +89,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (isDemo)
                   const Padding(
                     padding: EdgeInsets.only(bottom: 16),
-                    child: _Note(icon: Icons.science_outlined, text: 'وضع التجربة: النتيجة مثال ثابت ولا تُرسل الصورة لأي خادم.'),
+                    child: _Note(
+                      icon: Icons.science_outlined,
+                      text: 'وضع التجربة: النتيجة مثال ثابت ولا تُرسل الصورة لأي خادم.',
+                    ),
                   ),
                 FilledButton.icon(
                   onPressed: _busy ? null : () => _pick(ImageSource.camera),
@@ -90,7 +105,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: const Icon(Icons.photo_library_outlined),
                   label: const Text('اختر صورة من الجوال'),
                 ),
-                const SizedBox(height: 24),
+                ValueListenableBuilder(
+                  valueListenable: FishIdApi.remaining,
+                  builder: (context, n, _) => n == null
+                      ? const SizedBox(height: 24)
+                      : Padding(
+                          padding: const EdgeInsets.only(top: 12, bottom: 16),
+                          child: Text(
+                            n > 0 ? 'باقي لك $n ${n == 1 ? 'فحص' : 'فحوصات'}' : 'خلصت فحوصاتك، اشترك عشان تكمل',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: AppColors.muted, fontSize: 14),
+                          ),
+                        ),
+                ),
                 const _Tips(),
                 const SizedBox(height: 12),
                 Card(
@@ -99,7 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: const Text('تصفّح أنواع الموسوعة', style: TextStyle(fontWeight: FontWeight.w700)),
                     subtitle: const Text('447 نوعًا من البحر الأحمر والخليج العربي'),
                     trailing: const Icon(Icons.chevron_left),
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BrowseScreen())),
+                    onTap: () =>
+                        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BrowseScreen())),
                   ),
                 ),
                 const SizedBox(height: 28),

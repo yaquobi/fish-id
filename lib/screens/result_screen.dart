@@ -109,6 +109,7 @@ class _ResultScreenState extends State<ResultScreen> {
           future: _future,
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) return const _Loading();
+            if (snap.error is FishIdQuotaException) return _Subscribe(message: '${snap.error}');
             if (snap.hasError) return _Error(message: '${snap.error}', onRetry: _retry);
             final (result, db) = snap.data!;
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_body(result, db)]);
@@ -248,6 +249,72 @@ class _Error extends StatelessWidget {
       const SizedBox(height: 12),
       FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('حاول مرة ثانية')),
     ],
+  );
+}
+
+/// تظهر لما تخلص الفحوصات: الأسعار، والاشتراك من المتجر (يتفعّل بعد ربط Google Play و App Store).
+class _Subscribe extends StatelessWidget {
+  const _Subscribe({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    color: AppColors.navy,
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Icon(Icons.workspace_premium_outlined, color: AppColors.gold, size: 36),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700, height: 1.5),
+          ),
+          const SizedBox(height: 14),
+          const _Plan(title: 'شهري', price: '10 ريال', note: 'بالشهر'),
+          const SizedBox(height: 8),
+          const _Plan(title: 'سنوي', price: '90 ريال', note: 'بالسنة، توفّر 25%'),
+          const SizedBox(height: 14),
+          const FilledButton(onPressed: null, child: Text('الاشتراك من المتجر قريبًا')),
+          const SizedBox(height: 8),
+          const Text(
+            'الموسوعة وحاسبة الصلاحية تبقى مجانية.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.onNavyMuted, fontSize: 14),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _Plan extends StatelessWidget {
+  const _Plan({required this.title, required this.price, required this.note});
+  final String title;
+  final String price;
+  final String note;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    decoration: BoxDecoration(color: AppColors.navyLight, borderRadius: BorderRadius.circular(12)),
+    child: Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        const Spacer(),
+        Text(note, style: const TextStyle(color: AppColors.onNavyMuted, fontSize: 13)),
+        const SizedBox(width: 10),
+        Text(
+          price,
+          style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w800, fontSize: 16),
+        ),
+      ],
+    ),
   );
 }
 

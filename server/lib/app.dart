@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:shelf/shelf.dart';
 
+import 'accounts.dart';
+import 'admin_page.dart';
 import 'claude.dart';
 import 'contrib.dart';
 
@@ -13,11 +16,30 @@ typedef Identify = Future<String> Function(List<Photo> photos);
 /// أو `{"images": [{"image": ..., "mediaType": ...}, ...]}` حتى [maxPhotos] صور لنفس السمكة.
 /// والرد نص JSON داخل سلسلة JSON. الخطأ 4xx/5xx بجسم {"code", "message"}.
 /// POST fishId/contribute: نفس الصور مع النوع المؤكد والأيام وطريقة الحفظ وموافقة المستخدم، وتنحفظ في [contrib].
+///
+/// التطبيق يرسل رقم حسابه في `x-fishid-user`، والرد فيه `x-fishid-remaining` (الفحوصات المتبقية).
+/// GET fishId/me يرجّع الباقة والمتبقي. إذا خلصت الفحوصات يرجع 402 بالرمز quota.
+/// admin/... لوحة الأدمن ([adminToken])، و revenuecat يستقبل أحداث الاشتراك ([revenueCatSecret]).
 class FishIdApp {
-  FishIdApp({required this.identify, this.contrib, this.perMinute = 30, DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
+  FishIdApp({
+    required this.identify,
+    this.contrib,
+    this.accounts,
+    this.adminToken = '',
+    this.revenueCatSecret = '',
+    this.speciesNames = const {},
+    this.perMinute = 30,
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
 
   final Identify? identify;
   final ContribStore? contrib;
+  final AccountStore? accounts;
+  final String adminToken;
+  final String revenueCatSecret;
+
+  /// رقم حوات (4 أرقام) والاسم المحلي، للوحة الأدمن.
+  final Map<String, String> speciesNames;
   final int perMinute;
   final DateTime Function() _clock;
 
@@ -27,7 +49,8 @@ class FishIdApp {
   static const _cors = {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'POST, GET, OPTIONS',
-    'access-control-allow-headers': 'content-type',
+    'access-control-allow-headers': 'content-type, x-fishid-user',
+    'access-control-expose-headers': 'x-fishid-remaining',
   };
 
   int _minute = 0;
@@ -42,7 +65,34 @@ class FishIdApp {
     }
     if (req.method == 'POST' && path == 'fishId/identify') {
       try {
-        return _json(200, await _identify(req));
+        final user = _user(req);
+        final result = await _identify(req, user);
+        return _json(200, result, headers: _remaining(user));
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (req.method == 'GET' && path == 'fishId/me') {
+      try {
+        final user = _user(req);
+        final store = accounts;
+        if (user == null || store == null) return _json(200, {'plan': 'free', 'remaining': null});
+        final v = store.view(user, _clock());
+        return _json(200, {'plan': v['active'] == true ? v['plan'] : 'free', 'until': v['until'], 'remaining': v['remaining']});
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (path == 'admin' || path.startsWith('admin/')) {
+      try {
+        return await _admin(req, path);
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (req.method == 'POST' && path == 'revenuecat') {
+      try {
+        return await _revenueCat(req);
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
@@ -57,12 +107,148 @@ class FishIdApp {
     return _json(404, {'code': 'not_found', 'message': 'المسار غير موجود'});
   };
 
-  Future<String> _identify(Request req) async {
+  /// رقم الحساب من الطلب. بدون رقم نسمح (للتطبيقات القديمة) إلا إذا الإعداد requireAccount مفعّل.
+  String? _user(Request req) {
+    final id = req.headers['x-fishid-user'];
+    if (id == null || id.isEmpty) {
+      if (accounts?.requireAccount == true) throw const FishIdError('update_app', 'حدّث التطبيق من المتجر عشان تكمل الفحص', status: 426);
+      return null;
+    }
+    if (!AccountStore.idPattern.hasMatch(id)) throw const FishIdError('bad_request', 'الطلب غير صالح');
+    return id;
+  }
+
+  Map<String, String> _remaining(String? user) {
+    final store = accounts;
+    if (user == null || store == null) return const {};
+    return {'x-fishid-remaining': '${store.remaining(user, _clock())}'};
+  }
+
+  Future<String> _identify(Request req, String? user) async {
     final run = identify;
     if (run == null) throw const FishIdError('fishid_off', 'خدمة التعرف على الأسماك غير مفعّلة حاليًا', status: 503);
     final (photos, _) = await _readPhotos(req);
+    final store = accounts;
+    if (user != null) store?.check(user, _clock());
     _limit();
-    return run(photos);
+    final usage = <Map<String, dynamic>>[];
+    final watch = Stopwatch()..start();
+    // كل استدعاء لـ Claude داخل الفحص يضيف استهلاكه لـ usage (claude.dart)، فنعرف تكلفة الفحص كاملة.
+    final result = await runZoned(() => run(photos), zoneValues: {usageKey: usage});
+    await store?.record(user, _clock(), result: result, usd: usageCost(usage), ms: watch.elapsedMilliseconds, photos: photos.length);
+    return result;
+  }
+
+  int _adminMinute = 0;
+  int _adminFails = 0;
+
+  Future<Response> _admin(Request req, String path) async {
+    if (adminToken.isEmpty) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+    if (req.method == 'GET' && path == 'admin') {
+      return Response.ok(adminPage, headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY'});
+    }
+    final now = _clock();
+    final minute = now.millisecondsSinceEpoch ~/ 60000;
+    if (minute != _adminMinute) {
+      _adminMinute = minute;
+      _adminFails = 0;
+    }
+    if (_adminFails >= 10) throw const FishIdError('busy', 'محاولات كثيرة، حاول بعد دقيقة', status: 429);
+    if (!_same(req.headers['authorization'] ?? '', 'Bearer $adminToken')) {
+      _adminFails++;
+      throw const FishIdError('unauthorized', 'الرمز غير صحيح', status: 401);
+    }
+    final store = accounts;
+    final parts = path.split('/');
+    final q = req.url.queryParameters;
+    Future<Map<String, dynamic>> body() async {
+      try {
+        return jsonDecode(await req.readAsString()) as Map<String, dynamic>;
+      } on Object {
+        throw const FishIdError('bad_request', 'الطلب غير صالح');
+      }
+    }
+
+    switch ((req.method, parts.length > 1 ? parts[1] : '')) {
+      case ('GET', 'species'):
+        return _json(200, speciesNames);
+      case ('GET', 'stats') when store != null:
+        return _json(200, store.stats(now));
+      case ('GET', 'users') when store != null:
+        return _json(200, store.users(now, q: q['q'] ?? ''));
+      case ('POST', 'users') when store != null && parts.length == 3 && AccountStore.idPattern.hasMatch(parts[2]):
+        final b = await body();
+        final days = (b['days'] as num?)?.toInt();
+        return _json(
+          200,
+          await store.update(
+            parts[2],
+            now,
+            grant: (b['grant'] as num?)?.toInt(),
+            plan: b['plan'] as String?,
+            until: days == null ? null : now.add(Duration(days: days)),
+            blocked: b['blocked'] as bool?,
+          ),
+        );
+      case ('GET', 'scans') when store != null:
+        return _json(200, store.scans(now, months: 2).take(300).toList());
+      case ('GET', 'settings') when store != null:
+        return _json(200, store.settings);
+      case ('POST', 'settings') when store != null:
+        await store.saveSettings(await body());
+        return _json(200, store.settings);
+      case ('GET', 'contrib') when contrib != null && parts.length == 2:
+        return _json(200, contrib!.latest(status: q['status'] ?? ''));
+      case ('GET', 'contrib') when contrib != null && parts.length == 5:
+        final f = contrib!.file(parts[2], parts[3], parts[4]);
+        if (f == null) break;
+        return Response.ok(
+          await f.readAsBytes(),
+          headers: {'content-type': f.path.endsWith('png') ? 'image/png' : 'image/jpeg', 'cache-control': 'private, max-age=3600'},
+        );
+      case ('POST', 'contrib') when contrib != null && parts.length == 4:
+        final b = await body();
+        final m = await contrib!.review(parts[2], parts[3], status: '${b['status']}', species: b['species'] as String?);
+        if (m == null) break;
+        return _json(200, m);
+    }
+    throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+  }
+
+  /// أحداث RevenueCat (اشتراك جديد، تجديد، انتهاء). الرابط يتسجل في لوحة RevenueCat مع نفس السر في Authorization.
+  Future<Response> _revenueCat(Request req) async {
+    final store = accounts;
+    if (revenueCatSecret.isEmpty || store == null) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+    if (!_same(req.headers['authorization'] ?? '', 'Bearer $revenueCatSecret')) throw const FishIdError('unauthorized', 'غير مصرح', status: 401);
+    final Map event;
+    try {
+      event = (jsonDecode(await req.readAsString()) as Map)['event'] as Map;
+    } on Object {
+      throw const FishIdError('bad_request', 'الطلب غير صالح');
+    }
+    final user = '${event['app_user_id']}';
+    if (!AccountStore.idPattern.hasMatch(user)) return _json(200, {'ok': true, 'ignored': 'user'});
+    final product = '${event['product_id']}'.toLowerCase();
+    final plan = product.contains('shop') ? 'shop' : (product.contains('year') || product.contains('annual') ? 'yearly' : 'monthly');
+    final exp = (event['expiration_at_ms'] as num?)?.toInt();
+    final now = _clock();
+    if (event['type'] == 'EXPIRATION') {
+      await store.update(user, now, plan: 'free');
+    } else if (exp != null) {
+      // الإلغاء ما يوقف الاشتراك فورًا: يكمل لين تاريخ الانتهاء.
+      await store.update(user, now, plan: plan, until: DateTime.fromMillisecondsSinceEpoch(exp, isUtc: true));
+    }
+    return _json(200, {'ok': true});
+  }
+
+  /// مقارنة بوقت ثابت عشان ما ينعرف الرمز من سرعة الرد.
+  static bool _same(String a, String b) {
+    if (a.length != b.length) return false;
+    var d = 0;
+    for (var i = 0; i < a.length; i++) {
+      d |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return d == 0;
   }
 
   static const storages = {'ice', 'fridge', 'room', 'hot', 'frozen', 'unknown'};
@@ -140,6 +326,6 @@ class FishIdApp {
     }
   }
 
-  static Response _json(int status, Object body) =>
-      Response(status, body: jsonEncode(body), headers: {..._cors, 'content-type': 'application/json; charset=utf-8'});
+  static Response _json(int status, Object? body, {Map<String, String> headers = const {}}) =>
+      Response(status, body: jsonEncode(body), headers: {..._cors, ...headers, 'content-type': 'application/json; charset=utf-8'});
 }
