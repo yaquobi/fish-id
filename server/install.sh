@@ -24,7 +24,7 @@ curl -fsS http://127.0.0.1:$PORT/health; echo
 SITE=/etc/nginx/sites-available/fish-id
 if grep -rqs "server_name[^;]*\b$DOMAIN\b" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ && [[ ! -f $SITE ]]; then
   echo "للدومين $DOMAIN إعداد nginx موجود. أضف داخل server { } الخاص به:"
-  echo '  location /api/ { proxy_pass http://127.0.0.1:$PORT/; client_max_body_size 10m; proxy_read_timeout 120s; proxy_set_header Host $host; }'
+  echo "  location /api/ { proxy_pass http://127.0.0.1:$PORT/; client_max_body_size 10m; proxy_read_timeout 120s; proxy_set_header Host \$host; }"
   echo 'ثم: nginx -t && systemctl reload nginx'
   exit 0
 fi
