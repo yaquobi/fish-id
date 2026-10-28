@@ -166,10 +166,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 28),
-                Text(
-                  tr('إحدى مبادرات منظومة حوات', 'Part of the HUWAT initiative'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      tr('إحدى مبادرات منظومة', 'An initiative of'),
+                      style: const TextStyle(color: AppColors.muted, fontSize: 14),
+                    ),
+                    const SizedBox(width: 8),
+                    Image.asset('assets/brand/huwat.png', height: 22, semanticLabel: tr('حوات', 'HUWAT')),
+                  ],
                 ),
                 SizedBox(height: MediaQuery.paddingOf(context).bottom + 16),
               ],
