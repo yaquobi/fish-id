@@ -17,6 +17,13 @@
 نستخدم طريقة مؤشر الجودة (Quality Index Method) بالعلامات اللي تبان في الصورة فقط: لمعة الجلد، مخاط الجلد، صفاء العين، شكل العين، لون الخياشيم، مخاط الخياشيم، البطن، الدم وتغيّر اللون.
 النموذج يعطي نقاط عيب لكل علامة (أو -1 إذا ما بانت)، والخادم (`server/lib/qim.dart`) يحسب منها الدرجة من 100 والمستوى وتقريب درجة الاتحاد الأوروبي (Extra / A / B / غير صالحة).
 الرائحة والصلابة ما تنقاس من صورة، فالتطبيق ينبّه المستخدم يفحصها بيده. ويقدر المستخدم يضيف حتى صورتين قريبتين (العين والخياشيم) لنفس السمكة.
+المصادر (ملخصة بالعربي والإنجليزي في قسم «العلم» بصفحة hawat.id):
+- Huss (1995), Quality and quality changes in fresh fish, FAO Fisheries Technical Paper 348.
+- Hyldig & Green-Petersen (2004), Quality Index Method: an objective tool for determination of sensory quality.
+- Martinsdóttir et al. (2001), QIM Eurofish reference manual.
+- Council Regulation (EC) No 2406/96 (فئات الطزاجة Extra / A / B).
+- Codex CXG 31-1999، المعتمدة خليجيًا GSO CAC/GL 31:2021.
+
 الخطوة الجاية: معايرة النقاط والأيام بصور السوق المعروف عمرها (أداة التجميع).
 
 ## التشغيل
