@@ -7,6 +7,7 @@ import 'package:fish_id_server/claude.dart';
 import 'package:fish_id_server/contrib.dart';
 import 'package:fish_id_server/ledger.dart';
 import 'package:fish_id_server/refs.dart';
+import 'package:fish_id_server/staff.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
 /// الإعدادات من متغيرات البيئة (ملف .env في docker compose):
@@ -40,6 +41,7 @@ Future<void> main() async {
     contrib: ContribStore.open(env['FISHID_CONTRIB'] ?? 'contrib'),
     accounts: accounts,
     ledger: accounts == null ? null : Ledger.open(accounts),
+    staff: accounts == null ? null : StaffStore.open(accounts.dir),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {

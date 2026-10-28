@@ -9,6 +9,7 @@ import 'admin_page.dart';
 import 'claude.dart';
 import 'contrib.dart';
 import 'ledger.dart';
+import 'staff.dart';
 
 typedef Identify = Future<String> Function(List<Photo> photos);
 
@@ -33,6 +34,7 @@ class FishIdApp {
     this.contrib,
     this.accounts,
     this.ledger,
+    this.staff,
     this.adminToken = '',
     this.revenueCat,
     this.speciesNames = const {},
@@ -46,6 +48,9 @@ class FishIdApp {
 
   /// المحاسبة (الدخل والمصاريف) للوحة الأدمن. تحتاج [accounts].
   final Ledger? ledger;
+
+  /// مستخدمين اللوحة الثانيين (محاسب، مستثمر...) برموزهم.
+  final StaffStore? staff;
   final String adminToken;
   final SubscriberLookup? revenueCat;
 
@@ -175,7 +180,13 @@ class FishIdApp {
     final watch = Stopwatch()..start();
     // كل استدعاء لـ Claude داخل الفحص يضيف استهلاكه لـ usage (claude.dart)، فنعرف تكلفة الفحص كاملة.
     final lang = req.headers['x-fishid-lang'] == 'en' ? 'en' : 'ar';
-    final result = await runZoned(() => run(photos), zoneValues: {usageKey: usage, langKey: lang});
+    final String result;
+    try {
+      result = await runZoned(() => run(photos), zoneValues: {usageKey: usage, langKey: lang});
+    } on FishIdError catch (e) {
+      if (e.code.startsWith('claude_')) await ledger?.raise(e.code, _clock());
+      rethrow;
+    }
     await store?.record(user, _clock(), result: result, usd: usageCost(usage), ms: watch.elapsedMilliseconds, photos: photos.length);
     return result;
   }
@@ -195,12 +206,28 @@ class FishIdApp {
       _adminFails = 0;
     }
     if (_adminFails >= 10) throw const FishIdError('busy', 'محاولات كثيرة، حاول بعد دقيقة', status: 429);
-    if (!_same(req.headers['authorization'] ?? '', 'Bearer $adminToken')) {
+    final auth = req.headers['authorization'] ?? '';
+    final Map<String, dynamic> who;
+    if (_same(auth, 'Bearer $adminToken')) {
+      who = {'role': 'owner', 'name': ''};
+    } else if ((auth.startsWith('Bearer fs_') ? staff?.match(auth.substring(7)) : null) case final Map<String, dynamic> m) {
+      who = m..remove('token');
+    } else {
       _adminFails++;
       throw const FishIdError('unauthorized', 'الرمز غير صحيح', status: 401);
     }
     final store = accounts;
     final parts = path.split('/');
+    final section = parts.length > 1 ? parts[1] : '';
+    final role = who['role'];
+    final allowed = switch (role) {
+      'owner' => true,
+      'admin' => section != 'staff',
+      'accountant' => const {'me', 'species', 'stats', 'ledger', 'report', 'alerts'}.contains(section),
+      'investor' => const {'me', 'species', 'report'}.contains(section) && req.method == 'GET',
+      _ => false,
+    };
+    if (!allowed) throw const FishIdError('forbidden', 'ما عندك صلاحية لهذا القسم', status: 403);
     final q = req.url.queryParameters;
     Future<Map<String, dynamic>> body() async {
       try {
@@ -211,8 +238,29 @@ class FishIdApp {
     }
 
     switch ((req.method, parts.length > 1 ? parts[1] : '')) {
+      case ('GET', 'me'):
+        return _json(200, who);
       case ('GET', 'species'):
         return _json(200, speciesNames);
+      case ('GET', 'staff') when staff != null:
+        return _json(200, staff!.list());
+      case ('POST', 'staff') when staff != null:
+        final b = await body();
+        if (b['add'] is Map) return _json(200, await staff!.add('${b['add']['name'] ?? ''}', '${b['add']['role'] ?? ''}', now));
+        if (b['delete'] is String) await staff!.remove(b['delete'] as String);
+        return _json(200, staff!.list());
+      case ('GET', 'report') when ledger != null:
+        final period = q['period'] ?? 'month';
+        final key = q['key'] ?? '';
+        if (!Reports.valid(period, key)) throw const FishIdError('bad_request', 'الفترة غير صحيحة');
+        return _json(200, ledger!.summary(period, key, now));
+      case ('GET', 'alerts') when ledger != null:
+        return _json(200, ledger!.alerts(now));
+      case ('POST', 'alerts') when ledger != null:
+        final b = await body();
+        if (b['balanceUsd'] is! num) throw const FishIdError('bad_request', 'الطلب غير صالح');
+        await ledger!.setBalance(b['balanceUsd'] as num, now);
+        return _json(200, ledger!.alerts(now));
       case ('GET', 'stats') when store != null:
         return _json(200, {...store.stats(now), if (ledger != null) 'ledger': ledger!.statement(Ledger.month(now))..remove('income')..remove('expenses')});
       case ('GET', 'ledger') when ledger != null:

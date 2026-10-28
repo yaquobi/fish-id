@@ -59,6 +59,18 @@ class AccountStore {
 
   Map<String, dynamic>? find(String id) => _accounts[id];
 
+  /// كل الحسابات، للتقارير.
+  Iterable<Map<String, dynamic>> get all => _accounts.values;
+
+  /// عدد المشتركين الحاليين في كل باقة مدفوعة.
+  Map<String, int> paying(DateTime now) {
+    final out = {'monthly': 0, 'yearly': 0, 'shop': 0};
+    for (final a in _accounts.values) {
+      if (_active(a, now)) out[a['plan'] as String] = (out[a['plan']] ?? 0) + 1;
+    }
+    return out;
+  }
+
   bool _active(Map<String, dynamic> a, DateTime now) {
     if (a['plan'] == 'free') return false;
     final until = DateTime.tryParse('${a['until']}');
