@@ -24,7 +24,7 @@ Future<void> loadFonts() async {
 }
 
 const sizes = {'s320x568': Size(320, 568), 'm360x780': Size(360, 780), 'l412x915': Size(412, 915)};
-const scales = [1.0, 1.2];
+const scales = [1.0, 1.4];
 
 void main() {
   final issues = <String>[];

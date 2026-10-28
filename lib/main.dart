@@ -24,7 +24,7 @@ class FishIdApp extends StatelessWidget {
     builder: (context, child) {
       final mq = MediaQuery.of(context);
       return MediaQuery(
-        data: mq.copyWith(textScaler: mq.textScaler.clamp(minScaleFactor: .9, maxScaleFactor: 1.2)),
+        data: mq.copyWith(textScaler: mq.textScaler.clamp(minScaleFactor: 1, maxScaleFactor: 1.4)),
         child: ColoredBox(
           color: AppColors.navyDeep,
           child: Center(

@@ -85,7 +85,7 @@ class _ResultScreenState extends State<ResultScreen> {
         ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: SizedBox(
-            height: (MediaQuery.sizeOf(context).height * .3).clamp(160, 300),
+            height: (MediaQuery.sizeOf(context).height * .25).clamp(140, 240),
             child: Image.memory(widget.image, fit: BoxFit.cover),
           ),
         ),
@@ -111,20 +111,7 @@ class _ResultScreenState extends State<ResultScreen> {
             if (snap.connectionState != ConnectionState.done) return const _Loading();
             if (snap.hasError) return _Error(message: '${snap.error}', onRetry: _retry);
             final (result, db) = snap.data!;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _body(result, db),
-                if (result.isFish && _images.length < _maxPhotos) ...[
-                  OutlinedButton.icon(
-                    onPressed: _addPhoto,
-                    icon: const Icon(Icons.add_a_photo_outlined),
-                    label: Text(_images.length == 1 ? 'أضف صورة للعين أو الخياشيم لتقييم أدق' : 'أضف صورة ثالثة'),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ],
-            );
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_body(result, db)]);
           },
         ),
       ],
@@ -164,12 +151,33 @@ class _ResultScreenState extends State<ResultScreen> {
             children: [
               for (final (i, (c, s)) in cands.indexed)
                 ChoiceChip(
-                  label: Text('${s.name} · ${c.confidence}%'),
+                  label: Text('${s.name} · \u2066${c.confidence}%\u2069'),
                   selected: i == sel,
                   onSelected: (_) => setState(() => _selected = i),
                   selectedColor: AppColors.gold,
                 ),
             ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        // الطزاجة أول شيء بعد الاحتمالات: هي اللي يقرر عليها المشتري.
+        if (r.freshness case final f?) ...[FreshnessCard(freshness: f), const SizedBox(height: 12)],
+        if (r.photoTip.isNotEmpty) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.lightbulb_outline, color: AppColors.warn, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text('نصيحة: ${r.photoTip}', style: const TextStyle(height: 1.5))),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (_images.length < _maxPhotos) ...[
+          OutlinedButton.icon(
+            onPressed: _addPhoto,
+            icon: const Icon(Icons.add_a_photo_outlined),
+            label: Text(_images.length == 1 ? 'أضف صورة العين أو الخياشيم' : 'أضف صورة ثالثة'),
           ),
           const SizedBox(height: 12),
         ],
@@ -187,7 +195,6 @@ class _ResultScreenState extends State<ResultScreen> {
                 ? 'يبدو أنها ليست ضمن أنواع الموسوعة. أقرب تخمين: ${r.outsideListGuess}'
                 : 'ما قدرنا نحدد النوع من أنواع الموسوعة.',
           ),
-        if (r.freshness case final f?) ...[const SizedBox(height: 12), FreshnessCard(freshness: f)],
         const SizedBox(height: 12),
         ShelfLifeCard(
           key: ValueKey(cands.isNotEmpty ? cands[sel].$2.id : ''),
@@ -204,17 +211,6 @@ class _ResultScreenState extends State<ResultScreen> {
           candidates: [for (final (_, s) in cands) (s.id.split('-').last, s.name)],
           score: r.freshness?.assessable == true ? r.freshness!.score : -1,
         ),
-        if (r.photoTip.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.lightbulb_outline, color: AppColors.warn, size: 20),
-              const SizedBox(width: 8),
-              Expanded(child: Text('نصيحة: ${r.photoTip}', style: const TextStyle(height: 1.5))),
-            ],
-          ),
-        ],
         const SizedBox(height: 24),
       ],
     );

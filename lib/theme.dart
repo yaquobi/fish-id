@@ -12,9 +12,9 @@ abstract final class AppColors {
   static const ink = Color(0xFF0B1B2A);
   static const muted = Color(0xFF5A6B7A);
   static const onNavyMuted = Color(0xFFA9C7E2);
-  static const good = Color(0xFF16A34A);
-  static const warn = Color(0xFFD97706);
-  static const bad = Color(0xFFDC2626);
+  static const good = Color(0xFF15803D);
+  static const warn = Color(0xFFB45309);
+  static const bad = Color(0xFFB91C1C);
 }
 
 ThemeData buildTheme() {
@@ -29,7 +29,14 @@ ThemeData buildTheme() {
     ),
     scaffoldBackgroundColor: AppColors.ground,
   );
+  // نص أكبر من الافتراضي: التطبيق يُستخدم في السوق تحت الشمس.
+  final text = base.textTheme.apply(fontFamily: 'Tajawal', bodyColor: AppColors.ink);
   return base.copyWith(
+    textTheme: text.copyWith(
+      bodyLarge: text.bodyLarge?.copyWith(fontSize: 16, height: 1.5),
+      bodyMedium: text.bodyMedium?.copyWith(fontSize: 16, height: 1.5),
+      bodySmall: text.bodySmall?.copyWith(fontSize: 14),
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.navy,
       foregroundColor: Colors.white,
@@ -49,6 +56,7 @@ ThemeData buildTheme() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(56),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         textStyle: const TextStyle(fontFamily: 'Tajawal', fontSize: 17, fontWeight: FontWeight.w700),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -56,6 +64,7 @@ ThemeData buildTheme() {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(52),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(fontFamily: 'Tajawal', fontSize: 16, fontWeight: FontWeight.w700),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),

@@ -75,7 +75,7 @@ class SpeciesCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                    Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 14)),
                     const SizedBox(height: 2),
                     Text(
                       value,
@@ -90,7 +90,7 @@ class SpeciesCard extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: () => launchUrl(Uri.parse(s.url), mode: LaunchMode.externalApplication),
                 icon: const Icon(Icons.open_in_new),
-                label: const Text('صفحة النوع وصوره في KSAFish'),
+                label: const Text('صور النوع في KSAFish'),
               ),
             ],
           ],
@@ -114,7 +114,7 @@ class _Confidence extends StatelessWidget {
           '$value%',
           style: const TextStyle(fontFamily: 'ChakraPetch', fontWeight: FontWeight.w700, fontSize: 20, color: AppColors.gold),
         ),
-        const Text('الثقة', style: TextStyle(color: AppColors.onNavyMuted, fontSize: 12)),
+        const Text('الثقة', style: TextStyle(color: AppColors.onNavyMuted, fontSize: 14)),
       ],
     ),
   );

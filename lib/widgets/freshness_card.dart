@@ -12,7 +12,12 @@ class FreshnessCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final f = freshness;
     final color = f.score >= 65 ? AppColors.good : (f.score >= 40 ? AppColors.warn : AppColors.bad);
-    final notes = [('العين', f.eyes), ('الخياشيم', f.gills), ('الجلد', f.skin), ('ملاحظات', f.other)].where((n) => n.$2.isNotEmpty);
+    final notes = [
+      ('العين', f.eyes),
+      ('الخياشيم', f.gills),
+      ('الجلد', f.skin),
+      ('ملاحظات', f.other),
+    ].where((n) => n.$2.isNotEmpty);
 
     return Card(
       child: Padding(
@@ -27,24 +32,29 @@ class FreshnessCard extends StatelessWidget {
                 const Expanded(
                   child: Text('تقدير الطزاجة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 ),
-                if (f.assessable)
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(text: '${f.level}  '),
-                        TextSpan(
-                          text: '${f.score}/100',
-                          style: const TextStyle(fontFamily: 'ChakraPetch'),
-                        ),
-                      ],
-                    ),
-                    style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 16),
-                  ),
               ],
             ),
+            if (f.assessable) ...[
+              const SizedBox(height: 8),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: '${f.level}  '),
+                    TextSpan(
+                      text: '${f.score}/100',
+                      style: const TextStyle(fontFamily: 'ChakraPetch'),
+                    ),
+                  ],
+                ),
+                style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 20),
+              ),
+            ],
             const SizedBox(height: 14),
             if (!f.assessable)
-              Text(f.summary.isNotEmpty ? f.summary : 'ما نقدر نقدّر الطزاجة من هذه الصورة.', style: const TextStyle(height: 1.6))
+              Text(
+                f.summary.isNotEmpty ? f.summary : 'ما نقدر نقدّر الطزاجة من هذه الصورة.',
+                style: const TextStyle(height: 1.6),
+              )
             else ...[
               Semantics(
                 label: 'مؤشر الطزاجة ${f.score} من 100',
@@ -54,8 +64,8 @@ class FreshnessCard extends StatelessWidget {
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('غير طازجة', style: TextStyle(color: AppColors.muted, fontSize: 12)),
-                  Text('طازجة جدًا', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+                  Text('غير طازجة', style: TextStyle(color: AppColors.muted, fontSize: 14)),
+                  Text('طازجة جدًا', style: TextStyle(color: AppColors.muted, fontSize: 14)),
                 ],
               ),
               if (f.gradeLabel.isNotEmpty || f.daysLabel.isNotEmpty) ...[
@@ -64,7 +74,8 @@ class FreshnessCard extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    if (f.gradeLabel.isNotEmpty) _Badge(icon: Icons.verified_outlined, text: 'التصنيف: ${f.gradeLabel}', color: color),
+                    if (f.gradeLabel.isNotEmpty)
+                      _Badge(icon: Icons.verified_outlined, text: 'التصنيف: ${f.gradeLabel}', color: color),
                     if (f.daysLabel.isNotEmpty) _Badge(icon: Icons.schedule, text: f.daysLabel, color: AppColors.navy),
                   ],
                 ),
@@ -80,7 +91,7 @@ class FreshnessCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
-                        width: 72,
+                        width: 72 * MediaQuery.textScalerOf(context).scale(1),
                         child: Text(label, style: const TextStyle(color: AppColors.muted)),
                       ),
                       Expanded(child: Text(text, style: const TextStyle(height: 1.5))),
@@ -103,7 +114,7 @@ class FreshnessCard extends StatelessWidget {
             const SizedBox(height: 14),
             const Text(
               'تقدير بصري بالذكاء الاصطناعي، وليس بديلًا عن الفحص بالشم واللمس.',
-              style: TextStyle(color: AppColors.muted, fontSize: 12, height: 1.5),
+              style: TextStyle(color: AppColors.muted, fontSize: 14, height: 1.5),
             ),
           ],
         ),
@@ -176,7 +187,7 @@ class _Badge extends StatelessWidget {
         Flexible(
           child: Text(
             text,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13),
+            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 14),
           ),
         ),
       ],
@@ -200,7 +211,7 @@ class _QimDetails extends StatelessWidget {
         title: Text('تفاصيل التقييم (QIM)', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
         subtitle: Text(
           'انفحصت $seen علامات من ${rows.length}. كل نقطة تعني عيبًا، والصفر أفضل.',
-          style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          style: const TextStyle(color: AppColors.muted, fontSize: 14),
         ),
         children: [
           for (final r in rows)
@@ -212,7 +223,7 @@ class _QimDetails extends StatelessWidget {
                     child: Text(r.label, style: TextStyle(color: r.seen ? AppColors.ink : AppColors.muted)),
                   ),
                   if (!r.seen)
-                    const Text('ما بانت', style: TextStyle(color: AppColors.muted, fontSize: 13))
+                    const Text('ما بانت', style: TextStyle(color: AppColors.muted, fontSize: 14))
                   else
                     Semantics(
                       label: '${r.points} من ${r.max}',
@@ -225,7 +236,9 @@ class _QimDetails extends StatelessWidget {
                               margin: const EdgeInsetsDirectional.only(start: 4),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: i < r.points ? (r.points * 2 > r.max ? AppColors.bad : AppColors.warn) : AppColors.line,
+                                color: i < r.points
+                                    ? (r.points * 2 > r.max ? AppColors.bad : AppColors.warn)
+                                    : AppColors.line,
                               ),
                             ),
                         ],

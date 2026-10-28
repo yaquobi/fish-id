@@ -104,7 +104,7 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
                 child: TextButton.icon(
                   onPressed: () => setState(() => _steps.add(StorageStep(Storage.room, 1))),
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('أضف مرحلة (مثل الطريق للبيت)'),
+                  label: const Text('أضف مرحلة'),
                 ),
               ),
             const SizedBox(height: 8),
@@ -151,7 +151,7 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
             const SizedBox(height: 12),
             const Text(
               'محسوبة بنموذج FAO وجامعة DTU لتلف الأسماك الاستوائية، المختبر من 0 إلى 30 °م. تقدير تقريبي، وليس بديلًا عن الفحص.',
-              style: TextStyle(color: AppColors.muted, fontSize: 12, height: 1.5),
+              style: TextStyle(color: AppColors.muted, fontSize: 14, height: 1.5),
             ),
           ],
         ),

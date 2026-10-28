@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Text(
                   'إحدى مبادرات منظومة حوات',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.muted, fontSize: 13),
+                  style: TextStyle(color: AppColors.muted, fontSize: 14),
                 ),
                 SizedBox(height: MediaQuery.paddingOf(context).bottom + 16),
               ],
