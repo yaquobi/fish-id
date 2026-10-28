@@ -24,13 +24,20 @@ class FreshnessCard extends StatelessWidget {
               children: [
                 const Icon(Icons.water_drop_outlined, color: AppColors.navy),
                 const SizedBox(width: 8),
-                const Expanded(child: Text('تقدير الطزاجة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+                const Expanded(
+                  child: Text('تقدير الطزاجة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                ),
                 if (f.assessable)
                   Text.rich(
-                    TextSpan(children: [
-                      TextSpan(text: '${f.level}  '),
-                      TextSpan(text: '${f.score}/100', style: const TextStyle(fontFamily: 'ChakraPetch')),
-                    ]),
+                    TextSpan(
+                      children: [
+                        TextSpan(text: '${f.level}  '),
+                        TextSpan(
+                          text: '${f.score}/100',
+                          style: const TextStyle(fontFamily: 'ChakraPetch'),
+                        ),
+                      ],
+                    ),
                     style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 16),
                   ),
               ],
@@ -39,7 +46,10 @@ class FreshnessCard extends StatelessWidget {
             if (!f.assessable)
               Text(f.summary.isNotEmpty ? f.summary : 'ما نقدر نقدّر الطزاجة من هذه الصورة.', style: const TextStyle(height: 1.6))
             else ...[
-              Semantics(label: 'مؤشر الطزاجة ${f.score} من 100', child: _Meter(score: f.score)),
+              Semantics(
+                label: 'مؤشر الطزاجة ${f.score} من 100',
+                child: _Meter(score: f.score),
+              ),
               const SizedBox(height: 6),
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -58,7 +68,10 @@ class FreshnessCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(width: 72, child: Text(label, style: const TextStyle(color: AppColors.muted))),
+                      SizedBox(
+                        width: 72,
+                        child: Text(label, style: const TextStyle(color: AppColors.muted)),
+                      ),
                       Expanded(child: Text(text, style: const TextStyle(height: 1.5))),
                     ],
                   ),
@@ -83,41 +96,41 @@ class _Meter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, c) {
-          final rtl = Directionality.of(context) == TextDirection.rtl;
-          final pos = c.maxWidth * score / 100;
-          return SizedBox(
-            height: 22,
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.centerLeft,
-              children: [
-                Container(
-                  height: 10,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
-                    gradient: LinearGradient(
-                      begin: AlignmentDirectional.centerStart,
-                      end: AlignmentDirectional.centerEnd,
-                      colors: const [AppColors.bad, AppColors.warn, AppColors.good],
-                    ),
-                  ),
+    builder: (context, c) {
+      final rtl = Directionality.of(context) == TextDirection.rtl;
+      final pos = c.maxWidth * score / 100;
+      return SizedBox(
+        height: 22,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.centerLeft,
+          children: [
+            Container(
+              height: 10,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(5),
+                gradient: LinearGradient(
+                  begin: AlignmentDirectional.centerStart,
+                  end: AlignmentDirectional.centerEnd,
+                  colors: const [AppColors.bad, AppColors.warn, AppColors.good],
                 ),
-                Positioned(
-                  left: (rtl ? c.maxWidth - pos : pos) - 11,
-                  child: Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.navy, width: 4),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          );
-        },
+            Positioned(
+              left: (rtl ? c.maxWidth - pos : pos) - 11,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.navy, width: 4),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
+    },
+  );
 }

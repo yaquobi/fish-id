@@ -21,7 +21,12 @@ ThemeData buildTheme() {
   final base = ThemeData(
     useMaterial3: true,
     fontFamily: 'Tajawal',
-    colorScheme: ColorScheme.fromSeed(seedColor: AppColors.navy, primary: AppColors.navy, secondary: AppColors.gold, surface: AppColors.surface),
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: AppColors.navy,
+      primary: AppColors.navy,
+      secondary: AppColors.gold,
+      surface: AppColors.surface,
+    ),
     scaffoldBackgroundColor: AppColors.ground,
   );
   return base.copyWith(
@@ -36,7 +41,10 @@ ThemeData buildTheme() {
       color: AppColors.surface,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.line)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.line),
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(

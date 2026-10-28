@@ -11,12 +11,25 @@ class FishIdApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'FISH ID',
-        debugShowCheckedModeBanner: false,
-        theme: buildTheme(),
-        locale: const Locale('ar'),
-        supportedLocales: const [Locale('ar')],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: const HomeScreen(),
+    title: 'FISH ID',
+    debugShowCheckedModeBanner: false,
+    theme: buildTheme(),
+    locale: const Locale('ar'),
+    supportedLocales: const [Locale('ar')],
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
+    // خط الجوال المكبَّر يكسر التصميم فوق حد معيّن، فنقيّده. وعلى الأجهزة العريضة نحصر المحتوى في الوسط.
+    builder: (context, child) {
+      final mq = MediaQuery.of(context);
+      return MediaQuery(
+        data: mq.copyWith(textScaler: mq.textScaler.clamp(minScaleFactor: .9, maxScaleFactor: 1.2)),
+        child: ColoredBox(
+          color: AppColors.navyDeep,
+          child: Center(
+            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560), child: child),
+          ),
+        ),
       );
+    },
+    home: const HomeScreen(),
+  );
 }

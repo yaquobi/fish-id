@@ -75,13 +75,21 @@ class FishIdWordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Directionality(
-        textDirection: TextDirection.ltr,
-        child: Text.rich(
-          TextSpan(children: [
-            const TextSpan(text: 'FISH ', style: TextStyle(color: Colors.white)),
-            const TextSpan(text: 'ID', style: TextStyle(color: AppColors.gold)),
-          ]),
-          style: TextStyle(fontFamily: 'ChakraPetch', fontWeight: FontWeight.w700, fontSize: size, letterSpacing: 2),
-        ),
-      );
+    textDirection: TextDirection.ltr,
+    child: Text.rich(
+      TextSpan(
+        children: [
+          const TextSpan(
+            text: 'FISH ',
+            style: TextStyle(color: Colors.white),
+          ),
+          const TextSpan(
+            text: 'ID',
+            style: TextStyle(color: AppColors.gold),
+          ),
+        ],
+      ),
+      style: TextStyle(fontFamily: 'ChakraPetch', fontWeight: FontWeight.w700, fontSize: size, letterSpacing: 2),
+    ),
+  );
 }

@@ -45,11 +45,17 @@ class SpeciesCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(s.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.ink)),
+                      Text(
+                        s.name,
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1.3, color: AppColors.ink),
+                      ),
                       const SizedBox(height: 2),
                       Directionality(
                         textDirection: TextDirection.ltr,
-                        child: Text(s.sci, style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.muted, fontSize: 15)),
+                        child: Text(
+                          s.sci,
+                          style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.muted, fontSize: 15),
+                        ),
                       ),
                     ],
                   ),
@@ -100,13 +106,16 @@ class _Confidence extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(12)),
-        child: Column(
-          children: [
-            Text('$value%', style: const TextStyle(fontFamily: 'ChakraPetch', fontWeight: FontWeight.w700, fontSize: 20, color: AppColors.gold)),
-            const Text('الثقة', style: TextStyle(color: AppColors.onNavyMuted, fontSize: 12)),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(12)),
+    child: Column(
+      children: [
+        Text(
+          '$value%',
+          style: const TextStyle(fontFamily: 'ChakraPetch', fontWeight: FontWeight.w700, fontSize: 20, color: AppColors.gold),
         ),
-      );
+        const Text('الثقة', style: TextStyle(color: AppColors.onNavyMuted, fontSize: 12)),
+      ],
+    ),
+  );
 }

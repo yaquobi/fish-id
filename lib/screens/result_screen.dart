@@ -28,33 +28,36 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   void _retry() => setState(() {
-        _selected = 0;
-        _future = _run();
-      });
+    _selected = 0;
+    _future = _run();
+  });
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('نتيجة التحليل')),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: AspectRatio(aspectRatio: 4 / 3, child: Image.memory(widget.image, fit: BoxFit.cover)),
-            ),
-            const SizedBox(height: 16),
-            FutureBuilder(
-              future: _future,
-              builder: (context, snap) {
-                if (snap.connectionState != ConnectionState.done) return const _Loading();
-                if (snap.hasError) return _Error(message: '${snap.error}', onRetry: _retry);
-                final (result, db) = snap.data!;
-                return _body(result, db);
-              },
-            ),
-          ],
+    appBar: AppBar(title: const Text('نتيجة التحليل')),
+    body: ListView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: SizedBox(
+            height: (MediaQuery.sizeOf(context).height * .3).clamp(160, 300),
+            child: Image.memory(widget.image, fit: BoxFit.cover),
+          ),
         ),
-      );
+        const SizedBox(height: 16),
+        FutureBuilder(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) return const _Loading();
+            if (snap.hasError) return _Error(message: '${snap.error}', onRetry: _retry);
+            final (result, db) = snap.data!;
+            return _body(result, db);
+          },
+        ),
+      ],
+    ),
+  );
 
   Widget _body(FishResult r, Ksafish db) {
     if (!r.isFish) {
@@ -72,9 +75,16 @@ class _ResultScreenState extends State<ResultScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (isDemo) const Padding(padding: EdgeInsets.only(bottom: 12), child: Text('وضع التجربة: هذه نتيجة مثال.', style: TextStyle(color: AppColors.muted))),
+        if (isDemo)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text('وضع التجربة: هذه نتيجة مثال.', style: TextStyle(color: AppColors.muted)),
+          ),
         if (cands.length > 1) ...[
-          const Text('الاحتمالات', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.muted)),
+          const Text(
+            'الاحتمالات',
+            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.muted),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -92,7 +102,12 @@ class _ResultScreenState extends State<ResultScreen> {
           const SizedBox(height: 12),
         ],
         if (cands.isNotEmpty)
-          SpeciesCard(species: cands[sel].$2, facts: db.factsFor(cands[sel].$2), confidence: cands[sel].$1.confidence, reason: cands[sel].$1.reason)
+          SpeciesCard(
+            species: cands[sel].$2,
+            facts: db.factsFor(cands[sel].$2),
+            confidence: cands[sel].$1.confidence,
+            reason: cands[sel].$1.reason,
+          )
         else
           _Message(
             icon: Icons.help_outline,
@@ -123,17 +138,17 @@ class _Loading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 32),
-        child: Column(
-          children: [
-            CircularProgressIndicator(color: AppColors.navy),
-            SizedBox(height: 16),
-            Text('نحلل الصورة…', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-            SizedBox(height: 4),
-            Text('نقارنها بـ 447 نوعًا ونفحص العين والخياشيم والجلد', style: TextStyle(color: AppColors.muted)),
-          ],
-        ),
-      );
+    padding: EdgeInsets.symmetric(vertical: 32),
+    child: Column(
+      children: [
+        CircularProgressIndicator(color: AppColors.navy),
+        SizedBox(height: 16),
+        Text('نحلل الصورة…', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        SizedBox(height: 4),
+        Text('نقارنها بـ 447 نوعًا ونفحص العين والخياشيم والجلد', style: TextStyle(color: AppColors.muted)),
+      ],
+    ),
+  );
 }
 
 class _Error extends StatelessWidget {
@@ -143,13 +158,13 @@ class _Error extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Message(icon: Icons.error_outline, text: message),
-          const SizedBox(height: 12),
-          FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('حاول مرة ثانية')),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _Message(icon: Icons.error_outline, text: message),
+      const SizedBox(height: 12),
+      FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('حاول مرة ثانية')),
+    ],
+  );
 }
 
 class _Message extends StatelessWidget {
@@ -160,22 +175,26 @@ class _Message extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(icon, color: AppColors.navy),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(text, style: const TextStyle(height: 1.6, fontSize: 15))),
-                ],
-              ),
-              if (tip.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('نصيحة: $tip', style: const TextStyle(color: AppColors.muted))),
+              Icon(icon, color: AppColors.navy),
+              const SizedBox(width: 10),
+              Expanded(child: Text(text, style: const TextStyle(height: 1.6, fontSize: 15))),
             ],
           ),
-        ),
-      );
+          if (tip.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('نصيحة: $tip', style: const TextStyle(color: AppColors.muted)),
+            ),
+        ],
+      ),
+    ),
+  );
 }
