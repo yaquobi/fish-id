@@ -1,9 +1,11 @@
 // لقطات متجر Google Play بمقاس 1080×1920، بدون شريط وضع التجربة.
 // flutter test --dart-define=API_URL=DEMO --dart-define=STORE=true --update-goldens --plain-name home tool/shots/store_test.dart
+// لقطات App Store بمقاس آيفون 6.9 إنش (1290×2796): أضف --dart-define=IOS=true وLANG=ar أو en، وتنحفظ في store_ios/<اللغة>/.
 // (شغّل كل اختبار لحاله: home و result و browse و species). الإطارات والعناوين في store/frame.html.
 import 'dart:io';
 
 import 'package:fish_id/data/ksafish.dart';
+import 'package:fish_id/l10n.dart';
 import 'package:fish_id/main.dart';
 import 'package:fish_id/screens/browse_screen.dart';
 import 'package:fish_id/screens/result_screen.dart';
@@ -25,6 +27,9 @@ Future<void> loadFonts() async {
   await fam('MaterialIcons', ['/opt/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf']);
 }
 
+const ios = bool.fromEnvironment('IOS');
+const lang = String.fromEnvironment('LANG', defaultValue: 'ar');
+
 void main() {
   setUpAll(loadFonts);
   final img = File('tool/shots/store-fish.jpg').readAsBytesSync();
@@ -34,12 +39,14 @@ void main() {
     String name,
     Widget Function() build, {
     Future<void> Function(WidgetTester)? go,
-    double h = 640,
+    double? h,
   }) async {
-    t.view.physicalSize = Size(1080, h * 3);
+    final pad = ios ? const FakeViewPadding(top: 162, bottom: 102) : const FakeViewPadding(top: 72, bottom: 48);
+    t.view.physicalSize = Size(ios ? 1290 : 1080, (h ?? (ios ? 932 : 640)) * 3);
     t.view.devicePixelRatio = 3;
-    t.view.padding = const FakeViewPadding(top: 72, bottom: 48);
-    t.view.viewPadding = const FakeViewPadding(top: 72, bottom: 48);
+    t.view.padding = pad;
+    t.view.viewPadding = pad;
+    L10n.lang.value = lang;
     await t.runAsync(Ksafish.load);
     await t.pumpWidget(build());
     await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 2600)));
@@ -49,7 +56,10 @@ void main() {
     }
     if (go != null) await go(t);
     await t.pump(const Duration(milliseconds: 500));
-    await expectLater(find.byType(MaterialApp).first, matchesGoldenFile('store/$name.png'));
+    await expectLater(
+      find.byType(MaterialApp).first,
+      matchesGoldenFile('${ios ? 'store_ios/$lang' : 'store'}/$name.png'),
+    );
   }
 
   Widget app(Widget home) => FishIdApp(home: home);
