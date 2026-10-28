@@ -21,7 +21,7 @@ Future<void> main() async {
           key: key,
           speciesList: FishIdAi.speciesListFrom(data),
           model: env['FISHID_MODEL'] ?? 'claude-opus-5-5',
-          effort: env['FISHID_EFFORT'] ?? 'low',
+          effort: env['FISHID_EFFORT'] ?? 'high',
           prompt: env['FISHID_PROMPT'] ?? 'v1',
           // الصور المرجعية للأنواع المتشابهة، تنبنى بـ bash server/eval.sh refs. إذا المجلد فاضي تنطفي المرحلة الثانية.
           refs: RefLibrary.load(env['FISHID_REFS'] ?? 'refs', data),
