@@ -86,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (isDemo)
+                if (isDemo && !const bool.fromEnvironment("STORE"))
                   const Padding(
                     padding: EdgeInsets.only(bottom: 16),
                     child: _Note(

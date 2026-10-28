@@ -135,7 +135,7 @@ class _ResultScreenState extends State<ResultScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (isDemo)
+        if (isDemo && !const bool.fromEnvironment("STORE"))
           const Padding(
             padding: EdgeInsets.only(bottom: 12),
             child: Text('وضع التجربة: هذه نتيجة مثال.', style: TextStyle(color: AppColors.muted)),
