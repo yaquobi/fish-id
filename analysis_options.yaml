@@ -2,6 +2,11 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:
+    # الخادم حزمة مستقلة لها فحصها الخاص في CI.
+    - server/**
+
+analyzer:
+  exclude:
     - build/**
     - android/**
     - ios/**
