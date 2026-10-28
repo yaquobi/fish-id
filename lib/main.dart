@@ -7,7 +7,10 @@ import 'theme.dart';
 void main() => runApp(const FishIdApp());
 
 class FishIdApp extends StatelessWidget {
-  const FishIdApp({super.key});
+  const FishIdApp({super.key, this.home = const HomeScreen()});
+
+  /// أول شاشة. تتغير في الاختبارات واللقطات فقط.
+  final Widget home;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -30,6 +33,6 @@ class FishIdApp extends StatelessWidget {
         ),
       );
     },
-    home: const HomeScreen(),
+    home: home,
   );
 }

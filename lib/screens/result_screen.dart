@@ -78,8 +78,9 @@ class _ResultScreenState extends State<ResultScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('نتيجة التحليل')),
+    // أندرويد الحديث يرسم التطبيق تحت شريط التنقل، فنضيف مسافته تحت حتى ما يغطي آخر بطاقة.
     body: ListView(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: EdgeInsets.fromLTRB(12, 12, 12, MediaQuery.paddingOf(context).bottom + 8),
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(16),

@@ -56,7 +56,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
             ),
             Expanded(
               child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 24 + MediaQuery.paddingOf(context).bottom),
                 itemCount: list.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, i) {
@@ -76,7 +76,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                           builder: (_) => Scaffold(
                             appBar: AppBar(title: Text(s.name)),
                             body: ListView(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
                               children: [SpeciesCard(species: s, facts: db.factsFor(s))],
                             ),
                           ),
