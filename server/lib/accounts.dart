@@ -216,16 +216,18 @@ class AccountStore {
   }
 
   /// فحوصات الشهر الحالي (والشهر اللي قبله إذا [months] = 2)، الأحدث أولًا.
-  List<Map<String, dynamic>> scans(DateTime now, {int months = 1}) {
-    final out = <Map<String, dynamic>>[];
-    for (var i = 0; i < months; i++) {
-      final f = File('$dir/scans/${_month(DateTime.utc(now.year, now.month - i))}.jsonl');
-      if (!f.existsSync()) continue;
-      for (final l in f.readAsLinesSync()) {
-        if (l.trim().isNotEmpty) out.add(jsonDecode(l) as Map<String, dynamic>);
-      }
-    }
-    return out.reversed.toList();
+  List<Map<String, dynamic>> scans(DateTime now, {int months = 1}) => [
+    for (var i = months - 1; i >= 0; i--) ...monthScans(_month(DateTime.utc(now.year, now.month - i))),
+  ].reversed.toList();
+
+  /// فحوصات شهر واحد ([month] بصيغة YYYY-MM) بترتيبها.
+  List<Map<String, dynamic>> monthScans(String month) {
+    final f = File('$dir/scans/$month.jsonl');
+    if (!f.existsSync()) return [];
+    return [
+      for (final l in f.readAsLinesSync())
+        if (l.trim().isNotEmpty) jsonDecode(l) as Map<String, dynamic>,
+    ];
   }
 
   Map<String, dynamic> stats(DateTime now) {
@@ -269,7 +271,22 @@ class AccountStore {
       'mrrSar': mrr,
       'profitMonthSar': mrr - costMonth,
       'topSpecies': (species.entries.toList()..sort((a, b) => b.value - a.value)).take(10).map((e) => {'id': e.key, 'n': e.value}).toList(),
+      'daily': _daily(now, sar),
     };
+  }
+
+  /// عدد الفحوصات وتكلفتها لكل يوم من آخر 30 يوم، للرسم في الرئيسية.
+  List<Map<String, dynamic>> _daily(DateTime now, double sar) {
+    final days = {
+      for (var i = 29; i >= 0; i--) now.toUtc().subtract(Duration(days: i)).toIso8601String().substring(0, 10): <String, num>{'n': 0, 'sar': 0.0},
+    };
+    for (final s in scans(now, months: 2)) {
+      final d = days['${s['at']}'.substring(0, 10)];
+      if (d == null) continue;
+      d['n'] = d['n']! + 1;
+      d['sar'] = d['sar']! + ((s['usd'] as num?) ?? 0) * sar;
+    }
+    return [for (final e in days.entries) {'day': e.key, ...e.value}];
   }
 
   Future<void> _save() => _write('accounts.json', _accounts);

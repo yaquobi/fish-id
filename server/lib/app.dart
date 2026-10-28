@@ -8,6 +8,7 @@ import 'accounts.dart';
 import 'admin_page.dart';
 import 'claude.dart';
 import 'contrib.dart';
+import 'ledger.dart';
 
 typedef Identify = Future<String> Function(List<Photo> photos);
 
@@ -31,6 +32,7 @@ class FishIdApp {
     required this.identify,
     this.contrib,
     this.accounts,
+    this.ledger,
     this.adminToken = '',
     this.revenueCat,
     this.speciesNames = const {},
@@ -41,6 +43,9 @@ class FishIdApp {
   final Identify? identify;
   final ContribStore? contrib;
   final AccountStore? accounts;
+
+  /// المحاسبة (الدخل والمصاريف) للوحة الأدمن. تحتاج [accounts].
+  final Ledger? ledger;
   final String adminToken;
   final SubscriberLookup? revenueCat;
 
@@ -209,7 +214,22 @@ class FishIdApp {
       case ('GET', 'species'):
         return _json(200, speciesNames);
       case ('GET', 'stats') when store != null:
-        return _json(200, store.stats(now));
+        return _json(200, {...store.stats(now), if (ledger != null) 'ledger': ledger!.statement(Ledger.month(now))..remove('income')..remove('expenses')});
+      case ('GET', 'ledger') when ledger != null:
+        final m = q['month'] ?? '';
+        return _json(200, ledger!.report(Ledger.monthPattern.hasMatch(m) ? m : Ledger.month(now)));
+      case ('POST', 'ledger') when ledger != null:
+        final b = await body();
+        if (b['add'] is Map) {
+          await ledger!.add((b['add'] as Map).cast<String, dynamic>(), now);
+        } else if (b['delete'] is String) {
+          await ledger!.remove(b['delete'] as String);
+        } else if (b['stop'] is String && Ledger.monthPattern.hasMatch('${b['last']}')) {
+          await ledger!.stop(b['stop'] as String, b['last'] as String);
+        } else {
+          throw const FishIdError('bad_request', 'الطلب غير صالح');
+        }
+        return _json(200, {'ok': true});
       case ('GET', 'users') when store != null:
         return _json(200, store.users(now, q: q['q'] ?? ''));
       case ('POST', 'users') when store != null && parts.length == 3 && AccountStore.idPattern.hasMatch(parts[2]):
@@ -271,19 +291,28 @@ class FishIdApp {
       for (final k in const ['aliases', 'transferred_from', 'transferred_to'])
         if (event[k] is List) for (final id in event[k] as List) '$id',
     }.where(AccountStore.idPattern.hasMatch).take(5);
+    final buyer = '${event['app_user_id']}';
+    Map<String, dynamic>? sub;
     for (final user in users) {
-      await _syncSubscription(user);
+      final s = await _syncSubscription(user);
+      if (user == buyer) sub = s;
+    }
+    // نسجّل المبلغ في المحاسبة بس إذا RevenueCat أكد إن المشتري عنده نفس المنتج.
+    if (ledger != null && AccountStore.idPattern.hasMatch(buyer)) {
+      final entitlements = (sub?['subscriber'] as Map?)?['entitlements'];
+      final confirmed = entitlements is Map && entitlements.values.whereType<Map>().any((e) => e['product_identifier'] == event['product_id']);
+      await ledger!.recordSale(event, user: buyer, confirmed: confirmed, now: _clock());
     }
     return _json(200, {'ok': true});
   }
 
   /// ياخذ أبعد تاريخ انتهاء من صلاحيات المشترك الفعّالة في RevenueCat ويحطه على الحساب.
   /// إذا ما عنده صلاحية فعّالة (انتهى أو استرجع فلوسه) والباقة جت من المتجر، يرجع مجاني.
-  /// الباقات اللي يعطيها الأدمن ما تتأثر.
-  Future<void> _syncSubscription(String user) async {
+  /// الباقات اللي يعطيها الأدمن ما تتأثر. يرجّع رد RevenueCat.
+  Future<Map<String, dynamic>?> _syncSubscription(String user) async {
     final store = accounts!;
     final sub = await revenueCat!(user);
-    if (sub == null) return;
+    if (sub == null) return null;
     final now = _clock();
     final entitlements = (sub['subscriber'] as Map?)?['entitlements'];
     DateTime? until;
@@ -304,6 +333,7 @@ class FishIdApp {
     } else if (store.find(user)?['source'] == 'store') {
       await store.update(user, now, plan: 'free');
     }
+    return sub;
   }
 
   /// مقارنة بوقت ثابت عشان ما ينعرف الرمز من سرعة الرد.

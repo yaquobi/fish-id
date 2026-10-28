@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:fish_id_server/accounts.dart';
 import 'package:fish_id_server/app.dart';
 import 'package:fish_id_server/claude.dart';
+import 'package:fish_id_server/ledger.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -28,13 +29,17 @@ void main() {
 
   // ما يرجّعه RevenueCat لكل حساب في الاختبارات.
   final subscribers = <String, Map<String, dynamic>>{};
-  FishIdApp app({String admin = 'secret-token'}) => FishIdApp(
-    identify: fakeIdentify,
-    accounts: AccountStore.open(dir.path),
-    adminToken: admin,
-    revenueCat: (id) async => {'subscriber': {'entitlements': subscribers[id] ?? {}}},
-    clock: () => t,
-  );
+  FishIdApp app({String admin = 'secret-token'}) {
+    final accounts = AccountStore.open(dir.path)!;
+    return FishIdApp(
+      identify: fakeIdentify,
+      accounts: accounts,
+      ledger: Ledger.open(accounts),
+      adminToken: admin,
+      revenueCat: (id) async => {'subscriber': {'entitlements': subscribers[id] ?? {}}},
+      clock: () => t,
+    );
+  }
 
   Future<Response> scan(FishIdApp a, {String? id = user}) async => a.handler(
     Request('POST', Uri.parse('http://x/api/fishId/identify'), body: jsonEncode({'image': jpeg, 'mediaType': 'image/jpeg'}), headers: {'x-fishid-user': ?id}),
@@ -164,5 +169,66 @@ void main() {
     final codes = jsonDecode(await (await admin(a, 'codes')).readAsString()) as List;
     expect(codes.single, {'code': 'PLAY-REVIEW', 'scans': 50, 'max': 1, 'used': 1});
     expect(AccountStore.open(dir.path)!.codes().single['used'], 1);
+  });
+
+  test('accounting: store sales, refunds, Claude cost and admin entries make the monthly statement', () async {
+    final a = app();
+    Future<void> rc(Map<String, Object> event) async =>
+        a.handler(Request('POST', Uri.parse('http://x/api/revenuecat'), body: jsonEncode({'event': {'app_user_id': user, ...event}})));
+    final sale = {
+      'id': 'ev1',
+      'type': 'INITIAL_PURCHASE',
+      'product_id': 'fishid_monthly',
+      'price': 6.67,
+      'currency': 'SAR',
+      'price_in_purchased_currency': 25,
+      'tax_percentage': 0.1304,
+      'commission_percentage': 0.1304,
+      'event_timestamp_ms': t.millisecondsSinceEpoch,
+    };
+    // بيعة ما أكدها RevenueCat ما تنحسب، ولا استرجاع بدون بيعة قبله.
+    await rc(sale);
+    await rc({...sale, 'id': 'ev0', 'price': -6.67, 'price_in_purchased_currency': -25});
+    subscribers[user] = {
+      'FISH ID Pro': {'product_identifier': 'fishid_monthly', 'expires_date': t.add(const Duration(days: 30)).toIso8601String()},
+    };
+    await rc(sale);
+    await rc(sale); // نفس الحدث مرتين ينحسب مرة.
+    await rc({...sale, 'id': 'ev2', 'environment': 'SANDBOX'});
+    await scan(a);
+    await admin(a, 'ledger', body: {
+      'add': {'kind': 'expense', 'provider': 'Hostinger', 'label': 'الخادم', 'amount': 20, 'currency': 'USD', 'date': '2026-09-15', 'repeat': 'monthly'},
+    });
+    await admin(a, 'ledger', body: {
+      'add': {'kind': 'income', 'provider': 'محل', 'label': 'باقة محل بتحويل', 'amount': 350, 'date': '2026-10-02'},
+    });
+    expect((await admin(a, 'ledger', body: {'add': {'kind': 'expense', 'label': 'x', 'amount': -5, 'date': '2026-10-01'}})).statusCode, 400);
+
+    var s = jsonDecode(await (await admin(a, 'ledger?month=2026-10')).readAsString());
+    expect(s['paidSales'], 1);
+    expect(s['sandboxSales'], 1);
+    final store = (s['income'] as List).firstWhere((i) => i['auto'] == true);
+    expect(store['grossSar'], 25);
+    expect(store['sar'], closeTo(18.48, 0.01));
+    expect(s['incomeSar'], closeTo(368.48, 0.01));
+    final claude = (s['expenses'] as List).firstWhere((e) => e['provider'] == 'Anthropic (Claude)');
+    expect(claude['n'], 1);
+    expect(s['expensesSar'], closeTo(75 + claude['sar'], 0.01));
+    expect((s['history'] as List).length, 12);
+    expect((s['history'] as List)[10]['expensesSar'], 75); // سبتمبر: الخادم بس.
+
+    // استرجاع بعد البيعة ينقص الدخل.
+    await rc({...sale, 'id': 'ev3', 'type': 'CANCELLATION', 'price': -6.67, 'price_in_purchased_currency': -25});
+    s = jsonDecode(await (await admin(a, 'ledger?month=2026-10')).readAsString());
+    expect(s['incomeSar'], closeTo(350, 0.01));
+
+    // إيقاف المصروف المتكرر بعد أكتوبر.
+    final id = (s['entries'] as List).firstWhere((e) => e['provider'] == 'Hostinger')['id'];
+    await admin(a, 'ledger', body: {'stop': id, 'last': '2026-10'});
+    s = jsonDecode(await (await admin(a, 'ledger?month=2026-11')).readAsString());
+    expect(s['expensesSar'], 0);
+    final stats = jsonDecode(await (await admin(a, 'stats')).readAsString());
+    expect(stats['ledger']['incomeSar'], closeTo(350, 0.01));
+    expect((stats['daily'] as List).length, 30);
   });
 }
