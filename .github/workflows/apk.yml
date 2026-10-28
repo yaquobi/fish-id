@@ -22,6 +22,17 @@ jobs:
         with:
           flutter-version: 3.47.8
           channel: stable
+      # مفتاح توقيع ثابت لنسخ التجربة: ينشأ أول مرة وينحفظ في الذاكرة المؤقتة، فكل نسخة تتركّب فوق اللي قبلها.
+      - uses: actions/cache@v4
+        with:
+          path: android/app/test-builds.keystore
+          key: fishid-test-keystore-v1
+      - name: Create test signing key (first run only)
+        run: |
+          if [ ! -f android/app/test-builds.keystore ]; then
+            keytool -genkeypair -keystore android/app/test-builds.keystore -storepass android -keypass android \
+              -alias fishid-test -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=FISH ID test builds, O=HUWAT, C=SA"
+          fi
       - run: flutter pub get
       - run: flutter build apk --release --build-number=${{ github.run_number }}
       - run: cp build/app/outputs/flutter-apk/app-release.apk fish-id.apk

@@ -29,11 +29,22 @@ android {
         versionName = flutter.versionName
     }
 
+    // توقيع ثابت لنسخ التجربة اللي تنبني في GitHub Actions، عشان كل نسخة تتركّب فوق اللي قبلها.
+    // المفتاح ما ينحفظ في المستودع: سير العمل apk.yml ينشئه مرة وحدة ويحفظه في ذاكرة Actions المؤقتة.
+    // على جهاز المطور (بدون الملف) نرجع لمفتاح debug العادي. نسخة Google Play تحتاج مفتاحًا خاصًا منفصلًا.
+    val testKeystore = file("test-builds.keystore")
+    signingConfigs {
+        create("testBuilds") {
+            storeFile = testKeystore
+            storePassword = "android"
+            keyAlias = "fishid-test"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (testKeystore.exists()) "testBuilds" else "debug")
         }
     }
 }
