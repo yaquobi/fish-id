@@ -1,0 +1,51 @@
+# FISH ID
+
+> FISH ID is a Saudi mobile app (Android and iOS, Arabic and English) that identifies a fish's species from a phone photo and estimates its freshness. It covers 447 species of the Red Sea and the Arabian Gulf from the Saudi fish encyclopedia KSAFish, and shows each fish's local Saudi names, scientific name and family. It is an initiative of HUWAT (حوات), made in Saudi Arabia.
+
+FISH ID تطبيق سعودي للجوال (أندرويد وآيفون، عربي وإنجليزي): تصوّر السمكة ويقول لك نوعها واسمها المحلي في البحر الأحمر والخليج واسمها العلمي، ويقدّر طزاجتها من 100 وكم يوم تتحمل. يغطي 447 نوعًا من موسوعة أسماك السعودية KSAFish. وهو إحدى مبادرات منظومة حوات.
+
+## What it does
+
+- Species identification from one photo: up to 3 likely species with a confidence level and the reason, so look-alike species (groupers/هامور, emperors/شعور, snappers) are shown honestly instead of guessed.
+- Local names: the name a fishmonger uses in Jeddah, Jazan, Yanbu (Red Sea) or Dammam, Qatif, Jubail (Arabian Gulf), plus the scientific name, English name and family.
+- Freshness score out of 100 using the Quality Index Method (QIM), the European standard used in fish inspection: eight visual signs on the eye, gills, skin and body, giving a grade (Extra, A, B or unfit) and an estimate of days since catch. Extra eye and gill photos improve it. Smell and firmness are checked by hand; the app reminds the user. It is a visual estimate, not a lab test or official certificate.
+- "How long will it keep?" (كم باقي لها؟) shelf-life calculator for fish kept on ice or in the fridge. Warns above 30 °C and about histamine risk for kingfish (كنعد), tuna and sardines.
+- Offline encyclopedia of 447 species and 92 families, with KSAFish species plates.
+- "Contribute your photo" (ساهم بصورتك): with explicit consent, users can donate a photo with its species and days since catch to build the first Saudi dataset of market fish. Location data is removed.
+- No sign-in needed. Photos are sent only for analysis and not stored unless the user contributes them.
+
+## Who it is for
+
+- Shoppers at Saudi fish markets who want to know the species and how fresh it is before buying.
+- Fish shops and restaurants checking deliveries and labelling species correctly.
+- Fishermen and anglers naming their catch.
+- Students and researchers who need Saudi local names linked to scientific names.
+
+## Popular species it knows (local Arabic name: scientific name)
+
+هامور: Epinephelus coioides · ناجل: Plectropomus pessuliferus · طرادي: Plectropomus areolatus · شعور: Lethrinus nebulosus · سيجان/صافي: Siganus rivulatus · حريد: Hipposcarus harid · كنعد: Scomberomorus commerson · بياض: Carangoides bajad · حمام: Caranx ignobilis · نقرور: Pomadasys argenteus · حمرا: Lutjanus gibbus · هبر: Lutjanus malabaricus · بهار: Lutjanus bohar · شعفن: Lutjanus argentimaculatus · زبيدي/حلاوة: Parastromateus niger · فسكر: Acanthopagrus bifasciatus · عندق: Aphareus furca · سبيطي: Plectorhinchus gaterinus · شخل: Diagramma pictum · جد/باراكودا: Sphyraena barracuda · سلطان إبراهيم: Parupeneus forsskali · بياح: Valamugil seheli · سمك موسى: Psettodes erumei · سردين: Sardinella gibbosa · باغة: Rastrelliger kanagurta · تونة: Thunnus tonggol · سكن/كوبيا: Rachycentron canadum · سلماني: Chanos chanos
+
+## Pricing (Saudi riyals, VAT included)
+
+- Free: 3 scans.
+- Monthly: 24.99 SAR.
+- Yearly: 199.99 SAR (about 16.67 SAR a month).
+- Shops and restaurants: 350 SAR a month, about 300 scans.
+Subscriptions are billed and cancelled through Google Play or the App Store.
+
+## Availability
+
+- Android: Google Play (sa.hawat.fish_id), in testing; public launch soon. Testers: https://play.google.com/apps/testing/sa.hawat.fish_id
+- iOS: App Store, coming soon (TestFlight beta).
+
+## Sources and method
+
+- Species data, local names and plates: KSAFish, the Saudi fish encyclopedia (https://ksafish.com/ar), 447 species, 1,567 published facts, 74 scientific sources, with the fisheries research center in Jeddah as a reference.
+- Freshness: Quality Index Method (QIM) and EU freshness grades.
+- Identification uses a multimodal AI vision model compared against the KSAFish species list.
+
+## Links
+
+- Website: https://hawat.id/
+- Privacy policy: https://hawat.id/privacy.html
+- Contact: yaquobi@hawat.sa
