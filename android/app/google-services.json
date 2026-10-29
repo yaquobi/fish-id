@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "776524521205",
+    "project_id": "fish-id-76104",
+    "storage_bucket": "fish-id-76104.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:776524521205:android:e3682fa884af938ac5afbc",
+        "android_client_info": {
+          "package_name": "sa.hawat.fish_id"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8e27bmvHQ_8pAgHH8bVAcLQltm1gdCrQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -9,14 +9,14 @@ import 'package:flutter/foundation.dart';
 abstract final class CrashReports {
   /// مفاتيح Firebase عامة بطبيعتها وتنحط في التطبيق، وتعرّف المشروع فقط.
   static const _android = FirebaseOptions(
-    apiKey: 'ANDROID_API_KEY',
+    apiKey: 'AIzaSyC8e27bmvHQ_8pAgHH8bVAcLQltm1gdCrQ',
     appId: '1:776524521205:android:e3682fa884af938ac5afbc',
     messagingSenderId: '776524521205',
     projectId: 'fish-id-76104',
     storageBucket: 'fish-id-76104.firebasestorage.app',
   );
   static const _ios = FirebaseOptions(
-    apiKey: 'IOS_API_KEY',
+    apiKey: 'AIzaSyCuEAZC_ez5UcuqoifyhRTyvUprE0OwzME',
     appId: '1:776524521205:ios:400a8d973c99269bc5afbc',
     messagingSenderId: '776524521205',
     projectId: 'fish-id-76104',
