@@ -120,7 +120,7 @@ class Ledger {
       tax = gross * (event['tax_percentage'] as num);
       fee = gross * (event['commission_percentage'] as num);
     } else {
-      // بدون نسب من RevenueCat: ضريبة القيمة المضافة 15% داخل السعر، وعمولة Google 15% من الباقي.
+      // بدون نسب من RevenueCat: ضريبة القيمة المضافة 15% داخل السعر، وعمولة المتجر 15% من الباقي.
       tax = gross - gross / 1.15;
       fee = (gross - tax) * 0.15;
     }
@@ -162,7 +162,7 @@ class Ledger {
     final income = <Map<String, dynamic>>[];
     final byProduct = <String, Map<String, dynamic>>{};
     for (final s in sales) {
-      final p = byProduct.putIfAbsent('${s['product']}', () => {'n': 0, 'refunds': 0, 'grossSar': 0.0, 'taxSar': 0.0, 'feeSar': 0.0, 'netSar': 0.0});
+      final p = byProduct.putIfAbsent('${s['product']}', () => {'store': s['store'], 'n': 0, 'refunds': 0, 'grossSar': 0.0, 'taxSar': 0.0, 'feeSar': 0.0, 'netSar': 0.0});
       if ((s['grossSar'] as num) < 0) {
         p['refunds'] = (p['refunds'] as int) + 1;
       } else {
@@ -175,7 +175,7 @@ class Ledger {
     for (final e in byProduct.entries) {
       income.add({
         'auto': true,
-        'provider': 'Google Play',
+        'provider': e.value['store'] == 'APP_STORE' ? 'App Store' : 'Google Play',
         'label': e.key.isEmpty ? 'اشتراكات المتجر' : e.key,
         'n': e.value['n'],
         'refunds': e.value['refunds'],

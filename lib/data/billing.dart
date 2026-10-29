@@ -5,20 +5,27 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../l10n.dart';
 import 'fish_id_api.dart';
 
-/// اشتراكات المتجر عن طريق RevenueCat. الشراء يصير في Google Play برقم الحساب نفسه، وبعده يسأل الخادم
+/// اشتراكات المتجر عن طريق RevenueCat. الشراء يصير في Google Play أو App Store برقم الحساب نفسه، وبعده يسأل الخادم
 /// RevenueCat (POST fishId/sync، وكل حدث على /api/revenuecat) ويفتح الفحوصات.
 abstract final class Billing {
-  /// مفتاح RevenueCat العام لتطبيق Google Play. مفتاح عام ينحط في التطبيق، وما يسمح إلا بالشراء.
+  /// مفاتيح RevenueCat العامة لتطبيقي Google Play و App Store. مفاتيح عامة تنحط في التطبيق، وما تسمح إلا بالشراء.
   static const _androidKey = 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ';
+  static const _iosKey = 'appl_GFbVefXxLpnsgtEoUEtZohBxEav';
 
   static Future<bool>? _ready;
 
-  /// المتجر متاح في أندرويد فقط حاليًا، وما يشتغل في وضع التجربة.
-  static bool get supported => !kIsWeb && !isDemo && defaultTargetPlatform == TargetPlatform.android;
+  /// المتجر متاح في أندرويد والآيفون، وما يشتغل في الويب أو وضع التجربة.
+  static bool get supported =>
+      !kIsWeb &&
+      !isDemo &&
+      (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+
+  /// صفحة الآيفون لازم تعرض روابط الشروط والخصوصية مع الاشتراك المتجدد.
+  static bool get isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
   static Future<bool> _configure() => _ready ??= () async {
     try {
-      await Purchases.configure(PurchasesConfiguration(_androidKey)..appUserID = await FishIdApi.userId());
+      await Purchases.configure(PurchasesConfiguration(isIOS ? _iosKey : _androidKey)..appUserID = await FishIdApi.userId());
       return true;
     } on Object {
       _ready = null;
@@ -51,7 +58,7 @@ abstract final class Billing {
     return true;
   }
 
-  /// يسترجع اشتراك سابق على نفس حساب Google، مثلًا بعد إعادة تثبيت التطبيق.
+  /// يسترجع اشتراك سابق على نفس حساب Google أو Apple، مثلًا بعد إعادة تثبيت التطبيق.
   static Future<void> restore() async {
     if (!supported || !await _configure()) return;
     try {

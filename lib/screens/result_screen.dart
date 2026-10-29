@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/fish_id_api.dart';
 import '../data/ksafish.dart';
@@ -283,7 +284,7 @@ class _Error extends StatelessWidget {
   );
 }
 
-/// تظهر لما تخلص الفحوصات: الباقات بأسعارها من Google Play، أو الأسعار الثابتة لو المتجر مو جاهز.
+/// تظهر لما تخلص الفحوصات: الباقات بأسعارها من المتجر، أو الأسعار الثابتة لو المتجر مو جاهز.
 class _Subscribe extends StatefulWidget {
   const _Subscribe({required this.message});
   final String message;
@@ -368,6 +369,7 @@ class _SubscribeState extends State<_Subscribe> {
                     style: const TextStyle(color: AppColors.gold),
                   ),
                 ),
+                if (Billing.isIOS) const _Terms(),
               ] else ...[
                 _Plan(title: tr('شهري', 'Monthly'), price: tr('25 ريال', 'SAR 25'), note: tr('بالشهر', 'per month')),
                 const SizedBox(height: 8),
@@ -394,6 +396,42 @@ class _SubscribeState extends State<_Subscribe> {
       ),
     ),
   );
+}
+
+/// شروط الاشتراك المتجدد وروابطها، تطلبها أبل في صفحة الاشتراك (القاعدة 3.1.2).
+class _Terms extends StatelessWidget {
+  const _Terms();
+
+  static const _eula = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+  static const _privacy = 'https://hawat.id/privacy.html';
+
+  @override
+  Widget build(BuildContext context) {
+    const muted = TextStyle(color: AppColors.onNavyMuted, fontSize: 12, height: 1.5);
+    Widget link(String label, String url) => TextButton(
+      onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      child: Text(label, style: const TextStyle(color: AppColors.gold, fontSize: 13)),
+    );
+    return Column(
+      children: [
+        Text(
+          tr(
+            'الاشتراك يتجدد تلقائيًا بنفس السعر والمدة، إلا لو ألغيته قبل نهاية المدة بـ 24 ساعة على الأقل من إعدادات حسابك في App Store.',
+            'The subscription renews automatically at the same price and length unless you cancel it at least 24 hours before the period ends, in your App Store account settings.',
+          ),
+          textAlign: TextAlign.center,
+          style: muted,
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            link(tr('شروط الاستخدام', 'Terms of Use'), _eula),
+            link(tr('سياسة الخصوصية', 'Privacy Policy'), L10n.en ? '$_privacy#en' : _privacy),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class _Plan extends StatelessWidget {
