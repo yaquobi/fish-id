@@ -177,6 +177,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Image.asset('assets/brand/huwat.png', height: 22, semanticLabel: tr('حوات', 'HUWAT')),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  tr('© 2026 محمد عمر اليعقوبي. جميع الحقوق محفوظة.', '© 2026 Mohammed Omar Alyaquobi. All rights reserved.'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
                 SizedBox(height: MediaQuery.paddingOf(context).bottom + 16),
               ],
             ),
