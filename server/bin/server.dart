@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -13,6 +14,7 @@ import 'package:shelf/shelf_io.dart' as io;
 /// الإعدادات من متغيرات البيئة (ملف .env في docker compose):
 /// ANTHROPIC_API_KEY إلزامي، و FISHID_MODEL و FISHID_EFFORT و FISHID_PROMPT و FISHID_PER_MINUTE و PORT اختيارية.
 /// FISHID_ADMIN_TOKEN يفتح لوحة الأدمن. FISHID_RC_KEY مفتاح RevenueCat العام (نفس اللي في التطبيق) للتأكد من الاشتراكات.
+/// FISHID_TELEGRAM_TOKEN و FISHID_TELEGRAM_CHAT لتنبيهات المالك على تليجرام (يضبطها: bash server/telegram.sh).
 Future<void> main() async {
   final env = Platform.environment;
   final key = env['ANTHROPIC_API_KEY'] ?? '';
@@ -49,10 +51,43 @@ Future<void> main() async {
         (s['id'] as String).split('-').last: '${[s['red'], s['gulf'], s['sci']].firstWhere((n) => '${n ?? ''}'.isNotEmpty)}'.split('|').first.trim(),
     },
     perMinute: int.tryParse(env['FISHID_PER_MINUTE'] ?? '') ?? 30,
+    notify: _telegram(env['FISHID_TELEGRAM_TOKEN'] ?? '', env['FISHID_TELEGRAM_CHAT'] ?? ''),
   );
   final port = int.tryParse(env['PORT'] ?? '') ?? 8080;
   final server = await io.serve(app.handler, InternetAddress.anyIPv4, port);
   stdout.writeln('FishId: يستمع على المنفذ ${server.port}، ${(data['species'] as List).length} نوعًا');
+
+  final notify = app.notify;
+  if (notify != null) {
+    notify('✅ FISH ID: السيرفر اشتغل${ai == null ? '، لكن مفتاح Claude ناقص والفحوصات متوقفة' : ''}.');
+    // ملخص يومي الساعة 9 مساءً بتوقيت السعودية (6 مساءً UTC).
+    var sentOn = '';
+    Timer.periodic(const Duration(minutes: 1), (_) {
+      final riyadh = DateTime.now().toUtc().add(const Duration(hours: 3));
+      final day = riyadh.toIso8601String().substring(0, 10);
+      if (riyadh.hour != 21 || sentOn == day) return;
+      sentOn = day;
+      if (app.dailySummary(DateTime.now()) case final String text) notify(text);
+    });
+  }
+}
+
+/// يرسل التنبيه لمحادثة المالك في تليجرام بدون ما ينتظره أحد. أي خطأ ينكتب في السجل بس.
+Notify? _telegram(String token, String chat) {
+  if (token.isEmpty || chat.isEmpty) return null;
+  final http = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+  return (text) => unawaited(() async {
+    try {
+      final req = await http.postUrl(Uri.https('api.telegram.org', '/bot$token/sendMessage'));
+      req.headers.contentType = ContentType.json;
+      req.write(jsonEncode({'chat_id': chat, 'text': text, 'disable_web_page_preview': true}));
+      final res = await req.close().timeout(const Duration(seconds: 15));
+      await res.drain<void>();
+      if (res.statusCode != 200) stderr.writeln('FishId: تليجرام رد ${res.statusCode}');
+    } on Object catch (e) {
+      stderr.writeln('FishId: تعذّر الإرسال لتليجرام: $e');
+    }
+  }());
 }
 
 /// يسأل RevenueCat عن المشترك بالمفتاح العام، مثل ما يسوي التطبيق. المفتاح العام يقرأ بيانات المشترك بس.

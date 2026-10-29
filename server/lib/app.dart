@@ -16,6 +16,9 @@ typedef Identify = Future<String> Function(List<Photo> photos);
 /// يجيب بيانات المشترك من RevenueCat (GET /v1/subscribers/{id})، و null إذا تعذّر الاتصال.
 typedef SubscriberLookup = Future<Map<String, dynamic>?> Function(String user);
 
+/// يرسل تنبيه نصي للمالك (تليجرام). ما يرمي أخطاء، وما ينتظره الطلب.
+typedef Notify = void Function(String text);
+
 /// مسارات الخادم. نفس بروتوكول Serverpod اللي يكلمه التطبيق:
 /// POST fishId/identify بجسم `{"image": "decode('BASE64', 'base64')", "mediaType": "image/jpeg"}`،
 /// أو `{"images": [{"image": ..., "mediaType": ...}, ...]}` حتى [maxPhotos] صور لنفس السمكة.
@@ -39,6 +42,7 @@ class FishIdApp {
     this.revenueCat,
     this.speciesNames = const {},
     this.perMinute = 30,
+    this.notify,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
@@ -57,6 +61,9 @@ class FishIdApp {
   /// رقم حوات (4 أرقام) والاسم المحلي، للوحة الأدمن.
   final Map<String, String> speciesNames;
   final int perMinute;
+
+  /// تنبيهات المالك: اشتراكات، مساهمات، رفض Claude، وملخص يومي ([dailySummary]).
+  final Notify? notify;
   final DateTime Function() _clock;
 
   static const maxBytes = 5 * 1024 * 1024;
@@ -71,6 +78,20 @@ class FishIdApp {
 
   int _minute = 0;
   int _count = 0;
+
+  /// آخر وقت انرسل فيه كل نوع تنبيه، عشان ما يتكرر نفس التنبيه كثير.
+  final _told = <String, DateTime>{};
+
+  void _tell(String key, String text, {Duration every = Duration.zero}) {
+    final send = notify;
+    if (send == null) return;
+    final now = _clock();
+    final last = _told[key];
+    if (last != null && now.difference(last) < every) return;
+    if (_told.length > 1000) _told.clear();
+    _told[key] = now;
+    send(text);
+  }
 
   Handler get handler => (Request req) async {
     if (req.method == 'OPTIONS') return Response.ok(null, headers: _cors);
@@ -184,7 +205,16 @@ class FishIdApp {
     try {
       result = await runZoned(() => run(photos), zoneValues: {usageKey: usage, langKey: lang});
     } on FishIdError catch (e) {
-      if (e.code.startsWith('claude_')) await ledger?.raise(e.code, _clock());
+      if (e.code.startsWith('claude_')) {
+        await ledger?.raise(e.code, _clock());
+        _tell(
+          e.code,
+          e.code == 'claude_credit'
+              ? '🔴 FISH ID: رصيد Claude خلص والفحوصات متوقفة. اشحن الرصيد من console.anthropic.com وحدّثه في تبويب التنبيهات.'
+              : '🔴 FISH ID: Claude رفض المفتاح والفحوصات متوقفة. تأكد من المفتاح في السيرفر.',
+          every: const Duration(hours: 3),
+        );
+      }
       rethrow;
     }
     await store?.record(user, _clock(), result: result, usd: usageCost(usage), ms: watch.elapsedMilliseconds, photos: photos.length);
@@ -351,7 +381,69 @@ class FishIdApp {
       final confirmed = entitlements is Map && entitlements.values.whereType<Map>().any((e) => e['product_identifier'] == event['product_id']);
       await ledger!.recordSale(event, user: buyer, confirmed: confirmed, now: _clock());
     }
+    _tellSale(event, buyer, sub);
     return _json(200, {'ok': true});
+  }
+
+  static const _saleTypes = {
+    'INITIAL_PURCHASE': '🎉 اشتراك جديد',
+    'RENEWAL': '🔁 تجديد اشتراك',
+    'PRODUCT_CHANGE': '🔀 تغيير باقة',
+    'UNCANCELLATION': '↩️ رجع فعّل التجديد',
+    'CANCELLATION': '⚠️ إلغاء تجديد',
+    'BILLING_ISSUE': '⚠️ مشكلة في الدفع',
+    'EXPIRATION': '⏹️ انتهى اشتراك',
+  };
+
+  /// الحدث نفسه ما ينصدّق (الرابط بدون سر)، فما نرسل تنبيه إلا إذا RevenueCat أكد إن الحساب عنده نفس المنتج،
+  /// أو كان الحساب معروف عندنا في أحداث الإلغاء والانتهاء.
+  void _tellSale(Map event, String buyer, Map<String, dynamic>? sub) {
+    final type = '${event['type']}';
+    final title = _saleTypes[type];
+    if (title == null || sub == null) return;
+    final product = '${event['product_id'] ?? ''}';
+    final entitlements = (sub['subscriber'] as Map?)?['entitlements'];
+    final owns = entitlements is Map && entitlements.values.whereType<Map>().any((e) => e['product_identifier'] == product);
+    final known = accounts?.find(buyer) != null;
+    if (!(owns || (known && const {'CANCELLATION', 'BILLING_ISSUE', 'EXPIRATION'}.contains(type)))) return;
+    final p = product.toLowerCase();
+    final plan = p.contains('shop') ? 'محلات' : (p.contains('year') || p.contains('annual') ? 'سنوي' : 'شهري');
+    final amount = event['price_in_purchased_currency'];
+    final price = amount is num && amount != 0 ? ' · ${amount.toStringAsFixed(2)} ${event['currency'] ?? ''}' : '';
+    final test = event['environment'] == 'SANDBOX' ? ' (تجربة)' : '';
+    // RevenueCat يعيد إرسال الحدث إذا تأخر الرد، فنفس الحدث ما يتكرر تنبيهه.
+    _tell('sale:${event['id'] ?? buyer}', '$title$test: باقة $plan$price\nالحساب: $buyer', every: const Duration(days: 7));
+  }
+
+  /// ملخص اليوم للمالك: الفحوصات والتكلفة والمستخدمين والاشتراكات والتنبيهات المفتوحة. null إذا ما فيه حسابات.
+  String? dailySummary(DateTime now) {
+    final store = accounts;
+    if (store == null) return null;
+    final s = store.stats(now);
+    String sar(Object? v) => (v as num).toStringAsFixed(2);
+    final plans = s['plans'] as Map;
+    final lines = [
+      '📊 FISH ID: ملخص اليوم ${now.toUtc().add(const Duration(hours: 3)).toIso8601String().substring(0, 10)}',
+      'الفحوصات اليوم: ${s['scansToday']} (تكلفة ${sar(s['costTodaySar'])} ريال)',
+      'فحوصات الشهر: ${s['scansMonth']} (تكلفة ${sar(s['costMonthSar'])} ريال)',
+      'مستخدمين جدد اليوم: ${s['newToday']} · الأسبوع: ${s['newWeek']} · الكل: ${s['users']}',
+      'المشتركين: ${s['paying']} (شهري ${plans['monthly']}، سنوي ${plans['yearly']}، محلات ${plans['shop']})',
+      'الدخل الشهري التقديري: ${sar(s['mrrSar'])} ريال',
+    ];
+    final alerts = ledger?.alerts(now);
+    for (final a in (alerts?['alerts'] as List? ?? const []).whereType<Map>()) {
+      switch (a['code']) {
+        case 'claude_credit' || 'claude_account':
+          lines.add('🔴 Claude رافض الطلبات من ${'${a['at']}'.substring(0, 16)}');
+        case 'balance_out':
+          lines.add('🔴 رصيد Claude خلص حسب التقدير');
+        case 'balance_low':
+          lines.add('🟠 رصيد Claude باقي حوالي \$${a['leftUsd']}${a['daysLeft'] == null ? '' : '، يكفي ${a['daysLeft']} يوم'}');
+        case 'bill_due':
+          lines.add('🟠 فاتورة ${a['label']} (${a['provider']}) تستحق ${a['due']}: ${sar(a['sar'])} ريال');
+      }
+    }
+    return lines.join('\n');
   }
 
   /// ياخذ أبعد تاريخ انتهاء من صلاحيات المشترك الفعّالة في RevenueCat ويحطه على الحساب.
@@ -410,7 +502,7 @@ class FishIdApp {
     final predicted = [for (final p in (body['predicted'] is List ? body['predicted'] as List : const [])) '$p'].take(3).toList();
     final score = body['score'] is int ? (body['score'] as int).clamp(-1, 100) : -1;
     _limit();
-    return store.save(photos, {
+    final id = await store.save(photos, {
       'species': species,
       'species_confirmed': body['speciesConfirmed'] == true && species.isNotEmpty,
       'days_since_catch': days,
@@ -418,6 +510,13 @@ class FishIdApp {
       'predicted': predicted,
       'app_score': score,
     }, _clock());
+    final name = species.isEmpty ? 'بدون نوع' : '${speciesNames[species] ?? species} ($species)';
+    _tell(
+      'contrib',
+      '📸 مساهمة جديدة بصورة: $name · ${photos.length} صور${days >= 0 ? ' · $days يوم من الصيد' : ''}. راجعها من لوحة الأدمن.',
+      every: const Duration(minutes: 10),
+    );
+    return id;
   }
 
   void _limit() {
