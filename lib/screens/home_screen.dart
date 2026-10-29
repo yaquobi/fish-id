@@ -301,14 +301,16 @@ class _Menu extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          ListTile(
-            leading: const Icon(Icons.redeem_outlined),
-            title: Text(tr('عندك رمز؟', 'Have a code?')),
-            onTap: () {
-              Navigator.of(context).pop();
-              showDialog<void>(context: context, builder: (_) => const _CodeDialog());
-            },
-          ),
+          // Apple's rule 3.1.1 bars unlocking paid features outside in-app purchase, so iOS has no code field.
+          if (Theme.of(context).platform != TargetPlatform.iOS)
+            ListTile(
+              leading: const Icon(Icons.redeem_outlined),
+              title: Text(tr('عندك رمز؟', 'Have a code?')),
+              onTap: () {
+                Navigator.of(context).pop();
+                showDialog<void>(context: context, builder: (_) => const _CodeDialog());
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.badge_outlined),
             title: Text(tr('رقم حسابك', 'Your account ID')),
