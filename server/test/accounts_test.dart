@@ -30,7 +30,7 @@ void main() {
 
   // ما يرجّعه RevenueCat لكل حساب في الاختبارات.
   final subscribers = <String, Map<String, dynamic>>{};
-  FishIdApp app({String admin = 'secret-token'}) {
+  FishIdApp app({String admin = 'secret-token', Notify? notify}) {
     final accounts = AccountStore.open(dir.path)!;
     return FishIdApp(
       identify: fakeIdentify,
@@ -39,6 +39,7 @@ void main() {
       staff: StaffStore.open(accounts.dir),
       adminToken: admin,
       revenueCat: (id) async => {'subscriber': {'entitlements': subscribers[id] ?? {}}},
+      notify: notify,
       clock: () => t,
     );
   }
@@ -298,5 +299,43 @@ void main() {
     al = jsonDecode(await (await admin(b, 'alerts')).readAsString());
     expect([for (final x in al['alerts']) x['code']], ['balance_out', 'bill_due']);
     expect(al['upcoming'][0]['due'], '2026-11-02');
+  });
+
+  test('telegram: confirmed sales, Claude refusing once per 3 hours, and the daily summary', () async {
+    final sent = <String>[];
+    final a = app(notify: sent.add);
+    Future<void> rc(Map<String, Object> event) async =>
+        a.handler(Request('POST', Uri.parse('http://x/api/revenuecat'), body: jsonEncode({'event': {'app_user_id': user, ...event}})));
+    final sale = {'id': 'ev1', 'type': 'INITIAL_PURCHASE', 'product_id': 'fishid_yearly', 'price': 53, 'currency': 'SAR', 'price_in_purchased_currency': 199.99};
+    // حدث ما أكده RevenueCat ما يوصل تنبيهه.
+    await rc(sale);
+    expect(sent, isEmpty);
+    subscribers[user] = {
+      'FISH ID Pro': {'product_identifier': 'fishid_yearly', 'expires_date': t.add(const Duration(days: 365)).toIso8601String()},
+    };
+    await rc(sale);
+    expect(sent.single, contains('اشتراك جديد'));
+    expect(sent.single, contains('سنوي · 199.99 SAR'));
+    await rc(sale); // نفس الحدث ما يتكرر.
+    expect(sent, hasLength(1));
+
+    final b = FishIdApp(
+      identify: (_) async => throw const FishIdError('claude_credit', 'x', status: 503),
+      accounts: AccountStore.open(dir.path),
+      ledger: Ledger.open(AccountStore.open(dir.path)!),
+      notify: sent.add,
+      clock: () => t,
+    );
+    await scan(b);
+    await scan(b);
+    expect(sent.where((m) => m.contains('رصيد Claude خلص')), hasLength(1));
+    t = t.add(const Duration(hours: 3));
+    await scan(b);
+    expect(sent.where((m) => m.contains('رصيد Claude خلص')), hasLength(2));
+
+    final summary = b.dailySummary(t)!;
+    expect(summary, contains('ملخص اليوم'));
+    expect(summary, contains('سنوي 1'));
+    expect(summary, contains('Claude رافض الطلبات'));
   });
 }

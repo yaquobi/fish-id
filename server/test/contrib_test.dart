@@ -28,7 +28,14 @@ void main() {
 
   test('saves a consented contribution with clean metadata', () async {
     final dir = Directory.systemTemp.createTempSync('contrib');
-    final app = FishIdApp(identify: null, contrib: ContribStore(dir.path), clock: () => DateTime.utc(2026, 10, 28, 9));
+    final sent = <String>[];
+    final app = FishIdApp(
+      identify: null,
+      contrib: ContribStore(dir.path),
+      speciesNames: const {'0220': 'شعور'},
+      notify: sent.add,
+      clock: () => DateTime.utc(2026, 10, 28, 9),
+    );
     final res = await app.handler(
       _post({
         'images': [image()],
@@ -50,6 +57,7 @@ void main() {
     expect(meta['days_since_catch'], 2);
     expect(meta['storage'], 'ice');
     expect(String.fromCharCodes(File('${folder.path}/1.jpg').readAsBytesSync()).contains('GPS'), isFalse);
+    expect(sent.single, contains('شعور (0220) · 1 صور · 2 يوم من الصيد'));
     dir.deleteSync(recursive: true);
   });
 
