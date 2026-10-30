@@ -49,6 +49,12 @@ class AccountStore {
     return AccountStore._(dir, maps('accounts.json'), {...defaults, ...read('settings.json')}, maps('codes.json'));
   }
 
+  /// رصيد حساب المالك: بلا حد فعليًا، والرقم الكبير يخلي التطبيقات القديمة تفهمه كرصيد عادي.
+  static const ownerRemaining = 9999;
+
+  /// حساب المالك (صاحب التطبيق): كل الخصائص مفتوحة للأبد بدون دفع، وما يتأثر بالمتجر.
+  static bool _owner(Map<String, dynamic> a) => a['owner'] == true;
+
   int _int(String k) => (settings[k] as num?)?.toInt() ?? (defaults[k] as num).toInt();
   bool get requireAccount => settings['requireAccount'] == true;
 
@@ -79,6 +85,7 @@ class AccountStore {
 
   /// الفحوصات المتبقية بدون الهدايا: للمشترك من سقف الشهر، ولغيره من الفحوصات المجانية مرة وحدة.
   int _base(Map<String, dynamic> a, DateTime now) {
+    if (_owner(a)) return ownerRemaining;
     if (_active(a, now)) {
       final used = a['month'] == _month(now) ? (a['monthUsed'] as int? ?? 0) : 0;
       return _int(a['plan'] == 'shop' ? 'shopCap' : 'monthlyCap') - used;
@@ -109,7 +116,9 @@ class AccountStore {
   Future<void> record(String? id, DateTime now, {required String result, required double usd, required int ms, required int photos}) async {
     if (id != null) {
       final a = account(id, now);
-      if (_base(a, now) > 0) {
+      if (_owner(a)) {
+        // المالك ما ينحسب عليه شي.
+      } else if (_base(a, now) > 0) {
         if (_active(a, now)) {
           if (a['month'] != _month(now)) a['monthUsed'] = 0;
           a['month'] = _month(now);
@@ -150,13 +159,13 @@ class AccountStore {
   }
 
   /// تعديل من الأدمن أو من RevenueCat: هدية فحوصات، أو باقة لعدد أيام، أو إيقاف.
-  Future<Map<String, dynamic>> update(String id, DateTime now, {int? grant, String? plan, DateTime? until, bool? blocked, String? source, String? by}) async {
+  Future<Map<String, dynamic>> update(String id, DateTime now, {int? grant, String? plan, DateTime? until, bool? blocked, bool? owner, String? source, String? by}) async {
     final a = account(id, now);
     // سجل تعديلات الأدمن (آخر 30) يظهر في تفاصيل الحساب.
     if (by != null) {
       a['log'] = [
         ...((a['log'] as List?) ?? const []).skip(((a['log'] as List?)?.length ?? 0) >= 30 ? 1 : 0),
-        {'at': now.toUtc().toIso8601String(), 'by': by, 'grant': ?grant, 'plan': ?plan, 'until': ?until?.toUtc().toIso8601String(), 'blocked': ?blocked},
+        {'at': now.toUtc().toIso8601String(), 'by': by, 'grant': ?grant, 'plan': ?plan, 'until': ?until?.toUtc().toIso8601String(), 'blocked': ?blocked, 'owner': ?owner},
       ];
     }
     if (grant != null) a['bonus'] = ((a['bonus'] as int? ?? 0) + grant).clamp(0, 100000);
@@ -175,6 +184,12 @@ class AccountStore {
       }
     }
     if (blocked != null) a['blocked'] = blocked;
+    if (owner == true) {
+      a['owner'] = true;
+      a['blocked'] = false;
+    } else if (owner == false) {
+      a.remove('owner');
+    }
     await _save();
     return view(id, now);
   }
@@ -187,17 +202,21 @@ class AccountStore {
   }
 
   /// سقف الفحوصات اللي يُقاس عليه الرصيد: سقف الشهر للمشترك، والمجانية لغيره.
-  int _cap(Map<String, dynamic> a, DateTime now) => _active(a, now) ? _int(a['plan'] == 'shop' ? 'shopCap' : 'monthlyCap') : _int('freeScans');
+  int _cap(Map<String, dynamic> a, DateTime now) => _owner(a)
+      ? ownerRemaining
+      : _active(a, now) ? _int(a['plan'] == 'shop' ? 'shopCap' : 'monthlyCap') : _int('freeScans');
 
   /// حالة الحساب في لوحة الأدمن: blocked موقوف، soon ينتهي خلال 7 أيام، active مشترك، empty مجاني خلص رصيده، free مجاني.
   String _status(Map<String, dynamic> a, DateTime now) {
     if (a['blocked'] == true) return 'blocked';
+    if (_owner(a)) return 'owner';
     if (_active(a, now)) return DateTime.parse('${a['until']}').difference(now).inDays < 7 ? 'soon' : 'active';
     return _base(a, now) > 0 || (a['bonus'] as int? ?? 0) > 0 ? 'free' : 'empty';
   }
 
   /// من وين جت الباقة أو الرصيد: store المتجر، manual من الأدمن، code رمز هدية، وفاضي للمجاني العادي.
   String _from(Map<String, dynamic> a) {
+    if (_owner(a)) return 'owner';
     if (a['plan'] != 'free') return a['source'] == 'store' ? 'store' : 'manual';
     return (a['codes'] as List?)?.isNotEmpty == true ? 'code' : '';
   }

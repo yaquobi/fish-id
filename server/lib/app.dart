@@ -165,7 +165,7 @@ class FishIdApp {
         final store = accounts;
         if (user == null || store == null) return _json(200, {'plan': 'free', 'remaining': null});
         final v = store.view(user, _clock());
-        return _json(200, {'plan': v['active'] == true ? v['plan'] : 'free', 'until': v['until'], 'remaining': v['remaining']});
+        return _json(200, {'plan': v['from'] == 'owner' ? 'owner' : (v['active'] == true ? v['plan'] : 'free'), 'until': v['until'], 'remaining': v['remaining']});
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
@@ -411,7 +411,7 @@ class FishIdApp {
             until = (cur != null && cur.isAfter(now) ? cur : now).add(Duration(days: extend));
             plan ??= a?['plan'] == 'free' || a == null ? 'monthly' : a['plan'] as String;
           }
-          out.add(await store.update(id, now, grant: (b['grant'] as num?)?.toInt(), plan: plan, until: until, blocked: b['blocked'] as bool?, by: by));
+          out.add(await store.update(id, now, grant: (b['grant'] as num?)?.toInt(), plan: plan, until: until, blocked: b['blocked'] as bool?, owner: b['owner'] as bool?, by: by));
         }
         return _json(200, parts.length == 3 ? out.single : {'updated': out.length});
       case ('GET', 'scans') when store != null:
