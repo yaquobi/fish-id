@@ -52,7 +52,8 @@ gtag('config', 'G-DXP9EDEF08', { allow_google_signals: false, allow_ad_personali
    "sameAs": [
     "https://ksafish.com/ar",
     "https://www.facebook.com/fishid.sa",
-    "https://www.instagram.com/fishid.sa/"
+    "https://www.instagram.com/fishid.sa/",
+    "https://x.com/FishID_sa"
    ]
   },
   {
@@ -405,6 +406,18 @@ footer .sp{flex:1}
 footer .by{display:inline-flex;gap:8px;align-items:center}
 footer .copy{flex-basis:100%;font-size:13px;opacity:.75}
 footer .huwat{height:24px}
+.notify{max-width:520px;margin:30px auto 0;background:rgba(255,255,255,.06);border:1px solid rgba(242,193,78,.35);border-radius:20px;padding:24px;text-align:start;scroll-margin-top:90px}
+.notify h3{margin:0 0 4px;color:#fff;font-size:21px}
+.notify p{margin:0 0 16px;color:var(--on-navy);font-size:15px}
+.notify .row{display:flex;gap:10px;flex-wrap:wrap}
+.notify input[type=text]{flex:1 1 220px;min-height:54px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:#fff;color:var(--navy);font:600 17px var(--ar);padding:0 16px;min-width:0}
+.notify input[type=text]:focus{outline:3px solid var(--gold);outline-offset:1px}
+.notify label.ok{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:14px;color:var(--on-navy);cursor:pointer}
+.notify label.ok input{width:20px;height:20px;margin-top:3px;accent-color:var(--gold);flex:none}
+.notify label.ok a{color:var(--gold)}
+.notify .msg{margin-top:12px;font-weight:700;font-size:15px;min-height:1.5em}
+.notify .msg.good{color:#7EE2A8}.notify .msg.bad{color:#FFB4A8}
+.notify.done .row,.notify.done label.ok{display:none}
 .soc{display:inline-flex;gap:10px;align-items:center}
 .soc a{display:inline-flex;width:34px;height:34px;border-radius:50%;align-items:center;justify-content:center;background:rgba(255,255,255,.1);color:#fff;transition:background .2s}
 .soc a:hover{background:var(--gold);color:var(--navy)}
@@ -448,7 +461,7 @@ footer a{color:var(--on-navy)}
       <a class="k" href="#pricing">الأسعار</a>
       <a class="k" href="#science">العلم</a>
       <a class="k" href="#download">التحميل</a>
-      <span class="soc"><a href="https://www.facebook.com/fishid.sa" target="_blank" rel="noopener" aria-label="فيسبوك FISH ID" data-track="facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.88v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg></a><a href="https://www.instagram.com/fishid.sa/" target="_blank" rel="noopener" aria-label="إنستغرام FISH ID" data-track="instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.79.31-1.46.72-2.13 1.38A5.88 5.88 0 0 0 .63 4.14C.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.38 2.13a5.88 5.88 0 0 0 2.13 1.38c.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56a5.88 5.88 0 0 0 2.13-1.38 5.88 5.88 0 0 0 1.38-2.13c.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.88 5.88 0 0 0-1.38-2.13A5.88 5.88 0 0 0 19.86.63C19.1.33 18.22.13 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a></span>
+      <span class="soc"><a href="https://www.facebook.com/fishid.sa" target="_blank" rel="noopener" aria-label="فيسبوك FISH ID" data-track="facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.88v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg></a><a href="https://www.instagram.com/fishid.sa/" target="_blank" rel="noopener" aria-label="إنستغرام FISH ID" data-track="instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.79.31-1.46.72-2.13 1.38A5.88 5.88 0 0 0 .63 4.14C.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.38 2.13a5.88 5.88 0 0 0 2.13 1.38c.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56a5.88 5.88 0 0 0 2.13-1.38 5.88 5.88 0 0 0 1.38-2.13c.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.88 5.88 0 0 0-1.38-2.13A5.88 5.88 0 0 0 19.86.63C19.1.33 18.22.13 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a><a href="https://x.com/FishID_sa" target="_blank" rel="noopener" aria-label="إكس FISH ID" data-track="x"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 1.2h3.7l-8 9.1 9.4 12.5h-7.4l-5.8-7.6-6.6 7.6H.5l8.6-9.8L0 1.2h7.6l5.2 6.9zm-1.3 19.4h2L6.5 3.3H4.3z"/></svg></a></span>
     </nav>
 
     <div class="hero-grid">
@@ -457,7 +470,7 @@ footer a{color:var(--on-navy)}
         <h1>صوّر السمكة،<br>واعرف <em>نوعها وطزاجتها</em> في ثواني.</h1>
         <p class="lead">FISH ID يتعرف على أسماك البحر الأحمر والخليج العربي من صورة بجوالك، ويعطيك اسمها المحلي والعلمي، ويقدّر طزاجتها من العين والخياشيم والجلد.</p>
         <div class="cta">
-          <a class="btn gold" href="#download">حمّل التطبيق</a>
+          <a class="btn gold" href="#notify" data-track="notify_button">بلّغني أول ما ينزل</a>
           <a class="btn ghost" href="#pricing">الأسعار</a>
         </div>
         <div class="stats">
@@ -742,7 +755,17 @@ footer a{color:var(--on-navy)}
         <span class="btn store" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9s-2-.9-3.4-.9C5.9 6.8 4.2 7.8 3.3 9.4c-1.9 3.3-.5 8.1 1.3 10.8.9 1.3 1.9 2.7 3.3 2.7 1.3-.1 1.8-.9 3.4-.9s2 .9 3.4.8c1.4 0 2.3-1.3 3.2-2.6 1-1.5 1.4-2.9 1.4-3-.1 0-2.9-1.1-2.9-4.6zM13.8 4.9c.7-.9 1.2-2.1 1.1-3.3-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.2 1.1.1 2.3-.6 3-1.5z"/></svg><span><small>قريبًا على</small>App Store</span></span>
       </div>
       <span class="testers">مسجّل معنا كمختبر؟ <a href="https://play.google.com/apps/testing/sa.hawat.fish_id" target="_blank" rel="noopener">انضم لتجربة أندرويد من هنا</a>، ولآيفون يوصلك رابط TestFlight على إيميلك.</span>
-      <div class="follow"><span>تابعنا وأول ما ينزل التطبيق تعرف</span><span class="soc big"><a href="https://www.facebook.com/fishid.sa" target="_blank" rel="noopener" aria-label="فيسبوك FISH ID" data-track="facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.88v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg></a><a href="https://www.instagram.com/fishid.sa/" target="_blank" rel="noopener" aria-label="إنستغرام FISH ID" data-track="instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.79.31-1.46.72-2.13 1.38A5.88 5.88 0 0 0 .63 4.14C.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.38 2.13a5.88 5.88 0 0 0 2.13 1.38c.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56a5.88 5.88 0 0 0 2.13-1.38 5.88 5.88 0 0 0 1.38-2.13c.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.88 5.88 0 0 0-1.38-2.13A5.88 5.88 0 0 0 19.86.63C19.1.33 18.22.13 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a></span></div>
+      <form class="notify" id="notify" novalidate>
+        <h3>بلّغني أول ما ينزل 🔔</h3>
+        <p>اكتب إيميلك أو رقم جوالك، ونرسل لك رسالة وحدة يوم الإطلاق بس.</p>
+        <div class="row">
+          <input type="text" name="contact" inputmode="email" autocomplete="email" placeholder="إيميلك أو جوالك 05xxxxxxxx" aria-label="إيميلك أو رقم جوالك" required maxlength="120">
+          <button class="btn gold" type="submit">سجّلني</button>
+        </div>
+        <label class="ok"><input type="checkbox" name="consent" required><span>أوافق إن FISH ID يراسلني وقت الإطلاق. نحذف بياناتي إذا طلبت، والتفاصيل في <a href="/privacy.html">سياسة الخصوصية</a>.</span></label>
+        <div class="msg" role="status" aria-live="polite"></div>
+      </form>
+      <div class="follow"><span>تابعنا وأول ما ينزل التطبيق تعرف</span><span class="soc big"><a href="https://www.facebook.com/fishid.sa" target="_blank" rel="noopener" aria-label="فيسبوك FISH ID" data-track="facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.88v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg></a><a href="https://www.instagram.com/fishid.sa/" target="_blank" rel="noopener" aria-label="إنستغرام FISH ID" data-track="instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.79.31-1.46.72-2.13 1.38A5.88 5.88 0 0 0 .63 4.14C.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.38 2.13a5.88 5.88 0 0 0 2.13 1.38c.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56a5.88 5.88 0 0 0 2.13-1.38 5.88 5.88 0 0 0 1.38-2.13c.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.88 5.88 0 0 0-1.38-2.13A5.88 5.88 0 0 0 19.86.63C19.1.33 18.22.13 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a><a href="https://x.com/FishID_sa" target="_blank" rel="noopener" aria-label="إكس FISH ID" data-track="x"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 1.2h3.7l-8 9.1 9.4 12.5h-7.4l-5.8-7.6-6.6 7.6H.5l8.6-9.8L0 1.2h7.6l5.2 6.9zm-1.3 19.4h2L6.5 3.3H4.3z"/></svg></a></span></div>
     </div>
   </section>
 </main>
@@ -755,7 +778,7 @@ footer a{color:var(--on-navy)}
     <a href="https://ksafish.com/ar" target="_blank" rel="noopener">موسوعة KSAFish</a>
     <a href="/privacy.html">سياسة الخصوصية</a>
     <a href="mailto:yaquobi@hawat.sa">تواصل معنا</a>
-    <span class="soc"><a href="https://www.facebook.com/fishid.sa" target="_blank" rel="noopener" aria-label="فيسبوك FISH ID" data-track="facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.88v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg></a><a href="https://www.instagram.com/fishid.sa/" target="_blank" rel="noopener" aria-label="إنستغرام FISH ID" data-track="instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.79.31-1.46.72-2.13 1.38A5.88 5.88 0 0 0 .63 4.14C.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.38 2.13a5.88 5.88 0 0 0 2.13 1.38c.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56a5.88 5.88 0 0 0 2.13-1.38 5.88 5.88 0 0 0 1.38-2.13c.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.88 5.88 0 0 0-1.38-2.13A5.88 5.88 0 0 0 19.86.63C19.1.33 18.22.13 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a></span>
+    <span class="soc"><a href="https://www.facebook.com/fishid.sa" target="_blank" rel="noopener" aria-label="فيسبوك FISH ID" data-track="facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.88v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg></a><a href="https://www.instagram.com/fishid.sa/" target="_blank" rel="noopener" aria-label="إنستغرام FISH ID" data-track="instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.79.31-1.46.72-2.13 1.38A5.88 5.88 0 0 0 .63 4.14C.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.38 2.13a5.88 5.88 0 0 0 2.13 1.38c.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56a5.88 5.88 0 0 0 2.13-1.38 5.88 5.88 0 0 0 1.38-2.13c.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.88 5.88 0 0 0-1.38-2.13A5.88 5.88 0 0 0 19.86.63C19.1.33 18.22.13 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a><a href="https://x.com/FishID_sa" target="_blank" rel="noopener" aria-label="إكس FISH ID" data-track="x"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 1.2h3.7l-8 9.1 9.4 12.5h-7.4l-5.8-7.6-6.6 7.6H.5l8.6-9.8L0 1.2h7.6l5.2 6.9zm-1.3 19.4h2L6.5 3.3H4.3z"/></svg></a></span>
     <span class="copy">© 2026 محمد عمر اليعقوبي – منظومة حوات. جميع الحقوق محفوظة.</span>
   </div>
 </footer>
@@ -770,9 +793,33 @@ footer a{color:var(--on-navy)}
   document.addEventListener('click',function(ev){
     var a=ev.target.closest&&ev.target.closest('a,.btn.store');if(!a)return;
     var t=a.dataset.track||(a.classList.contains('store')?'store':'');
-    if(!t){var h=a.getAttribute('href')||'';if(h.indexOf('play.google')>=0)t='play_testing';else if(h.indexOf('ksafish.com')>=0)t='ksafish';else if(h.indexOf('mailto:')===0)t='email';else if(h==='#download')t='download_button';else if(h==='#pricing')t='pricing_button'}
+    if(!t){var h=a.getAttribute('href')||'';if(h.indexOf('play.google')>=0)t='play_testing';else if(h.indexOf('ksafish.com')>=0)t='ksafish';else if(h.indexOf('mailto:')===0)t='email';else if(h==='#download')t='download_button';else if(h==='#pricing')t='pricing_button';else if(h==='#notify')t='notify_button'}
     if(t)send({e:'click',t:t});
   },true);
+})();
+(function(){
+  var f=document.getElementById('notify');if(!f)return;
+  var m=f.querySelector('.msg'),b=f.querySelector('button');
+  function say(t,ok){m.textContent=t;m.className='msg '+(ok?'good':'bad')}
+  f.addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var c=f.contact.value.trim();
+    if(!c){say('اكتب إيميلك أو رقم جوالك');f.contact.focus();return}
+    if(!f.consent.checked){say('علّم على الموافقة عشان نقدر نراسلك');return}
+    var q=new URLSearchParams(location.search),src=q.get('utm_source')||(q.has('fbclid')?'fb_ad':'');
+    if(!src&&document.referrer){try{src=new URL(document.referrer).hostname}catch(e){}}
+    b.disabled=true;say('لحظة…',true);
+    fetch('/api/waitlist',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contact:c,consent:true,src:src||'direct',lang:'ar'})})
+      .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
+      .then(function(x){
+        if(!x.ok){say(x.d.message||'صار خطأ، جرب مرة ثانية');return}
+        f.classList.add('done');
+        say(x.d['new']?'تم ✅ أول ما ينزل التطبيق توصلك رسالة منا.':'أنت مسجّل معنا من قبل ✅ توصلك رسالة يوم الإطلاق.',true);
+        try{navigator.sendBeacon('/api/track',new Blob([JSON.stringify({e:'click',t:'waitlist_signup'})],{type:'text/plain'}))}catch(e){}
+      })
+      .catch(function(){say('ما قدرنا نوصل للخادم، جرب بعد شوي')})
+      .then(function(){b.disabled=false});
+  });
 })();
 document.querySelectorAll('.lang-switch button').forEach(function(b){b.addEventListener('click',function(){
   var l=b.dataset.lang;

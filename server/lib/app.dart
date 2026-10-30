@@ -11,6 +11,7 @@ import 'contrib.dart';
 import 'ledger.dart';
 import 'site.dart';
 import 'staff.dart';
+import 'waitlist.dart';
 
 typedef Identify = Future<String> Function(List<Photo> photos);
 
@@ -31,6 +32,7 @@ typedef Notify = void Function(String text);
 /// POST fishId/redeem بجسم {"code"} يضيف فحوصات رمز الهدية ويرجّع المتبقي.
 /// POST fishId/sync يتأكد من اشتراك الحساب في RevenueCat بعد الشراء ويرجّع المتبقي.
 /// POST track من صفحة hawat.id: زيارة أو ضغطة ([site])، وتطلع في الملخص اليومي.
+/// POST waitlist من نفس الصفحة: {"contact", "consent": true} إيميل أو جوال لقائمة «بلّغني بالإطلاق» ([waitlist]).
 /// admin/... لوحة الأدمن ([adminToken])، و revenuecat يستقبل أحداث الاشتراك. الحدث مجرد تنبيه: الخادم ما يصدّق
 /// محتواه، ويسأل RevenueCat ([revenueCat]) عن الاشتراك الحقيقي، فما نحتاج سر مشترك.
 class FishIdApp {
@@ -46,6 +48,7 @@ class FishIdApp {
     this.perMinute = 30,
     this.notify,
     this.site,
+    this.waitlist,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
@@ -70,6 +73,9 @@ class FishIdApp {
 
   /// زيارات وضغطات صفحة hawat.id.
   final SiteStats? site;
+
+  /// المسجلين في «بلّغني بالإطلاق».
+  final Waitlist? waitlist;
   final DateTime Function() _clock;
 
   static const maxBytes = 5 * 1024 * 1024;
@@ -121,6 +127,23 @@ class FishIdApp {
         }
       }
       return Response(204, headers: _cors);
+    }
+    if (req.method == 'POST' && path == 'waitlist') {
+      final list = waitlist;
+      if (list == null) return _json(503, {'code': 'unavailable', 'message': 'التسجيل مو متاح الحين'});
+      try {
+        final text = await req.readAsString();
+        final body = text.length > 2000 ? null : jsonDecode(text);
+        if (body is! Map) throw const FishIdError('bad_request', 'الطلب غير صالح');
+        final ip = (req.headers['x-forwarded-for'] ?? '').split(',').first.trim();
+        final added = await list.add(body, ip: ip, now: _clock());
+        if (added) _tell('waitlist', '📝 تسجيل جديد في «بلّغني بالإطلاق»\nالمجموع: ${list.count}', every: const Duration(minutes: 15));
+        return _json(200, {'ok': true, 'new': added});
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      } on FormatException {
+        return _json(400, {'code': 'bad_request', 'message': 'الطلب غير صالح'});
+      }
     }
     if (req.method == 'POST' && path == 'fishId/identify') {
       try {
@@ -313,6 +336,12 @@ class FishIdApp {
         if (b['balanceUsd'] is! num) throw const FishIdError('bad_request', 'الطلب غير صالح');
         await ledger!.setBalance(b['balanceUsd'] as num, now);
         return _json(200, ledger!.alerts(now));
+      case ('GET', 'waitlist') when waitlist != null:
+        return _json(200, waitlist!.view(now));
+      case ('POST', 'waitlist') when waitlist != null:
+        final b = await body();
+        if (b['delete'] is String) await waitlist!.remove(b['delete'] as String);
+        return _json(200, waitlist!.view(now));
       case ('GET', 'site'):
         return _json(200, {
           ...?site?.view(now),
@@ -471,6 +500,8 @@ class FishIdApp {
           lines.add('🟠 فاتورة ${a['label']} (${a['provider']}) تستحق ${a['due']}: ${sar(a['sar'])} ريال');
       }
     }
+    final wl = waitlist?.view(now);
+    if (wl != null) lines.add('📝 «بلّغني بالإطلاق»: ${wl['count']} مسجل (اليوم +${wl['today']})');
     return [...lines, ...web].join('\n');
   }
 

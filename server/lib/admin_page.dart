@@ -287,15 +287,16 @@ const icons = {
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
   codes: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 8v12M3 12h18M12 8c-2-4-6-4-6-1.5S10 8 12 8zm0 0c2-4 6-4 6-1.5S14 8 12 8z"/>',
   site: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/>',
+  launch: '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>',
   staff: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/><path d="M17 3l1.5 1.5L21 2"/>',
 };
 const tabName = k => ({home: T('الرئيسية', 'Overview'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
-  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), staff: T('الفريق', 'Team')})[k];
+  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
-  owner: ['home', 'site', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes', 'staff'],
-  admin: ['home', 'site', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes'],
+  owner: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes', 'staff'],
+  admin: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes'],
   accountant: ['home', 'report', 'money', 'alerts'],
   investor: ['report'],
 };
@@ -578,7 +579,7 @@ const views = {
     const srcNames = {fb_ad: T('إعلان فيسبوك/إنستغرام', 'Facebook/Instagram ad'), facebook: T('فيسبوك', 'Facebook'), instagram: T('إنستغرام', 'Instagram'), google: 'Google', bing: 'Bing',
       tiktok: 'TikTok', snapchat: 'Snapchat', x: 'X', whatsapp: 'WhatsApp', telegram: 'Telegram', ksafish: T('الموسوعة', 'KSAFish'), direct: T('مباشر', 'Direct'), other: T('غيره', 'Other')};
     const clickNames = {download_button: T('زر حمّل التطبيق', 'Download button'), store: T('أزرار المتاجر', 'Store buttons'), play_testing: T('رابط تجربة أندرويد', 'Android testing link'),
-      pricing_button: T('زر الأسعار', 'Pricing button'), facebook: T('أيقونة فيسبوك', 'Facebook icon'), instagram: T('أيقونة إنستغرام', 'Instagram icon'), ksafish: T('روابط الموسوعة', 'KSAFish links'), email: T('تواصل معنا', 'Contact us')};
+      pricing_button: T('زر الأسعار', 'Pricing button'), facebook: T('أيقونة فيسبوك', 'Facebook icon'), instagram: T('أيقونة إنستغرام', 'Instagram icon'), x: T('أيقونة إكس', 'X icon'), notify_button: T('زر بلّغني', 'Notify-me button'), waitlist_signup: T('سجلوا في بلّغني', 'Waitlist signups'), ksafish: T('روابط الموسوعة', 'KSAFish links'), email: T('تواصل معنا', 'Contact us')};
     const dot = (ok, yes, no) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--${ok ? 'good' : 'bad'});margin-inline-end:8px"></span>${ok ? yes : no}</td></tr>`;
     const list = (m, names) => {
       const rows = Object.entries(m || {}).sort((a, b) => b[1] - a[1]);
@@ -608,6 +609,38 @@ const views = {
         <div class="card"><h3>${T('من وين جوا (30 يوم)', 'Where they came from (30 days)')}</h3>${list(r.month.src, srcNames)}</div>
         <div class="card"><h3>${T('وش ضغطوا (30 يوم)', 'What they clicked (30 days)')}</h3>${list(r.month.clicks, clickNames)}</div>
       </div>` : ''}`;
+  },
+
+  // اللي سجلوا في hawat.id عشان نبلغهم وقت الإطلاق.
+  async launch() {
+    const r = await api('waitlist');
+    const draw = r => {
+      $('#app').innerHTML = heading(T('بلّغني بالإطلاق', 'Launch waitlist'), T('اللي سجلوا إيميلهم أو جوالهم في hawat.id، نرسل لهم رسالة «تم التدشين» وقت الإطلاق', 'People who left an email or phone on hawat.id, to get a launch message'),
+        `<button class="act ghost noprint" id="wcsv">${T('تصدير Excel', 'Export to Excel')}</button>`) + `
+        <div class="grid">
+          ${kpi(T('المسجلين', 'Signed up'), num(r.count), `${T('إيميل', 'Email')} ${num(r.emails)} · ${T('جوال', 'Phone')} ${num(r.phones)}`, 'hero')}
+          ${kpi(T('اليوم', 'Today'), num(r.today))}
+          ${kpi(T('آخر 7 أيام', 'Last 7 days'), num(r.week))}
+        </div>
+        <div class="card" style="margin-top:14px"><table>
+          <tr><th>${T('الإيميل أو الجوال', 'Email or phone')}</th><th>${T('الاسم', 'Name')}</th><th>${T('من وين', 'Source')}</th><th>${T('الوقت', 'When')}</th><th></th></tr>
+          ${r.items.map(x => `<tr><td class="mono" dir="ltr">${esc(x.contact)}</td><td>${esc(x.name || '')}</td><td>${esc(x.src || '')}</td><td>${when(x.at)}</td><td><button class="act ghost sm" data-wdel="${esc(x.id)}">${T('حذف', 'Delete')}</button></td></tr>`).join('') || `<tr><td class="msg" colspan="5">${T('ما فيه أحد للحين', 'Nobody yet')}</td></tr>`}
+        </table></div>`;
+      $('#wcsv').onclick = () => {
+        const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const lines = [[T('الإيميل أو الجوال', 'Email or phone'), T('النوع', 'Type'), T('الاسم', 'Name'), T('اللغة', 'Language'), T('من وين', 'Source'), T('الوقت', 'When')],
+          ...r.items.map(x => [x.contact, x.kind, x.name, x.lang, x.src, x.at])];
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob(['﻿' + lines.map(l => l.map(q).join(',')).join('\r\n')], {type: 'text/csv;charset=utf-8'}));
+        a.download = `fish-id-waitlist-${today()}.csv`;
+        a.click();
+      };
+      document.querySelectorAll('[data-wdel]').forEach(b => b.onclick = async () => {
+        if (!confirm(T('تحذف هذا التسجيل؟', 'Delete this signup?'))) return;
+        draw(await post('waitlist', {delete: b.dataset.wdel}));
+      });
+    };
+    draw(r);
   },
 
   // ملخص يوم أو شهر أو سنة، يصلح يُطبع ويُعطى للمستثمر.
