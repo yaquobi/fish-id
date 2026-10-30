@@ -9,6 +9,7 @@ import 'admin_page.dart';
 import 'claude.dart';
 import 'contrib.dart';
 import 'ledger.dart';
+import 'site.dart';
 import 'staff.dart';
 
 typedef Identify = Future<String> Function(List<Photo> photos);
@@ -29,6 +30,7 @@ typedef Notify = void Function(String text);
 /// GET fishId/me يرجّع الباقة والمتبقي. إذا خلصت الفحوصات يرجع 402 بالرمز quota.
 /// POST fishId/redeem بجسم {"code"} يضيف فحوصات رمز الهدية ويرجّع المتبقي.
 /// POST fishId/sync يتأكد من اشتراك الحساب في RevenueCat بعد الشراء ويرجّع المتبقي.
+/// POST track من صفحة hawat.id: زيارة أو ضغطة ([site])، وتطلع في الملخص اليومي.
 /// admin/... لوحة الأدمن ([adminToken])، و revenuecat يستقبل أحداث الاشتراك. الحدث مجرد تنبيه: الخادم ما يصدّق
 /// محتواه، ويسأل RevenueCat ([revenueCat]) عن الاشتراك الحقيقي، فما نحتاج سر مشترك.
 class FishIdApp {
@@ -43,6 +45,7 @@ class FishIdApp {
     this.speciesNames = const {},
     this.perMinute = 30,
     this.notify,
+    this.site,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
@@ -64,6 +67,9 @@ class FishIdApp {
 
   /// تنبيهات المالك: اشتراكات، مساهمات، رفض Claude، وملخص يومي ([dailySummary]).
   final Notify? notify;
+
+  /// زيارات وضغطات صفحة hawat.id.
+  final SiteStats? site;
   final DateTime Function() _clock;
 
   static const maxBytes = 5 * 1024 * 1024;
@@ -99,6 +105,22 @@ class FishIdApp {
     final path = req.url.path.replaceFirst(RegExp(r'^api/'), '');
     if (req.method == 'GET' && (path == '' || path == 'health')) {
       return _json(200, {'ok': true, 'service': 'fish-id', 'ready': identify != null});
+    }
+    if (req.method == 'POST' && path == 'track') {
+      final stats = site;
+      if (stats != null) {
+        try {
+          final text = await req.readAsString();
+          final body = text.length > 2000 ? null : jsonDecode(text);
+          if (body is Map) {
+            final ip = (req.headers['x-forwarded-for'] ?? '').split(',').first.trim();
+            stats.record(body, ip: ip, agent: req.headers['user-agent'] ?? '', now: _clock());
+          }
+        } on Object {
+          // حدث تالف من الصفحة ما يهم.
+        }
+      }
+      return Response(204, headers: _cors);
     }
     if (req.method == 'POST' && path == 'fishId/identify') {
       try {
@@ -418,7 +440,8 @@ class FishIdApp {
   /// ملخص اليوم للمالك: الفحوصات والتكلفة والمستخدمين والاشتراكات والتنبيهات المفتوحة. null إذا ما فيه حسابات.
   String? dailySummary(DateTime now) {
     final store = accounts;
-    if (store == null) return null;
+    final web = site?.summaryLines(now) ?? const <String>[];
+    if (store == null) return web.isEmpty ? null : ['📊 FISH ID: ملخص اليوم ${SiteStats.dayOf(now)}', ...web.skip(1)].join('\n');
     final s = store.stats(now);
     String sar(Object? v) => (v as num).toStringAsFixed(2);
     final plans = s['plans'] as Map;
@@ -443,7 +466,7 @@ class FishIdApp {
           lines.add('🟠 فاتورة ${a['label']} (${a['provider']}) تستحق ${a['due']}: ${sar(a['sar'])} ريال');
       }
     }
-    return lines.join('\n');
+    return [...lines, ...web].join('\n');
   }
 
   /// ياخذ أبعد تاريخ انتهاء من صلاحيات المشترك الفعّالة في RevenueCat ويحطه على الحساب.
