@@ -91,7 +91,7 @@ input:focus,select:focus{outline:2px solid var(--gold);outline-offset:0;border-c
 .err{color:var(--bad)}
 label.set{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 label.set input{width:120px;direction:ltr}
-.bars{display:flex;align-items:flex-end;gap:3px;height:150px;padding-top:8px}
+.bars{display:flex;align-items:flex-end;gap:3px;height:150px;padding-top:8px;direction:ltr}
 .bars div{flex:1;background:var(--navy-3);border-radius:4px 4px 0 0;min-height:2px;position:relative}
 .bars div.neg{background:var(--bad);opacity:.7}
 .bars div:hover{background:var(--gold)}
@@ -286,15 +286,16 @@ const icons = {
   contrib: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
   codes: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 8v12M3 12h18M12 8c-2-4-6-4-6-1.5S10 8 12 8zm0 0c2-4 6-4 6-1.5S14 8 12 8z"/>',
+  site: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/>',
   staff: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/><path d="M17 3l1.5 1.5L21 2"/>',
 };
 const tabName = k => ({home: T('الرئيسية', 'Overview'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
-  codes: T('رموز الهدايا', 'Gift codes'), staff: T('الفريق', 'Team')})[k];
+  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), staff: T('الفريق', 'Team')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
-  owner: ['home', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes', 'staff'],
-  admin: ['home', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes'],
+  owner: ['home', 'site', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes', 'staff'],
+  admin: ['home', 'site', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes'],
   accountant: ['home', 'report', 'money', 'alerts'],
   investor: ['report'],
 };
@@ -568,6 +569,45 @@ const views = {
         <div class="card"><h3>${T('أكثر الأنواع فحصًا هالشهر', 'Top species this month')}</h3>
           <table>${s.topSpecies.map(t => `<tr><td>${sp(t.id)}<div class="meter"><i style="width:${t.n / s.topSpecies[0].n * 100}%"></i></div></td><td class="num">${num(t.n)}</td></tr>`).join('') || `<tr><td class="msg">${T('ما فيه فحوصات للحين', 'No scans yet')}</td></tr>`}</table></div>
       </div>`;
+  },
+
+  // حالة الخادم وزيارات hawat.id ومن وين جوا وش ضغطوا (يعدّها الخادم من الصفحة نفسها).
+  async site() {
+    const r = await api('site');
+    const st = r.status;
+    const srcNames = {fb_ad: T('إعلان فيسبوك/إنستغرام', 'Facebook/Instagram ad'), facebook: T('فيسبوك', 'Facebook'), instagram: T('إنستغرام', 'Instagram'), google: 'Google', bing: 'Bing',
+      tiktok: 'TikTok', snapchat: 'Snapchat', x: 'X', whatsapp: 'WhatsApp', telegram: 'Telegram', ksafish: T('الموسوعة', 'KSAFish'), direct: T('مباشر', 'Direct'), other: T('غيره', 'Other')};
+    const clickNames = {download_button: T('زر حمّل التطبيق', 'Download button'), store: T('أزرار المتاجر', 'Store buttons'), play_testing: T('رابط تجربة أندرويد', 'Android testing link'),
+      pricing_button: T('زر الأسعار', 'Pricing button'), facebook: T('أيقونة فيسبوك', 'Facebook icon'), instagram: T('أيقونة إنستغرام', 'Instagram icon'), ksafish: T('روابط الموسوعة', 'KSAFish links'), email: T('تواصل معنا', 'Contact us')};
+    const dot = (ok, yes, no) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--${ok ? 'good' : 'bad'});margin-inline-end:8px"></span>${ok ? yes : no}</td></tr>`;
+    const list = (m, names) => {
+      const rows = Object.entries(m || {}).sort((a, b) => b[1] - a[1]);
+      return `<table>${rows.map(([k, n]) => `<tr><td>${esc(names[k] || k)}<div class="meter"><i style="width:${n / rows[0][1] * 100}%"></i></div></td><td class="num">${num(n)}</td></tr>`).join('') || `<tr><td class="msg">${T('ما فيه شي للحين', 'Nothing yet')}</td></tr>`}</table>`;
+    };
+    const sum = m => Object.values(m || {}).reduce((a, b) => a + b, 0);
+    $('#app').innerHTML = heading(T('الموقع والزوار', 'Website & status'), T('حالة الخادم، وزوار hawat.id ومن وين جوا ووش ضغطوا', 'Server status, and hawat.id visitors, where they came from and what they clicked')) + `
+      <div class="cols">
+        <div class="card"><h3>${T('الحالة الحين', 'Status now')}</h3><table>
+          ${dot(st.server, T('الخادم والموقع شغالين', 'Server and website are up'), T('الخادم ما يرد', 'Server is down'))}
+          ${dot(st.claude, T('فحص الأسماك شغال (مفتاح Claude موجود)', 'Fish scans are on (Claude key set)'), T('الفحوصات متوقفة: مفتاح Claude ناقص', 'Scans are off: Claude key missing'))}
+          ${dot(st.telegram, T('تنبيهات تليجرام مربوطة', 'Telegram alerts connected'), T('تليجرام مو مربوط: شغّل bash server/telegram.sh', 'Telegram not connected: run bash server/telegram.sh'))}
+        </table></div>
+        <div class="card"><h3>${T('آخر 7 أيام', 'Last 7 days')}</h3><div class="grid">
+          ${kpi(T('زيارات', 'Visits'), num(r.week?.visits || 0), `${num(r.week?.unique || 0)} ${T('زائر', 'visitors')}`)}
+          ${kpi(T('ضغطات', 'Clicks'), num(sum(r.week?.clicks)), `${T('اليوم', 'Today')} ${num(sum(r.today?.clicks))}`)}
+        </div></div>
+      </div>
+      ${r.daily ? `<div class="grid" style="margin-top:14px">
+        ${kpi(T('زيارات اليوم', 'Visits today'), num(r.today.visits), `${num(r.today.unique)} ${T('زائر مختلف', 'unique visitors')}`)}
+        ${kpi(T('زيارات 30 يوم', 'Visits, 30 days'), num(r.month.visits), `${num(r.month.unique)} ${T('زائر', 'visitors')}`)}
+        ${kpi(T('من الإعلان (30 يوم)', 'From the ad (30 days)'), num(r.month.src.fb_ad || 0), T('زيارات جت من إعلان فيسبوك/إنستغرام', 'Visits from the Facebook/Instagram ad'))}
+        ${kpi(T('ضغطات 30 يوم', 'Clicks, 30 days'), num(sum(r.month.clicks)))}
+      </div>
+      <div class="card" style="margin-top:14px"><h3>${T('الزيارات آخر 30 يوم', 'Visits, last 30 days')}</h3>${bars(r.daily, 'visits', d => d.slice(5))}</div>
+      <div class="cols" style="margin-top:14px">
+        <div class="card"><h3>${T('من وين جوا (30 يوم)', 'Where they came from (30 days)')}</h3>${list(r.month.src, srcNames)}</div>
+        <div class="card"><h3>${T('وش ضغطوا (30 يوم)', 'What they clicked (30 days)')}</h3>${list(r.month.clicks, clickNames)}</div>
+      </div>` : ''}`;
   },
 
   // ملخص يوم أو شهر أو سنة، يصلح يُطبع ويُعطى للمستثمر.

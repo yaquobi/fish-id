@@ -57,4 +57,17 @@ void main() {
     expect(again.total('2026-10-24', '2026-10-31')['visits'], 3);
     expect(again.summaryLines(t).join('\n'), contains('آخر 7 أيام: 3 زيارة'));
   });
+
+  test('the admin panel gets status, totals and the daily series', () async {
+    final site = SiteStats.open(dir.path);
+    final app = FishIdApp(identify: null, site: site, adminToken: 'secret-token', clock: () => t);
+    await track(app, {'e': 'visit', 'src': 'm.facebook.com'});
+    await track(app, {'e': 'click', 't': 'store'});
+    final res = await app.handler(Request('GET', Uri.parse('http://x/api/admin/site'), headers: {'authorization': 'Bearer secret-token'}));
+    final r = jsonDecode(await res.readAsString()) as Map;
+    expect(r['status'], {'server': true, 'claude': false, 'telegram': false, 'accounts': false});
+    expect(r['week']['src'], {'facebook': 1});
+    expect((r['daily'] as List).length, 30);
+    expect((r['daily'] as List).last, {'key': '2026-10-31', 'visits': 1, 'unique': 1, 'clicks': 1});
+  });
 }
