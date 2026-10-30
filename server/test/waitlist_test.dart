@@ -12,7 +12,8 @@ void main() {
   setUp(() => dir = Directory.systemTemp.createTempSync('waitlist'));
   tearDown(() => dir.deleteSync(recursive: true));
 
-  Future<Response> join(FishIdApp app, Map body, {String ip = '1.2.3.4'}) async => app.handler(Request('POST', Uri.parse('http://x/api/waitlist'), body: jsonEncode(body), headers: {'x-forwarded-for': ip}));
+  Future<Response> join(FishIdApp app, Map body, {String ip = '1.2.3.4'}) async =>
+      app.handler(Request('POST', Uri.parse('http://x/api/waitlist'), body: jsonEncode(body), headers: {'x-forwarded-for': ip}));
 
   test('emails and Saudi mobiles are normalized, anything else is refused', () {
     expect(Waitlist.normalize(' Ali@Example.COM '), (kind: 'email', value: 'ali@example.com'));
@@ -46,6 +47,19 @@ void main() {
     final id = (r['items'] as List).first['id'];
     final del = await app.handler(Request('POST', Uri.parse('http://x/api/admin/waitlist'), body: jsonEncode({'delete': id}), headers: {'authorization': 'Bearer secret-token'}));
     expect(jsonDecode(await del.readAsString())['count'], 1);
+  });
+
+  test('early testers need an email and a phone type, and a known signup can ask later', () async {
+    final list = Waitlist.open(dir.path);
+    final app = FishIdApp(identify: null, waitlist: list, clock: () => t);
+    expect((await join(app, {'contact': '0551234567', 'consent': true, 'beta': true, 'os': 'android'})).statusCode, 400);
+    expect((await join(app, {'contact': 'a@gmail.com', 'consent': true, 'beta': true})).statusCode, 400);
+    expect((await join(app, {'contact': 'a@gmail.com', 'consent': true, 'beta': true, 'os': 'android'})).statusCode, 200);
+    await join(app, {'contact': 'b@icloud.com', 'consent': true});
+    expect(jsonDecode(await (await join(app, {'contact': 'b@icloud.com', 'consent': true, 'beta': true, 'os': 'ios'})).readAsString())['new'], false);
+    final v = list.view(t);
+    expect([v['count'], v['betaAndroid'], v['betaIos']], [2, 1, 1]);
+    expect(Waitlist.open(dir.path).view(t)['betaIos'], 1);
   });
 
   test('one address cannot flood the list', () async {

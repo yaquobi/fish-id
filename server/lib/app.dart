@@ -137,7 +137,7 @@ class FishIdApp {
         if (body is! Map) throw const FishIdError('bad_request', 'الطلب غير صالح');
         final ip = (req.headers['x-forwarded-for'] ?? '').split(',').first.trim();
         final added = await list.add(body, ip: ip, now: _clock());
-        if (added) _tell('waitlist', '📝 تسجيل جديد في «بلّغني بالإطلاق»\nالمجموع: ${list.count}', every: const Duration(minutes: 15));
+        if (added) _tell('waitlist', '📝 تسجيل جديد في «بلّغني بالإطلاق»${body['beta'] == true ? ' (يبغى يجرب قبل الناس)' : ''}\nالمجموع: ${list.count}', every: const Duration(minutes: 15));
         return _json(200, {'ok': true, 'new': added});
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
@@ -501,7 +501,7 @@ class FishIdApp {
       }
     }
     final wl = waitlist?.view(now);
-    if (wl != null) lines.add('📝 «بلّغني بالإطلاق»: ${wl['count']} مسجل (اليوم +${wl['today']})');
+    if (wl != null) lines.add('📝 «بلّغني بالإطلاق»: ${wl['count']} مسجل (اليوم +${wl['today']})، للتجربة المبكرة: أندرويد ${wl['betaAndroid']}، آيفون ${wl['betaIos']}');
     return [...lines, ...web].join('\n');
   }
 
