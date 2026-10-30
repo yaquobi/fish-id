@@ -590,7 +590,7 @@ const views = {
         <div class="card"><h3>${T('الحالة الحين', 'Status now')}</h3><table>
           ${dot(st.server, T('الخادم والموقع شغالين', 'Server and website are up'), T('الخادم ما يرد', 'Server is down'))}
           ${dot(st.claude, T('فحص الأسماك شغال (مفتاح Claude موجود)', 'Fish scans are on (Claude key set)'), T('الفحوصات متوقفة: مفتاح Claude ناقص', 'Scans are off: Claude key missing'))}
-          ${dot(st.telegram, T('تنبيهات تليجرام مربوطة', 'Telegram alerts connected'), T('تليجرام مو مربوط: شغّل bash server/telegram.sh', 'Telegram not connected: run bash server/telegram.sh'))}
+          ${dot(st.telegram, T('إشعارات الجوال مربوطة', 'Phone notifications connected'), T('الإشعارات مو مربوطة: شغّل bash server/ntfy.sh', 'Notifications not connected: run bash server/ntfy.sh'))}
         </table></div>
         <div class="card"><h3>${T('آخر 7 أيام', 'Last 7 days')}</h3><div class="grid">
           ${kpi(T('زيارات', 'Visits'), num(r.week?.visits || 0), `${num(r.week?.unique || 0)} ${T('زائر', 'visitors')}`)}
