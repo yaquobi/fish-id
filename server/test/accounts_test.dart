@@ -149,8 +149,57 @@ void main() {
     // 20 من السقف ناقص فحص، وفحص الهدية الباقي ينضاف.
     expect((await scan(a)).headers['x-fishid-remaining'], '20');
     expect((await scan(a, id: null)).statusCode, 426);
-    final users = jsonDecode(await (await admin(a, 'users?q=yearly')).readAsString()) as List;
-    expect(users.single['id'], user);
+    final users = jsonDecode(await (await admin(a, 'users?q=yearly')).readAsString()) as Map<String, dynamic>;
+    expect((users['items'] as List).single['id'], user);
+    expect(users['counts'], {'all': 1, 'paid': 1, 'free': 0, 'soon': 0, 'blocked': 0});
+  });
+
+  test('admin users page: views, filters, details, bulk and extend', () async {
+    final a = app();
+    const other = 'u_zzzzzzzzzzzzzzzz9999';
+    await scan(a);
+    await scan(a, id: other);
+    Future<Map<String, dynamic>> get(String p) async => jsonDecode(await (await admin(a, p)).readAsString()) as Map<String, dynamic>;
+    await admin(a, 'users/$user', body: {'plan': 'monthly', 'days': 3});
+    var l = await get('users?view=soon');
+    expect((l['items'] as List).single['status'], 'soon');
+    expect((l['items'] as List).single['from'], 'manual');
+    expect(l['counts'], {'all': 2, 'paid': 1, 'free': 1, 'soon': 1, 'blocked': 0});
+    expect(l['newWeek'], 2);
+    expect(((await get('users?plan=free'))['items'] as List).single['id'], other);
+    expect(((await get('users?activity=none'))['items'] as List), isEmpty);
+    // التمديد يضيف على تاريخ الانتهاء الحالي.
+    await admin(a, 'users/$user', body: {'extend': 31});
+    var d = await get('users/$user');
+    expect(DateTime.parse(d['until'] as String), t.add(const Duration(days: 34)));
+    expect(d['status'], 'active');
+    expect((d['recent'] as List).single['species'], '0408');
+    expect((d['log'] as List).first['by'], 'owner');
+    expect((d['log'] as List), hasLength(2));
+    // دفعة وحدة: هدية وإيقاف، والحسابات اللي مو موجودة تنتجاهل.
+    final r = jsonDecode(
+      await (await admin(
+        a,
+        'users',
+        body: {
+          'ids': [user, other, 'u_missingmissingmiss1'],
+          'grant': 4,
+        },
+      )).readAsString(),
+    );
+    expect(r['updated'], 2);
+    await admin(
+      a,
+      'users',
+      body: {
+        'ids': [other],
+        'blocked': true,
+      },
+    );
+    l = await get('users?view=blocked');
+    expect((l['items'] as List).single['id'], other);
+    expect((l['items'] as List).single['remaining'], 6);
+    expect((await admin(a, 'users/u_missingmissingmiss1')).statusCode, 404);
   });
 
   test('admin is off without a token', () async {

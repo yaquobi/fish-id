@@ -150,8 +150,15 @@ class AccountStore {
   }
 
   /// تعديل من الأدمن أو من RevenueCat: هدية فحوصات، أو باقة لعدد أيام، أو إيقاف.
-  Future<Map<String, dynamic>> update(String id, DateTime now, {int? grant, String? plan, DateTime? until, bool? blocked, String? source}) async {
+  Future<Map<String, dynamic>> update(String id, DateTime now, {int? grant, String? plan, DateTime? until, bool? blocked, String? source, String? by}) async {
     final a = account(id, now);
+    // سجل تعديلات الأدمن (آخر 30) يظهر في تفاصيل الحساب.
+    if (by != null) {
+      a['log'] = [
+        ...((a['log'] as List?) ?? const []).skip(((a['log'] as List?)?.length ?? 0) >= 30 ? 1 : 0),
+        {'at': now.toUtc().toIso8601String(), 'by': by, 'grant': ?grant, 'plan': ?plan, 'until': ?until?.toUtc().toIso8601String(), 'blocked': ?blocked},
+      ];
+    }
     if (grant != null) a['bonus'] = ((a['bonus'] as int? ?? 0) + grant).clamp(0, 100000);
     if (plan != null && plans.contains(plan)) {
       a['plan'] = plan;
@@ -174,14 +181,80 @@ class AccountStore {
 
   Map<String, dynamic> view(String id, DateTime now) {
     final a = account(id, now);
-    return {'id': id, ...a, 'active': _active(a, now), 'remaining': remaining(id, now)};
+    final out = {'id': id, ...a, 'active': _active(a, now), 'remaining': remaining(id, now), 'cap': _cap(a, now), 'status': _status(a, now), 'from': _from(a)};
+    out.remove('log');
+    return out;
   }
 
-  /// آخر الحسابات (الأحدث أولًا)، مع بحث بجزء من الرقم أو بالباقة.
-  List<Map<String, dynamic>> users(DateTime now, {String q = '', int limit = 100}) {
-    final ids = _accounts.keys.where((id) => q.isEmpty || id.contains(q) || _accounts[id]!['plan'] == q).toList()
+  /// سقف الفحوصات اللي يُقاس عليه الرصيد: سقف الشهر للمشترك، والمجانية لغيره.
+  int _cap(Map<String, dynamic> a, DateTime now) => _active(a, now) ? _int(a['plan'] == 'shop' ? 'shopCap' : 'monthlyCap') : _int('freeScans');
+
+  /// حالة الحساب في لوحة الأدمن: blocked موقوف، soon ينتهي خلال 7 أيام، active مشترك، empty مجاني خلص رصيده، free مجاني.
+  String _status(Map<String, dynamic> a, DateTime now) {
+    if (a['blocked'] == true) return 'blocked';
+    if (_active(a, now)) return DateTime.parse('${a['until']}').difference(now).inDays < 7 ? 'soon' : 'active';
+    return _base(a, now) > 0 || (a['bonus'] as int? ?? 0) > 0 ? 'free' : 'empty';
+  }
+
+  /// من وين جت الباقة أو الرصيد: store المتجر، manual من الأدمن، code رمز هدية، وفاضي للمجاني العادي.
+  String _from(Map<String, dynamic> a) {
+    if (a['plan'] != 'free') return a['source'] == 'store' ? 'store' : 'manual';
+    return (a['codes'] as List?)?.isNotEmpty == true ? 'code' : '';
+  }
+
+  static const views = {'all', 'paid', 'free', 'soon', 'blocked'};
+
+  bool _inView(String view, Map<String, dynamic> a, DateTime now) {
+    final st = _status(a, now);
+    return switch (view) {
+      'paid' => st == 'active' || st == 'soon',
+      'free' => st == 'free' || st == 'empty',
+      'soon' => st == 'soon',
+      'blocked' => st == 'blocked',
+      _ => true,
+    };
+  }
+
+  /// صفحة من الحسابات (الأحدث نشاطًا أولًا) مع الفلاتر، وعدد كل عرض للأرقام والتبويبات.
+  /// [q] جزء من رقم الحساب أو اسم الباقة، [activity] 24 أو 168 ساعة أو none (ما فحص أبد).
+  Map<String, dynamic> users(DateTime now, {String q = '', String tab = 'all', String plan = '', String from = '', String activity = '', int page = 1, int size = 50}) {
+    bool match(String id) {
+      final a = _accounts[id]!;
+      if (q.isNotEmpty && !id.contains(q) && a['plan'] != q) return false;
+      if (plan.isNotEmpty && a['plan'] != plan) return false;
+      if (from.isNotEmpty && _from(a) != from) return false;
+      if (activity.isNotEmpty) {
+        final last = DateTime.tryParse('${a['lastScan']}');
+        if (activity == 'none' ? last != null : (last == null || now.difference(last).inHours > (int.tryParse(activity) ?? 0))) return false;
+      }
+      return true;
+    }
+
+    final found = _accounts.keys.where(match).toList();
+    final counts = {for (final v in views) v: found.where((id) => _inView(v, _accounts[id]!, now)).length};
+    final ids = found.where((id) => _inView(views.contains(tab) ? tab : 'all', _accounts[id]!, now)).toList()
       ..sort((a, b) => '${_accounts[b]!['lastScan'] ?? _accounts[b]!['created']}'.compareTo('${_accounts[a]!['lastScan'] ?? _accounts[a]!['created']}'));
-    return [for (final id in ids.take(limit)) view(id, now)];
+    page = page < 1 ? 1 : page;
+    size = size.clamp(10, 200);
+    return {
+      'total': ids.length,
+      'page': page,
+      'size': size,
+      'counts': counts,
+      'newWeek': _accounts.values.where((a) => (DateTime.tryParse('${a['created']}') ?? DateTime(2000)).isAfter(now.subtract(const Duration(days: 7)))).length,
+      'items': [for (final id in ids.skip((page - 1) * size).take(size)) view(id, now)],
+    };
+  }
+
+  /// تفاصيل حساب للدرج الجانبي: بياناته وسجل تعديلات الأدمن وآخر فحوصاته (آخر 3 شهور).
+  Map<String, dynamic>? detail(String id, DateTime now) {
+    final a = _accounts[id];
+    if (a == null) return null;
+    return {
+      ...view(id, now),
+      'log': [...((a['log'] as List?) ?? const [])].reversed.toList(),
+      'recent': scans(now, months: 3).where((s) => s['user'] == id).take(20).toList(),
+    };
   }
 
   /// يضيف فحوصات الرمز للحساب، مرة وحدة لكل حساب، ولين يوصل الرمز حده.
