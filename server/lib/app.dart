@@ -364,22 +364,46 @@ class FishIdApp {
           throw const FishIdError('bad_request', 'الطلب غير صالح');
         }
         return _json(200, {'ok': true});
+      case ('GET', 'users') when store != null && parts.length == 3:
+        final d = store.detail(parts[2], now);
+        if (d == null) throw const FishIdError('not_found', 'الحساب غير موجود', status: 404);
+        return _json(200, d);
       case ('GET', 'users') when store != null:
-        return _json(200, store.users(now, q: q['q'] ?? ''));
-      case ('POST', 'users') when store != null && parts.length == 3 && AccountStore.idPattern.hasMatch(parts[2]):
-        final b = await body();
-        final days = (b['days'] as num?)?.toInt();
         return _json(
           200,
-          await store.update(
-            parts[2],
+          store.users(
             now,
-            grant: (b['grant'] as num?)?.toInt(),
-            plan: b['plan'] as String?,
-            until: days == null ? null : now.add(Duration(days: days)),
-            blocked: b['blocked'] as bool?,
+            q: q['q'] ?? '',
+            tab: q['view'] ?? 'all',
+            plan: q['plan'] ?? '',
+            from: q['from'] ?? '',
+            activity: q['activity'] ?? '',
+            page: int.tryParse(q['page'] ?? '') ?? 1,
           ),
         );
+      case ('POST', 'users') when store != null && (parts.length == 3 && AccountStore.idPattern.hasMatch(parts[2]) || parts.length == 2):
+        final b = await body();
+        // حساب واحد من الرابط، أو عدة حسابات دفعة وحدة في ids (حد 200).
+        final ids = parts.length == 3 ? [parts[2]] : [...?(b['ids'] as List?)?.whereType<String>().where(AccountStore.idPattern.hasMatch).take(200)];
+        if (ids.isEmpty) throw const FishIdError('bad_request', 'الطلب غير صالح');
+        final days = (b['days'] as num?)?.toInt();
+        final extend = (b['extend'] as num?)?.toInt();
+        final by = '${who['name'] ?? ''}'.isEmpty ? '${who['role']}' : '${who['name']}';
+        final out = <Map<String, dynamic>>[];
+        for (final id in ids) {
+          if (parts.length == 2 && store.find(id) == null) continue;
+          DateTime? until = days == null ? null : now.add(Duration(days: days));
+          String? plan = b['plan'] as String?;
+          // التمديد يضيف أيام على تاريخ الانتهاء الحالي (أو من اليوم إذا انتهى) بنفس الباقة.
+          if (extend != null && extend > 0) {
+            final a = store.find(id);
+            final cur = DateTime.tryParse('${a?['until']}');
+            until = (cur != null && cur.isAfter(now) ? cur : now).add(Duration(days: extend));
+            plan ??= a?['plan'] == 'free' || a == null ? 'monthly' : a['plan'] as String;
+          }
+          out.add(await store.update(id, now, grant: (b['grant'] as num?)?.toInt(), plan: plan, until: until, blocked: b['blocked'] as bool?, by: by));
+        }
+        return _json(200, parts.length == 3 ? out.single : {'updated': out.length});
       case ('GET', 'scans') when store != null:
         return _json(200, store.scans(now, months: 2).take(300).toList());
       case ('GET', 'settings') when store != null:
@@ -423,7 +447,8 @@ class FishIdApp {
     final users = {
       for (final k in const ['app_user_id', 'original_app_user_id']) '${event[k]}',
       for (final k in const ['aliases', 'transferred_from', 'transferred_to'])
-        if (event[k] is List) for (final id in event[k] as List) '$id',
+        if (event[k] is List)
+          for (final id in event[k] as List) '$id',
     }.where(AccountStore.idPattern.hasMatch).take(5);
     final buyer = '${event['app_user_id']}';
     Map<String, dynamic>? sub;
