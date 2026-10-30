@@ -16,6 +16,14 @@ gtag('config', 'G-DXP9EDEF08', { allow_google_signals: false, allow_ad_personali
 a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
 twq('config','ri7kf');
 </script>
+<!-- Snap Pixel: measures visits and signups that come from our Snapchat ads -->
+<script>
+(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function(){a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};
+a.queue=[];var s='script';var r=t.createElement(s);r.async=!0;r.src=n;var u=t.getElementsByTagName(s)[0];u.parentNode.insertBefore(r,u);
+})(window,document,'https://sc-static.net/scevent.min.js');
+snaptr('init','c6c0bb68-b85d-4bdb-9f37-138c44d639c0',{});
+snaptr('track','PAGE_VIEW');
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>FISH ID | تطبيق يعرف نوع السمكة وطزاجتها من صورة · أسماك البحر الأحمر والخليج</title>
@@ -848,6 +856,7 @@ details.more[open]{padding-bottom:24px}
         if(!x.ok){say(x.d.message||'صار خطأ، جرب مرة ثانية');return}
         f.classList.add('done');
         try{window.twq&&twq('event','tw-ri7kf-ri8zj',{})}catch(e){}
+        try{window.snaptr&&snaptr('track','SIGN_UP')}catch(e){}
         try{window.gtag&&gtag('event','sign_up',{method:'waitlist'})}catch(e){}
         say(x.d['new']?'تم ✅ أول ما ينزل التطبيق توصلك رسالة منا.':'أنت مسجّل معنا من قبل ✅ توصلك رسالة يوم الإطلاق.',true);
         try{navigator.sendBeacon('/api/track',new Blob([JSON.stringify({e:'click',t:'waitlist_signup'})],{type:'text/plain'}))}catch(e){}
