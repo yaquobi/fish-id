@@ -137,7 +137,12 @@ class FishIdApp {
         if (body is! Map) throw const FishIdError('bad_request', 'الطلب غير صالح');
         final ip = (req.headers['x-forwarded-for'] ?? '').split(',').first.trim();
         final added = await list.add(body, ip: ip, now: _clock());
-        if (added) _tell('waitlist', '📝 تسجيل جديد في «بلّغني بالإطلاق»${body['beta'] == true ? ' (يبغى يجرب قبل الناس)' : ''}\nالمجموع: ${list.count}', every: const Duration(minutes: 15));
+        // تنبيه لكل تسجيل جديد: التكرار ممنوع من القائمة نفسها، وكل IP له حد باليوم.
+        if (added) {
+          final beta = body['beta'] == true ? ' · يبغى يجرب على ${body['os'] == 'ios' ? 'آيفون' : 'أندرويد'}' : '';
+          final kind = '${body['contact']}'.contains('@') ? 'إيميل' : 'جوال';
+          _tell('waitlist:${list.count}', '📝 تسجيل جديد في «بلّغني بالإطلاق» ($kind)$beta\nالمجموع: ${list.count}');
+        }
         return _json(200, {'ok': true, 'new': added});
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
@@ -263,6 +268,11 @@ class FishIdApp {
       rethrow;
     }
     await store?.record(user, _clock(), result: result, usd: usageCost(usage), ms: watch.elapsedMilliseconds, photos: photos.length);
+    // أول فحص ناجح للحساب يعني مستخدم جديد فعلي (الحساب نفسه ينفتح بمجرد فتح التطبيق).
+    if (user != null && store != null && store.find(user)?['scans'] == 1) {
+      final users = store.all.where((a) => (a['scans'] as int? ?? 0) > 0).length;
+      _tell('user:$user', '👤 مستخدم جديد سوّى أول فحص في التطبيق\nعدد المستخدمين: $users');
+    }
     return result;
   }
 
