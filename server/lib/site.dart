@@ -104,6 +104,27 @@ class SiteStats {
     return {'visits': visits, 'unique': unique, 'src': src, 'clicks': clicks};
   }
 
+  /// كل يوم من آخر [days] يوم (الأقدم أول): الزيارات والزوار والضغطات، للوحة الأدمن.
+  List<Map<String, dynamic>> series(int days, DateTime now) => [
+    for (var i = days - 1; i >= 0; i--)
+      () {
+        final key = dayOf(now.subtract(Duration(days: i)));
+        final t = total(key, key);
+        return {'key': key, 'visits': t['visits'], 'unique': t['unique'], 'clicks': (t['clicks'] as Map).values.fold<int>(0, (a, b) => a + (b as int))};
+      }(),
+  ];
+
+  /// ملخص لوحة الأدمن: اليوم وآخر 7 و30 يوم، والسلسلة اليومية.
+  Map<String, dynamic> view(DateTime now) {
+    final today = dayOf(now);
+    return {
+      'today': total(today, today),
+      'week': total(dayOf(now.subtract(const Duration(days: 6))), today),
+      'month': total(dayOf(now.subtract(const Duration(days: 29))), today),
+      'daily': series(30, now),
+    };
+  }
+
   static const _srcNames = {
     'fb_ad': 'إعلان فيسبوك/إنستغرام',
     'facebook': 'فيسبوك',

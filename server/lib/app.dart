@@ -313,6 +313,11 @@ class FishIdApp {
         if (b['balanceUsd'] is! num) throw const FishIdError('bad_request', 'الطلب غير صالح');
         await ledger!.setBalance(b['balanceUsd'] as num, now);
         return _json(200, ledger!.alerts(now));
+      case ('GET', 'site'):
+        return _json(200, {
+          ...?site?.view(now),
+          'status': {'server': true, 'claude': identify != null, 'telegram': notify != null, 'accounts': store != null},
+        });
       case ('GET', 'stats') when store != null:
         return _json(200, {...store.stats(now), if (ledger != null) 'ledger': ledger!.statement(Ledger.month(now))..remove('income')..remove('expenses')});
       case ('GET', 'ledger') when ledger != null:

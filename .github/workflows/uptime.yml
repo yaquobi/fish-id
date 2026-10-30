@@ -1,0 +1,69 @@
+name: Uptime
+
+# مراقب FISH ID: كل 10 دقايق يتأكد إن موقع hawat.id وخادم التطبيق (api/health) شغالين.
+# إذا طاح واحد منهم يرسل تنبيه لبوت تليجرام، وإذا رجع يرسل «رجع يشتغل». ما يكرر نفس التنبيه كل مرة.
+# أسرار المستودع: FISHID_TELEGRAM_TOKEN (توكن البوت من BotFather) و FISHID_TELEGRAM_CHAT (رقم محادثتك)،
+# نفس القيم اللي في server/.env. بدونهم الفحص يشتغل ويطلع أحمر هنا بس.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency: uptime
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TOKEN: ${{ secrets.FISHID_TELEGRAM_TOKEN }}
+      CHAT: ${{ secrets.FISHID_TELEGRAM_CHAT }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check the site and the app server
+        id: check
+        run: |
+          problems=()
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 --retry 2 --retry-delay 10 https://hawat.id/ || true)
+          [ "$code" = 200 ] || problems+=("الموقع hawat.id رد $code")
+          health=$(curl -s --max-time 20 --retry 2 --retry-delay 10 https://hawat.id/api/health || true)
+          if ! echo "$health" | grep -q '"ok":true'; then
+            problems+=("خادم التطبيق ما يرد")
+          elif ! echo "$health" | grep -q '"ready":true'; then
+            problems+=("خادم التطبيق شغال بس الفحوصات متوقفة (مفتاح Claude)")
+          fi
+          if [ ${#problems[@]} -eq 0 ]; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+          else
+            printf '%s\n' "${problems[@]}"
+            { echo "down=true"; echo "why=$(IFS='، '; echo "${problems[*]}")"; } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Previous result
+        id: prev
+        run: |
+          # نتيجة آخر فحص خلص (غير هذا)، عشان ننبّه بس لما تتغير الحالة.
+          last=$(gh run list -R "$GITHUB_REPOSITORY" --workflow uptime.yml --status completed -L 1 --json conclusion -q '.[0].conclusion' || true)
+          echo "last=${last:-success}" >> "$GITHUB_OUTPUT"
+
+      - name: Tell Telegram
+        if: env.TOKEN != '' && env.CHAT != '' && ((steps.check.outputs.down == 'true' && steps.prev.outputs.last != 'failure') || (steps.check.outputs.down == 'false' && steps.prev.outputs.last == 'failure'))
+        env:
+          DOWN: ${{ steps.check.outputs.down }}
+          WHY: ${{ steps.check.outputs.why }}
+        run: |
+          if [ "$DOWN" = true ]; then
+            text=$(printf '🔴 FISH ID: فيه مشكلة\n%s\nشيّك في الكونسول: cd /opt/fish-id && docker compose ps' "$WHY")
+          else
+            text='🟢 FISH ID: الموقع والتطبيق رجعوا يشتغلون'
+          fi
+          curl -s --max-time 20 -o /dev/null -w 'telegram %{http_code}\n' "https://api.telegram.org/bot$TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$CHAT" --data-urlencode "text=$text"
+
+      - name: Fail while down
+        if: steps.check.outputs.down == 'true'
+        run: exit 1
