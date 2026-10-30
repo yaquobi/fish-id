@@ -35,7 +35,9 @@ void main() {
     expect(jsonDecode(await (await join(app, {'contact': 'ALI@example.com', 'consent': true})).readAsString())['new'], false);
     expect((await join(app, {'contact': '0551234567', 'consent': true}, ip: '5.6.7.8')).statusCode, 200);
     expect((await join(app, {'contact': 'not a contact', 'consent': true})).statusCode, 400);
-    expect(told.single, contains('المجموع: 1'));
+    expect(told, hasLength(2));
+    expect(told.first, allOf(contains('(إيميل)'), contains('المجموع: 1')));
+    expect(told.last, allOf(contains('(جوال)'), contains('المجموع: 2')));
 
     final again = Waitlist.open(dir.path);
     expect(again.count, 2);

@@ -73,6 +73,16 @@ void main() {
     expect((await scan(a, id: null)).statusCode, 200);
   });
 
+  test('tells the owner once when an account makes its first scan', () async {
+    final told = <String>[];
+    final a = app(notify: told.add);
+    await a.handler(Request('GET', Uri.parse('http://x/api/fishId/me'), headers: {'x-fishid-user': user}));
+    await scan(a);
+    await scan(a);
+    await scan(a, id: null);
+    expect(told.where((m) => m.contains('مستخدم جديد')), ['👤 مستخدم جديد سوّى أول فحص في التطبيق\nعدد المستخدمين: 1']);
+  });
+
   test('records the cost of every scan and shows it in the admin stats', () async {
     final a = app();
     await scan(a);
