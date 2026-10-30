@@ -15,7 +15,7 @@ class SiteStats {
   static const sources = ['fb_ad', 'facebook', 'instagram', 'google', 'bing', 'tiktok', 'snapchat', 'x', 'whatsapp', 'telegram', 'ksafish', 'direct'];
 
   /// الروابط اللي نعدّ ضغطاتها (data-track في الصفحة).
-  static const targets = {'facebook', 'instagram', 'store', 'play_testing', 'ksafish', 'email', 'download_button', 'pricing_button'};
+  static const targets = {'facebook', 'instagram', 'x', 'notify_button', 'waitlist_signup', 'store', 'play_testing', 'ksafish', 'email', 'download_button', 'pricing_button'};
 
   static const _keep = 120;
   static const _perVisitorDay = 60;
@@ -147,6 +147,9 @@ class SiteStats {
     'pricing_button': 'زر الأسعار',
     'facebook': 'أيقونة فيسبوك',
     'instagram': 'أيقونة إنستغرام',
+    'x': 'أيقونة إكس',
+    'notify_button': 'زر بلّغني',
+    'waitlist_signup': 'سجلوا في بلّغني',
     'ksafish': 'روابط الموسوعة',
     'email': 'تواصل معنا',
   };

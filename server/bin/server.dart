@@ -10,6 +10,7 @@ import 'package:fish_id_server/ledger.dart';
 import 'package:fish_id_server/refs.dart';
 import 'package:fish_id_server/site.dart';
 import 'package:fish_id_server/staff.dart';
+import 'package:fish_id_server/waitlist.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
 /// الإعدادات من متغيرات البيئة (ملف .env في docker compose):
@@ -47,6 +48,7 @@ Future<void> main() async {
     ledger: accounts == null ? null : Ledger.open(accounts),
     staff: accounts == null ? null : StaffStore.open(accounts.dir),
     site: accounts == null ? null : SiteStats.open(accounts.dir),
+    waitlist: accounts == null ? null : Waitlist.open(accounts.dir),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {
