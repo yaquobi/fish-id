@@ -48,11 +48,25 @@ class Waitlist {
   }
 
   /// يضيف التسجيل ويرجّع true إذا جديد، و false إذا كان مسجّل من قبل.
+  /// `{"beta": true, "os": "android" | "ios"}` يعني يبغى يجرب قبل الناس: نحتاج إيميل عشان نضيفه لتجربة
+  /// قوقل بلاي (حساب قوقل) أو TestFlight. المسجّل من قبل إذا رجع وطلب التجربة ينضاف له الطلب.
   Future<bool> add(Map body, {required String ip, required DateTime now}) async {
     if (body['consent'] != true) throw const FishIdError('bad_request', 'لازم توافق إننا نراسلك وقت الإطلاق');
     final c = normalize('${body['contact'] ?? ''}');
     if (c == null) throw const FishIdError('bad_request', 'اكتب إيميل صحيح أو رقم جوال سعودي (05xxxxxxxx)');
-    if (_items.any((e) => e['contact'] == c.value)) return false;
+    final beta = body['beta'] == true;
+    final os = '${body['os'] ?? ''}';
+    if (beta && c.kind != 'email') throw const FishIdError('bad_request', 'للتجربة المبكرة نحتاج إيميلك، عشان نرسل لك دعوة التجربة');
+    if (beta && os != 'android' && os != 'ios') throw const FishIdError('bad_request', 'اختر جوالك: أندرويد ولا آيفون');
+    final old = _items.where((e) => e['contact'] == c.value).firstOrNull;
+    if (old != null) {
+      if (beta && (old['beta'] != true || old['os'] != os)) {
+        old['beta'] = true;
+        old['os'] = os;
+        await save();
+      }
+      return false;
+    }
     final day = now.toUtc().toIso8601String().substring(0, 10);
     if (day != _today) {
       _today = day;
@@ -74,6 +88,8 @@ class Waitlist {
       'name': clip(body['name'], 60),
       'lang': body['lang'] == 'en' ? 'en' : 'ar',
       'src': clip(body['src'], 40),
+      if (beta) 'beta': true,
+      if (beta) 'os': os,
       'at': now.toUtc().toIso8601String(),
     });
     await save();
@@ -84,14 +100,15 @@ class Waitlist {
   Map<String, dynamic> view(DateTime now) {
     String day(DateTime t) => t.toUtc().add(const Duration(hours: 3)).toIso8601String().substring(0, 10);
     final today = day(now), week = day(now.subtract(const Duration(days: 6)));
-    var t = 0, w = 0, emails = 0;
+    var t = 0, w = 0, emails = 0, android = 0, ios = 0;
     for (final e in _items) {
       final d = day(DateTime.parse('${e['at']}'));
       if (d == today) t++;
       if (d.compareTo(week) >= 0) w++;
       if (e['kind'] == 'email') emails++;
+      if (e['beta'] == true) e['os'] == 'ios' ? ios++ : android++;
     }
-    return {'count': _items.length, 'today': t, 'week': w, 'emails': emails, 'phones': _items.length - emails, 'items': _items.reversed.toList()};
+    return {'count': _items.length, 'today': t, 'week': w, 'emails': emails, 'phones': _items.length - emails, 'betaAndroid': android, 'betaIos': ios, 'items': _items.reversed.toList()};
   }
 
   Future<void> remove(String id) async {

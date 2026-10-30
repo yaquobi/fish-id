@@ -621,15 +621,16 @@ const views = {
           ${kpi(T('المسجلين', 'Signed up'), num(r.count), `${T('إيميل', 'Email')} ${num(r.emails)} · ${T('جوال', 'Phone')} ${num(r.phones)}`, 'hero')}
           ${kpi(T('اليوم', 'Today'), num(r.today))}
           ${kpi(T('آخر 7 أيام', 'Last 7 days'), num(r.week))}
+          ${kpi(T('يبغون يجربون قبل الناس', 'Early testers'), num(r.betaAndroid + r.betaIos), `${T('أندرويد', 'Android')} ${num(r.betaAndroid)} · ${T('آيفون', 'iPhone')} ${num(r.betaIos)}`)}
         </div>
         <div class="card" style="margin-top:14px"><table>
-          <tr><th>${T('الإيميل أو الجوال', 'Email or phone')}</th><th>${T('الاسم', 'Name')}</th><th>${T('من وين', 'Source')}</th><th>${T('الوقت', 'When')}</th><th></th></tr>
-          ${r.items.map(x => `<tr><td class="mono" dir="ltr">${esc(x.contact)}</td><td>${esc(x.name || '')}</td><td>${esc(x.src || '')}</td><td>${when(x.at)}</td><td><button class="act ghost sm" data-wdel="${esc(x.id)}">${T('حذف', 'Delete')}</button></td></tr>`).join('') || `<tr><td class="msg" colspan="5">${T('ما فيه أحد للحين', 'Nobody yet')}</td></tr>`}
+          <tr><th>${T('الإيميل أو الجوال', 'Email or phone')}</th><th>${T('تجربة مبكرة', 'Early test')}</th><th>${T('من وين', 'Source')}</th><th>${T('الوقت', 'When')}</th><th></th></tr>
+          ${r.items.map(x => `<tr><td class="mono" dir="ltr">${esc(x.contact)}</td><td>${x.beta ? (x.os === 'ios' ? T('آيفون', 'iPhone') : T('أندرويد', 'Android')) : ''}</td><td>${esc(x.src || '')}</td><td>${when(x.at)}</td><td><button class="act ghost sm" data-wdel="${esc(x.id)}">${T('حذف', 'Delete')}</button></td></tr>`).join('') || `<tr><td class="msg" colspan="5">${T('ما فيه أحد للحين', 'Nobody yet')}</td></tr>`}
         </table></div>`;
       $('#wcsv').onclick = () => {
         const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-        const lines = [[T('الإيميل أو الجوال', 'Email or phone'), T('النوع', 'Type'), T('الاسم', 'Name'), T('اللغة', 'Language'), T('من وين', 'Source'), T('الوقت', 'When')],
-          ...r.items.map(x => [x.contact, x.kind, x.name, x.lang, x.src, x.at])];
+        const lines = [[T('الإيميل أو الجوال', 'Email or phone'), T('النوع', 'Type'), T('تجربة مبكرة', 'Early test'), T('الاسم', 'Name'), T('اللغة', 'Language'), T('من وين', 'Source'), T('الوقت', 'When')],
+          ...r.items.map(x => [x.contact, x.kind, x.beta ? x.os : '', x.name, x.lang, x.src, x.at])];
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob(['﻿' + lines.map(l => l.map(q).join(',')).join('\r\n')], {type: 'text/csv;charset=utf-8'}));
         a.download = `fish-id-waitlist-${today()}.csv`;

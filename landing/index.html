@@ -417,7 +417,12 @@ footer .huwat{height:24px}
 .notify label.ok a{color:var(--gold)}
 .notify .msg{margin-top:12px;font-weight:700;font-size:15px;min-height:1.5em}
 .notify .msg.good{color:#7EE2A8}.notify .msg.bad{color:#FFB4A8}
-.notify.done .row,.notify.done label.ok{display:none}
+.notify.done .row,.notify.done label.ok,.notify.done .os{display:none}
+.notify .os{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:12px 0 0;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.06);color:#fff;font-weight:700;font-size:15px}
+.notify .os[hidden]{display:none}
+.notify .os label{display:inline-flex;gap:8px;align-items:center;cursor:pointer;min-height:36px}
+.notify .os input{width:20px;height:20px;accent-color:var(--gold)}
+.notify .os .hint{flex-basis:100%;font-weight:400;color:var(--on-navy);font-size:13px}
 .soc{display:inline-flex;gap:10px;align-items:center}
 .soc a{display:inline-flex;width:34px;height:34px;border-radius:50%;align-items:center;justify-content:center;background:rgba(255,255,255,.1);color:#fff;transition:background .2s}
 .soc a:hover{background:var(--gold);color:var(--navy)}
@@ -762,6 +767,13 @@ footer a{color:var(--on-navy)}
           <input type="text" name="contact" inputmode="email" autocomplete="email" placeholder="إيميلك أو جوالك 05xxxxxxxx" aria-label="إيميلك أو رقم جوالك" required maxlength="120">
           <button class="btn gold" type="submit">سجّلني</button>
         </div>
+        <label class="ok"><input type="checkbox" name="beta"><span><b>أبغى أجرب التطبيق قبل الناس</b> (نحتاج إيميلك عشان نرسل لك دعوة التجربة)</span></label>
+        <div class="os" hidden>
+          <span>جوالك:</span>
+          <label><input type="radio" name="os" value="android"> أندرويد</label>
+          <label><input type="radio" name="os" value="ios"> آيفون</label>
+          <small class="hint"></small>
+        </div>
         <label class="ok"><input type="checkbox" name="consent" required><span>أوافق إن FISH ID يراسلني وقت الإطلاق. نحذف بياناتي إذا طلبت، والتفاصيل في <a href="/privacy.html">سياسة الخصوصية</a>.</span></label>
         <div class="msg" role="status" aria-live="polite"></div>
       </form>
@@ -801,20 +813,26 @@ footer a{color:var(--on-navy)}
   var f=document.getElementById('notify');if(!f)return;
   var m=f.querySelector('.msg'),b=f.querySelector('button');
   function say(t,ok){m.textContent=t;m.className='msg '+(ok?'good':'bad')}
+  var os=f.querySelector('.os'),hint=os.querySelector('.hint');
+  f.beta.addEventListener('change',function(){os.hidden=!f.beta.checked;if(f.beta.checked&&!f.contact.value.trim())f.contact.placeholder='إيميلك'});
+  os.addEventListener('change',function(){hint.textContent=f.os.value==='android'?'لأندرويد اكتب إيميل حساب قوقل (Gmail) اللي على جوالك.':'لآيفون توصلك دعوة TestFlight على إيميلك.'});
   f.addEventListener('submit',function(ev){
     ev.preventDefault();
     var c=f.contact.value.trim();
     if(!c){say('اكتب إيميلك أو رقم جوالك');f.contact.focus();return}
     if(!f.consent.checked){say('علّم على الموافقة عشان نقدر نراسلك');return}
+    var beta=f.beta.checked,dev=f.os.value;
+    if(beta&&c.indexOf('@')<0){say('للتجربة المبكرة اكتب إيميلك بدل الجوال');f.contact.focus();return}
+    if(beta&&!dev){say('اختر جوالك: أندرويد ولا آيفون');return}
     var q=new URLSearchParams(location.search),src=q.get('utm_source')||(q.has('fbclid')?'fb_ad':'');
     if(!src&&document.referrer){try{src=new URL(document.referrer).hostname}catch(e){}}
     b.disabled=true;say('لحظة…',true);
-    fetch('/api/waitlist',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contact:c,consent:true,src:src||'direct',lang:'ar'})})
+    fetch('/api/waitlist',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contact:c,consent:true,beta:beta,os:beta?dev:'',src:src||'direct',lang:'ar'})})
       .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d}})})
       .then(function(x){
         if(!x.ok){say(x.d.message||'صار خطأ، جرب مرة ثانية');return}
         f.classList.add('done');
-        say(x.d['new']?'تم ✅ أول ما ينزل التطبيق توصلك رسالة منا.':'أنت مسجّل معنا من قبل ✅ توصلك رسالة يوم الإطلاق.',true);
+        say(beta?'تم ✅ نضيفك للتجربة وتوصلك الدعوة على إيميلك خلال يوم أو يومين، ويوم الإطلاق توصلك رسالة منا.':x.d['new']?'تم ✅ أول ما ينزل التطبيق توصلك رسالة منا.':'أنت مسجّل معنا من قبل ✅ توصلك رسالة يوم الإطلاق.',true);
         try{navigator.sendBeacon('/api/track',new Blob([JSON.stringify({e:'click',t:'waitlist_signup'})],{type:'text/plain'}))}catch(e){}
       })
       .catch(function(){say('ما قدرنا نوصل للخادم، جرب بعد شوي')})
