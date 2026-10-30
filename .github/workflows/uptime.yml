@@ -2,8 +2,8 @@ name: Uptime
 
 # مراقب FISH ID: كل 10 دقايق يتأكد إن موقع hawat.id وخادم التطبيق (api/health) شغالين.
 # إذا طاح واحد منهم يرسل تنبيه لبوت تليجرام، وإذا رجع يرسل «رجع يشتغل». ما يكرر نفس التنبيه كل مرة.
-# أسرار المستودع: FISHID_TELEGRAM_TOKEN (توكن البوت من BotFather) و FISHID_TELEGRAM_CHAT (رقم محادثتك)،
-# نفس القيم اللي في server/.env. بدونهم الفحص يشتغل ويطلع أحمر هنا بس.
+# أسرار المستودع (نفس القيم اللي في server/.env): FISHID_NTFY_TOPIC لإشعار الجوال،
+# و/أو FISHID_TELEGRAM_TOKEN و FISHID_TELEGRAM_CHAT لتليجرام. بدونهم الفحص يشتغل ويطلع أحمر هنا بس.
 on:
   schedule:
     - cron: '*/10 * * * *'
@@ -22,6 +22,7 @@ jobs:
     env:
       TOKEN: ${{ secrets.FISHID_TELEGRAM_TOKEN }}
       CHAT: ${{ secrets.FISHID_TELEGRAM_CHAT }}
+      NTFY: ${{ secrets.FISHID_NTFY_TOPIC }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check the site and the app server
@@ -50,8 +51,8 @@ jobs:
           last=$(gh run list -R "$GITHUB_REPOSITORY" --workflow uptime.yml --status completed -L 1 --json conclusion -q '.[0].conclusion' || true)
           echo "last=${last:-success}" >> "$GITHUB_OUTPUT"
 
-      - name: Tell Telegram
-        if: env.TOKEN != '' && env.CHAT != '' && ((steps.check.outputs.down == 'true' && steps.prev.outputs.last != 'failure') || (steps.check.outputs.down == 'false' && steps.prev.outputs.last == 'failure'))
+      - name: Tell the phone
+        if: (env.NTFY != '' || (env.TOKEN != '' && env.CHAT != '')) && ((steps.check.outputs.down == 'true' && steps.prev.outputs.last != 'failure') || (steps.check.outputs.down == 'false' && steps.prev.outputs.last == 'failure'))
         env:
           DOWN: ${{ steps.check.outputs.down }}
           WHY: ${{ steps.check.outputs.why }}
@@ -61,8 +62,14 @@ jobs:
           else
             text='🟢 FISH ID: الموقع والتطبيق رجعوا يشتغلون'
           fi
-          curl -s --max-time 20 -o /dev/null -w 'telegram %{http_code}\n' "https://api.telegram.org/bot$TOKEN/sendMessage" \
-            --data-urlencode "chat_id=$CHAT" --data-urlencode "text=$text"
+          if [ -n "$NTFY" ]; then
+            curl -s --max-time 20 -o /dev/null -w 'ntfy %{http_code}\n' -H 'Title: FISH ID' -H "Priority: $([ "$DOWN" = true ] && echo 5 || echo 3)" \
+              -H "Tags: $([ "$DOWN" = true ] && echo rotating_light || echo white_check_mark)" --data-binary "$text" "https://ntfy.sh/$NTFY"
+          fi
+          if [ -n "$TOKEN" ] && [ -n "$CHAT" ]; then
+            curl -s --max-time 20 -o /dev/null -w 'telegram %{http_code}\n' "https://api.telegram.org/bot$TOKEN/sendMessage" \
+              --data-urlencode "chat_id=$CHAT" --data-urlencode "text=$text"
+          fi
 
       - name: Fail while down
         if: steps.check.outputs.down == 'true'
