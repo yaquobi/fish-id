@@ -35,7 +35,7 @@ Subscriptions are billed and cancelled through Google Play or the App Store.
 
 ## Availability
 
-- Android: Google Play (sa.hawat.fish_id), in testing; public launch soon. Testers: https://play.google.com/apps/testing/sa.hawat.fish_id
+- Android: Google Play (sa.hawat.fish_id), in testing; public launch soon. Early testers (Android or iPhone): sign up at https://hawat.id/#notify
 - iOS: App Store, coming soon (TestFlight beta).
 
 ## Sources and method
