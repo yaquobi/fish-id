@@ -237,6 +237,7 @@ label.set input{width:120px;direction:ltr}
 .u-st.active{background:var(--good-soft);color:var(--good)}
 .u-st.soon,.u-st.empty{background:var(--warn-soft);color:var(--warn)}
 .u-st.blocked{background:var(--bad-soft);color:var(--bad)}
+.u-st.owner{background:var(--good-soft);color:var(--good)}
 .u-bar{display:block;width:72px;height:3px;background:var(--chip);margin-top:4px;margin-inline-start:auto}
 .u-bar i{display:block;height:100%;background:var(--good)}
 .u-bar i.low{background:var(--bad)}
@@ -949,8 +950,8 @@ const views = {
       user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
       x: '<path d="M6 6l12 12M18 6L6 18"/>',
     };
-    const stName = k => ({active: T('نشط', 'Active'), soon: T('ينتهي قريب', 'Ending soon'), free: T('مجاني', 'Free'), empty: T('خلص رصيده', 'Out of scans'), blocked: T('موقوف', 'Blocked')})[k] || k;
-    const fromName = k => ({store: T('المتجر', 'Store'), manual: T('يدوي من الأدمن', 'Set by admin'), code: T('رمز هدية', 'Gift code')})[k] || '';
+    const stName = k => ({active: T('نشط', 'Active'), soon: T('ينتهي قريب', 'Ending soon'), free: T('مجاني', 'Free'), empty: T('خلص رصيده', 'Out of scans'), blocked: T('موقوف', 'Blocked'), owner: T('المالك', 'Owner')})[k] || k;
+    const fromName = k => ({store: T('المتجر', 'Store'), manual: T('يدوي من الأدمن', 'Set by admin'), code: T('رمز هدية', 'Gift code'), owner: T('المالك', 'Owner')})[k] || '';
     const ago = s => {
       if (!s) return T('ما فحص', 'Never');
       const h = (Date.now() - new Date(s)) / 36e5;
@@ -966,14 +967,15 @@ const views = {
     // قوائم الإجراءات (هدية، باقة، إيقاف) نفسها للسطر وللتحديد الجماعي.
     const giftMenu = () => `<div class="u-menu end" role="menu">${[5, 10, 25, 50].map(n => `<button data-gift="${n}">${T('أهدِ', 'Gift')} <span class="u-num">${n}</span> ${T('فحوصات', 'scans')}</button>`).join('')}
       <div class="row"><input type="number" min="1" max="1000" data-n placeholder="${T('عدد', 'Count')}" aria-label="${T('عدد الفحوصات', 'Scans')}"><button class="act sm" data-gift-n>${T('أهدِ', 'Gift')}</button></div></div>`;
-    const planMenu = () => `<div class="u-menu end" role="menu">
+    const planMenu = owner => `<div class="u-menu end" role="menu">
       <button data-extend="31">${T('تمديد الباقة شهر', 'Extend by a month')}</button>
       <button data-plan="monthly:31">${planName('monthly')} · <span class="u-num">31</span> ${T('يوم', 'days')}</button>
       <button data-plan="yearly:366">${planName('yearly')} · <span class="u-num">366</span> ${T('يوم', 'days')}</button>
       <button data-plan="shop:31">${planName('shop')} · <span class="u-num">31</span> ${T('يوم', 'days')}</button>
+      <button data-owner="${!owner}">${owner ? T('إلغاء حساب المالك', 'Remove owner access') : T('حساب المالك · بلا حدود للأبد', 'Owner · unlimited forever')}</button>
       <button data-plan="free:0" class="danger">${T('رجّعه مجاني', 'Back to free')}</button></div>`;
     const blockMenu = blocked => `<div class="u-menu end" role="menu"><button data-block="${!blocked}" class="${blocked ? '' : 'danger'}">${blocked ? T('أكّد التفعيل', 'Confirm unblock') : T('أكّد الإيقاف', 'Confirm block')}</button></div>`;
-    const menuBody = (b, blocked) => b === 'gift' ? giftMenu() : b === 'plan' ? planMenu() : blockMenu(blocked);
+    const menuBody = (b, blocked, owner) => b === 'gift' ? giftMenu() : b === 'plan' ? planMenu(owner) : blockMenu(blocked);
     const act = async (ids, body) => {
       if (ids.length === 1) await post('users/' + ids[0], body);
       else await post('users', {ids, ...body});
@@ -985,6 +987,7 @@ const views = {
       menu.querySelector('[data-gift-n]')?.addEventListener('click', async () => { const n = parseInt(menu.querySelector('[data-n]').value, 10); if (n > 0) { await act(ids, {grant: n}); done(); } });
       menu.querySelectorAll('[data-extend]').forEach(b => b.onclick = async () => { await act(ids, {extend: +b.dataset.extend}); done(); });
       menu.querySelectorAll('[data-plan]').forEach(b => b.onclick = async () => { const [plan, days] = b.dataset.plan.split(':'); await act(ids, {plan, days: +days}); done(); });
+      menu.querySelectorAll('[data-owner]').forEach(b => b.onclick = async () => { await act(ids, {owner: b.dataset.owner === 'true'}); done(); });
       menu.querySelectorAll('[data-block]').forEach(b => b.onclick = async () => { await act(ids, {blocked: b.dataset.block === 'true'}); done(); });
     };
     const closeMenus = () => document.querySelectorAll('.u-menu').forEach(m => m.remove());
@@ -1080,7 +1083,7 @@ const views = {
       tr.onclick = e => { if (!e.target.closest('[data-c],.u-acts')) userDrawer(id, again); };
       tr.onkeydown = e => { if (e.key === 'Enter' && e.target === tr) userDrawer(id, again); };
       tr.querySelector('[data-c]').onchange = e => { e.target.checked ? sel.add(id) : sel.delete(id); syncSel(); };
-      tr.querySelectorAll('[data-m]').forEach(b => b.onclick = e => { e.stopPropagation(); openMenu(b.parentElement, menuBody(b.dataset.m, u.blocked), [id], () => again()); });
+      tr.querySelectorAll('[data-m]').forEach(b => b.onclick = e => { e.stopPropagation(); openMenu(b.parentElement, menuBody(b.dataset.m, u.blocked, u.owner), [id], () => again()); });
       tr.querySelector('[data-open]').onclick = e => { e.stopPropagation(); userDrawer(id, again); };
     });
 
@@ -1111,6 +1114,7 @@ const views = {
       const logText = l => [
         l.grant != null ? T(`أهدى <span class="u-num">${num(l.grant)}</span> فحوصات`, `Gifted <span class="u-num">${num(l.grant)}</span> scans`) : '',
         l.plan ? T(`غيّر الباقة إلى ${planName(l.plan)}`, `Set plan to ${planName(l.plan)}`) + (l.until && l.plan !== 'free' ? ` ${T('لين', 'until')} ${date(l.until)}` : '') : '',
+        l.owner != null ? (l.owner ? T('جعله حساب المالك', 'Made it the owner account') : T('ألغى حساب المالك', 'Removed owner access')) : '',
         l.blocked != null ? (l.blocked ? T('أوقف الحساب', 'Blocked the account') : T('فعّل الحساب', 'Unblocked the account')) : '',
       ].filter(Boolean).join('، ');
       const sec = (title, body) => `<div class="sect"><h4>${title}</h4>${body}</div>`;
@@ -1148,7 +1152,7 @@ const views = {
         $('#drawer').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; paint(); });
         $('#drawer').querySelectorAll('[data-m]').forEach(b => b.onclick = e => {
           e.stopPropagation();
-          openMenu(b.parentElement, menuBody(b.dataset.m, d.blocked).replace('u-menu end', 'u-menu'), [d.id], async () => { close(); await refresh(); userDrawer(id, refresh); });
+          openMenu(b.parentElement, menuBody(b.dataset.m, d.blocked, d.owner).replace('u-menu end', 'u-menu'), [d.id], async () => { close(); await refresh(); userDrawer(id, refresh); });
         });
       };
       paint();

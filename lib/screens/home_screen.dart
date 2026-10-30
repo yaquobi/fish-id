@@ -140,7 +140,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       : Padding(
                           padding: const EdgeInsets.only(top: 12, bottom: 16),
                           child: Text(
-                            n > 0
+                            // 9999 يرسله الخادم لحساب المالك (بلا حدود).
+                            n >= 9999
+                                ? tr('فحص بلا حدود', 'Unlimited scans')
+                                : n > 0
                                 ? tr('باقي لك $n ${n == 1 ? 'فحص' : 'فحوصات'}', '$n ${n == 1 ? 'scan' : 'scans'} left')
                                 : tr('خلصت فحوصاتك، اشترك عشان تكمل', 'No scans left. Subscribe to keep scanning'),
                             textAlign: TextAlign.center,

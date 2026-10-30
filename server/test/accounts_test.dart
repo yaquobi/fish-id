@@ -141,6 +141,32 @@ void main() {
     expect(a.accounts!.find(user)!['plan'], 'shop');
   });
 
+  test('the owner account scans without limit forever, whatever the store says', () async {
+    final a = app();
+    Future<Response> sync() async => a.handler(Request('POST', Uri.parse('http://x/api/fishId/sync'), headers: {'x-fishid-user': user}));
+    for (var i = 0; i < 3; i++) {
+      await scan(a);
+    }
+    expect((await scan(a)).statusCode, 402);
+    final u = jsonDecode(await (await admin(a, 'users/$user', body: {'owner': true})).readAsString());
+    expect(u['status'], 'owner');
+    expect(u['from'], 'owner');
+    for (var i = 0; i < 20; i++) {
+      final r = await scan(a);
+      expect(r.statusCode, 200);
+      expect(r.headers['x-fishid-remaining'], '${AccountStore.ownerRemaining}');
+    }
+    // استرجاع أو انتهاء اشتراك في المتجر ما يلغي حساب المالك.
+    subscribers.remove(user);
+    await sync();
+    t = t.add(const Duration(days: 4000));
+    expect((await scan(a)).statusCode, 200);
+    final me = await a.handler(Request('GET', Uri.parse('http://x/api/fishId/me'), headers: {'x-fishid-user': user}));
+    expect(jsonDecode(await me.readAsString())['plan'], 'owner');
+    await admin(a, 'users/$user', body: {'owner': false});
+    expect((await scan(a)).statusCode, 402);
+  });
+
   test('admin needs the token, and can gift scans, change plans and settings', () async {
     final a = app();
     expect((await admin(a, 'stats', token: 'wrong')).statusCode, 401);
