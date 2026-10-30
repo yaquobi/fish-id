@@ -91,6 +91,7 @@ input:focus,select:focus{outline:2px solid var(--gold);outline-offset:0;border-c
 .seg{display:inline-flex;border:1px solid var(--edge)}
 .seg button{border:0;background:transparent;padding:6px 12px;font-weight:400;font-size:13px;font-family:inherit;cursor:pointer;color:var(--muted)}
 .seg button.on{background:var(--ink);color:var(--surface);font-weight:500}
+#login{background:transparent;border:0}
 .login{max-width:400px;margin:12vh auto;text-align:center}
 .login input{width:100%;margin:14px 0 10px}
 .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
