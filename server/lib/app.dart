@@ -358,7 +358,13 @@ class FishIdApp {
           'status': {'server': true, 'claude': identify != null, 'telegram': notify != null, 'accounts': store != null},
         });
       case ('GET', 'stats') when store != null:
-        return _json(200, {...store.stats(now), if (ledger != null) 'ledger': ledger!.statement(Ledger.month(now))..remove('income')..remove('expenses')});
+        return _json(200, {
+          ...store.stats(now),
+          if (ledger != null) 'ledger': {
+            ...ledger!.statement(Ledger.month(now))..remove('income')..remove('expenses'),
+            'incomeYearSar': ledger!.history(Ledger.month(now)).fold<num>(0, (t, h) => t + (h['incomeSar'] as num)),
+          },
+        });
       case ('GET', 'ledger') when ledger != null:
         final m = q['month'] ?? '';
         return _json(200, ledger!.report(Ledger.monthPattern.hasMatch(m) ? m : Ledger.month(now)));
