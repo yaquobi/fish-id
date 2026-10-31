@@ -37,7 +37,9 @@ double usageCost(List<Map<String, dynamic>> usage) {
     final model = '${u['model']}';
     final p = _prices.entries.firstWhere((e) => model.startsWith(e.key), orElse: () => _prices.entries.first).value;
     int n(String k) => (u[k] as num?)?.toInt() ?? 0;
-    usd += (n('input_tokens') * p.$1 + n('output_tokens') * p.$2 + n('cache_read_input_tokens') * p.$3 + n('cache_creation_input_tokens') * p.$4) / 1e6;
+    // الوضع السريع بضعف السعر.
+    final speed = u['speed'] == 'fast' ? 2 : 1;
+    usd += speed * (n('input_tokens') * p.$1 + n('output_tokens') * p.$2 + n('cache_read_input_tokens') * p.$3 + n('cache_creation_input_tokens') * p.$4) / 1e6;
   }
   return usd;
 }
@@ -52,11 +54,15 @@ class FishIdAi {
     this.prompt = 'v1',
     this.refs,
     this.refsBelow = 80,
+    this.fast = false,
   });
 
   final String key;
   final String model;
   final String effort;
+
+  /// الوضع السريع لـ Opus: نفس النموذج بسرعة إخراج أعلى وبضعف السعر (Claude API بس).
+  final bool fast;
 
   /// نسخة التعليمات: v1 الحالية، و v2 تجبر النموذج يحدد العائلة والجنس أولًا ويقارن الأنواع المتشابهة بعلاماتها.
   /// نقارن بينها بأداة القياس (bin/eval.dart) على نفس الصور قبل ما نغيّر الافتراضي.
@@ -174,6 +180,7 @@ Work like a taxonomist, and write your notes in observed_features before choosin
 
   Map<String, Object> requestBody(List<Photo> photos) => {
     'model': model,
+    if (fast) 'speed': 'fast',
     'max_tokens': 4000,
     'output_config': {
       'effort': effort,
@@ -227,6 +234,7 @@ Work like a taxonomist, and write your notes in observed_features before choosin
     try {
       final second = await _call({
         'model': model,
+        if (fast) 'speed': 'fast',
         'max_tokens': 3000,
         'output_config': {
           'effort': effort,
@@ -258,7 +266,7 @@ Work like a taxonomist, and write your notes in observed_features before choosin
       req.headers
         ..set('x-api-key', key)
         ..set('anthropic-version', '2026-10-21')
-        ..set('anthropic-beta', 'server-side-fallback-2026-07-01')
+        ..set('anthropic-beta', fast ? 'server-side-fallback-2026-07-01,fast-mode-2026-02-01' : 'server-side-fallback-2026-07-01')
         ..contentType = ContentType.json;
       req.add(utf8.encode(jsonEncode(body)));
       final res = await req.close().timeout(const Duration(seconds: 90));
