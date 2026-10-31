@@ -695,7 +695,7 @@ const views = {
     $('#app').innerHTML = heading(T('الرئيسية', 'Overview'), T('نظرة سريعة على ', 'Snapshot of ') + monthName(thisMonth())) + `
       <div class="grid">
         ${l ? kpi(T('صافي الربح هالشهر', 'Net profit this month'), signed(l.netSar), `${T('دخل', 'Income')} ${money(l.incomeSar)} · ${T('مصاريف', 'expenses')} ${money(l.expensesSar)}`, 'hero') : ''}
-        ${l ? kpi(T('الفلوس اللي دخلت هالشهر', 'Money in this month'), sar(l.incomeSar), `${T('صافي بعد الضريبة وعمولة المتجر', 'After VAT and store fee')} · ${num(l.paidSales)} ${T('مبيعة', 'sales')} · ${T('آخر 12 شهر', 'last 12 months')} ${money(l.incomeYearSar)}`) : ''}
+        ${l ? kpi(T('قيمة الاشتراكات هالشهر', 'Subscription revenue this month'), sar(l.incomeSar), `${T('صافي بعد الضريبة وعمولة المتجر', 'After VAT and store fee')} · ${num(l.paidSales)} ${T('مبيعة', 'sales')} · ${T('آخر 12 شهر', 'last 12 months')} ${money(l.incomeYearSar)}`) : ''}
         ${kpi(T('المشتركين', 'Subscribers'), num(s.paying), `${planName('monthly')} ${num(s.plans.monthly)} · ${planName('yearly')} ${num(s.plans.yearly)} · ${T('محلات', 'shops')} ${num(s.plans.shop)}`)}
         ${kpi(T('المستخدمين', 'Users'), num(s.users), `${T('جدد اليوم', 'New today')} ${num(s.newToday)} · ${T('هالأسبوع', 'this week')} ${num(s.newWeek)}`)}
         ${kpi(T('خلصت مجانيتهم', 'Used up free scans'), num(s.outOfFree), T('ما اشتركوا للحين', 'not subscribed yet'))}
