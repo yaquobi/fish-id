@@ -26,7 +26,8 @@ FIRST = int(sys.argv[3]) if len(sys.argv) > 3 else 1
 LAST = int(sys.argv[4]) if len(sys.argv) > 4 else 9999
 MODEL = os.environ.get("BOOK_MODEL", "claude-opus-5-5")
 
-sci_re = re.compile(r"^\s*([A-Z][a-z]+ [a-z]{3,}(?: [a-z]{3,})?)\s*\(")
+# الاسم العلمي في أول السطر وبعده المؤلف (بين قوسين أو بدون).
+sci_re = re.compile(r"^\s*([A-Z][a-z]+ [a-z]{3,}(?: [a-z]{3,})?)\s*(?:\(|[A-Z])")
 client = anthropic.Anthropic()
 doc = fitz.open(PDF)
 os.makedirs(OUT, exist_ok=True)
