@@ -34,7 +34,7 @@ class ContribStore {
   }
 
   static final _part = RegExp(r'^[a-z0-9-]{1,40}$');
-  static final _file = RegExp(r'^[1-3]\.(jpg|png)$');
+  static final _file = RegExp(r'^[1-6]\.(jpg|png)$');
 
   /// آخر المساهمات للوحة الأدمن، الأحدث أولًا، مع مسار كل صورة (يوم/رقم/ملف).
   List<Map<String, dynamic>> latest({int limit = 60, String status = ''}) {
