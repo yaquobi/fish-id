@@ -8,6 +8,13 @@ const collectPage = r'''<!doctype html>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0B2236">
 <title>FISH ID · تصوير الأسماك</title>
+<link rel="manifest" id="mf" href="collect/manifest.webmanifest">
+<link rel="icon" href="/img/favicon.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FISH ID">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500&family=Tajawal:wght@300;400;500&display=swap" rel="stylesheet">
@@ -56,6 +63,9 @@ button.go:disabled { background: #9aa6b2; }
 .match { font-size: 13px; margin-top: 6px; color: var(--ok); }
 .tips li { margin: 3px 0; }
 .hide { display: none; }
+.install { background: var(--gold); color: var(--navy); border: 0; display: flex; gap: 12px; align-items: center; }
+.install p { color: var(--navy); margin: 0; font-weight: 400; }
+.install button { font: 500 15px 'Tajawal', sans-serif; padding: 10px 14px; border: 0; background: var(--navy); color: #fff; white-space: nowrap; cursor: pointer; }
 footer { text-align: center; color: var(--mute); font-size: 12px; padding: 20px 16px 40px; }
 </style>
 </head>
@@ -70,8 +80,26 @@ const num = n => Number(n || 0).toLocaleString('ar-SA-u-nu-latn');
 const params = new URLSearchParams(location.search);
 let key = params.get('k') || '';
 try { if (key) localStorage.setItem('fishid-collector', key); else key = localStorage.getItem('fishid-collector') || ''; } catch (e) {}
-// المفتاح ما يبقى في شريط العنوان (عشان لو أحد صوّر الشاشة).
-if (params.get('k')) history.replaceState(null, '', location.pathname);
+// المفتاح يبقى في الرابط: آيفون يحفظ الأيقونة بنفس الرابط، وتخزينها منفصل عن سفاري.
+if (key && !params.get('k')) history.replaceState(null, '', location.pathname + '?k=' + encodeURIComponent(key));
+$('#mf').href = 'collect/manifest.webmanifest?k=' + encodeURIComponent(key);
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+let installEvent = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; installBox(); });
+// كرت «ثبّت كأيقونة»: أندرويد بزر مباشر، وآيفون بخطوات المشاركة.
+function installBox() {
+  const box = $('#install');
+  if (!box || standalone) return;
+  if (installEvent) {
+    box.innerHTML = `<div class="card install"><p>ثبّت FISH ID كأيقونة على جوالك، وتفتح الصفحة على طول بدون بحث.</p><button id="inst">ثبّت</button></div>`;
+    $('#inst').onclick = async () => { installEvent.prompt(); await installEvent.userChoice; installEvent = null; box.innerHTML = ''; };
+  } else if (ios) {
+    box.innerHTML = `<div class="card install"><p>عشان تصير أيقونة على جوالك: اضغط زر المشاركة <b>⬆︎</b> تحت في سفاري، ثم <b>«إضافة إلى الشاشة الرئيسية»</b>.</p></div>`;
+  } else {
+    box.innerHTML = `<div class="card install"><p>عشان تصير أيقونة على جوالك: من قائمة المتصفح <b>⋮</b> اختر <b>«إضافة إلى الشاشة الرئيسية»</b> أو «تثبيت التطبيق».</p></div>`;
+  }
+}
 
 async function api(path, body) {
   const res = await fetch(path, {method: body ? 'POST' : 'GET', headers: {'x-collector': key, 'content-type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
@@ -126,7 +154,7 @@ function show(where, text, bad) { $(where).innerHTML = `<div class="msg ${bad ? 
 
 function form(done) {
   shots = {};
-  $('#app').innerHTML = `<div class="stats"><div class="stat"><div class="n num" id="today">${num(me.today)}</div><div class="l">سمكة اليوم</div></div>
+  $('#app').innerHTML = `<div id="install"></div><div class="stats"><div class="stat"><div class="n num" id="today">${num(me.today)}</div><div class="l">سمكة اليوم</div></div>
     <div class="stat"><div class="n num" id="fish">${num(me.fish)}</div><div class="l">المجموع</div></div></div>
     ${done ? `<div class="msg ok" style="margin:0 0 14px">✓ انرفعت ${esc(done)}. يعطيك العافية! الحين السمكة اللي بعدها.</div>` : ''}
     <div class="card"><h2>1. اسم السمكة</h2>
@@ -160,6 +188,7 @@ function form(done) {
     ready();
   });
   $('#send').onclick = send;
+  installBox();
 }
 
 function ready() { $('#send').disabled = !($('#name').value.trim() && Object.keys(shots).length >= 3); }
