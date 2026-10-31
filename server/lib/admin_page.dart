@@ -408,22 +408,23 @@ const icons = {
   site: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/>',
   launch: '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>',
   collectors: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  book: '<path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/>',
   staff: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/><path d="M17 3l1.5 1.5L21 2"/>',
 };
 const tabName = k => ({home: T('الرئيسية', 'Overview'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
-  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors')})[k];
+  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), book: T('كتاب البحر الأحمر', 'Red Sea book')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
-  owner: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'settings', 'codes', 'staff'],
-  admin: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'settings', 'codes'],
+  owner: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes', 'staff'],
+  admin: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes'],
   accountant: ['home', 'report', 'money', 'alerts'],
   investor: ['report'],
 };
 // مجموعات القائمة الجانبية. أي تبويب جديد ينضاف لمجموعته هنا.
 const navGroups = () => [
   [T('نظرة عامة', 'Overview'), ['home', 'report', 'alerts']],
-  [T('العملاء', 'Customers'), ['users', 'scans', 'contrib', 'collectors', 'launch']],
+  [T('العملاء', 'Customers'), ['users', 'scans', 'contrib', 'collectors', 'book', 'launch']],
   [T('المال', 'Money'), ['money', 'settings', 'codes']],
   [T('الموقع والفريق', 'Site & team'), ['site', 'staff']],
 ];
@@ -1241,6 +1242,23 @@ const views = {
       catch (e) { $('#c-msg').textContent = e.message; }
     };
     $('#app').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { await post('codes', {code: b.dataset.del, max: 0}); show('codes'); });
+  },
+
+  // أرشيف كتاب «أسماك المياه الإقليمية للمملكة في البحر الأحمر» (مركز أبحاث الثروة السمكية بجدة 2011).
+  async book(q = '') {
+    const all = await api('book');
+    const matched = all.filter(s => s.ksafish).length;
+    const norm = s => String(s || '').toLowerCase();
+    const list = q ? all.filter(s => [s.sci, s.english, ...(s.local || []), names[s.ksafish]].some(v => norm(v).includes(norm(q)))) : all;
+    $('#app').innerHTML = heading(T('كتاب البحر الأحمر', 'Red Sea book'), `${num(all.length)} ${T('نوع', 'species')} · ${num(matched)} ${T('مربوط بالموسوعة', 'linked to KSAFish')} · ${num(all.length - matched)} ${T('مو في الموسوعة', 'not in KSAFish')}`,
+      `<input id="bk-q" class="noprint" placeholder="${T('بحث بالاسم', 'Search')}" value="${esc(q)}" style="width:200px">`) + `
+      <div class="photos">${list.map(s => `<div class="card">
+        <div class="thumbs">${(s.files || []).map(f => `<img alt="" data-src="book/${esc(s.folder)}/${esc(f)}">`).join('')}</div>
+        <div><b dir="ltr" style="font-style:italic">${esc(s.sci)}</b> <span class="k">${esc(s.english)}</span></div>
+        <div>${(s.local || []).length ? esc(s.local.join('، ')) : `<span class="k">${T('بدون اسم محلي', 'No local name')}</span>`}</div>
+        <div class="k">${s.ksafish ? `${T('الموسوعة', 'KSAFish')}: ${sp(s.ksafish)}` : `<span class="pill">${T('مو في الموسوعة', 'Not in KSAFish')}</span>`} · ${T('صفحة', 'page')} ${num(s.page)}${s.note ? ' · ' + esc(s.note) : ''}</div></div>`).join('') || `<div class="card msg">${T('ما فيه نتائج', 'No results')}</div>`}</div>`;
+    $('#bk-q').onchange = () => show('book', $('#bk-q').value.trim());
+    $('#app').querySelectorAll('img[data-src]').forEach(async img => { try { img.src = URL.createObjectURL(await api(img.dataset.src)); } catch (e) {} });
   },
 
   // المصوّرين: كل واحد له رابط خاص يفتحه من جواله ويرفع صور الأسماك، وصورهم تطلع في «صور المساهمين».

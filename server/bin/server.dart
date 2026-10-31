@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:fish_id_server/accounts.dart';
 import 'package:fish_id_server/app.dart';
 import 'package:fish_id_server/claude.dart';
+import 'package:fish_id_server/book.dart';
 import 'package:fish_id_server/collectors.dart';
 import 'package:fish_id_server/contrib.dart';
 import 'package:fish_id_server/ledger.dart';
@@ -47,6 +48,10 @@ Future<void> main() async {
     // مجلد مساهمات المستخدمين (مربوط بـ data/contrib على السيرفر في docker-compose).
     contrib: ContribStore.open(env['FISHID_CONTRIB'] ?? 'contrib'),
     collectors: accounts == null ? null : CollectorStore.open(accounts.dir),
+    // أرشيف كتاب أسماك البحر الأحمر (data/book/archive على السيرفر)، يبنيه tool/book_extract.py.
+    book: BookArchive.open(env['FISHID_BOOK'] ?? 'book', {
+      for (final s in data['species'] as List) '${s['sci']}'.toLowerCase().trim(): (s['id'] as String).split('-').last,
+    }),
     accounts: accounts,
     ledger: accounts == null ? null : Ledger.open(accounts),
     staff: accounts == null ? null : StaffStore.open(accounts.dir),

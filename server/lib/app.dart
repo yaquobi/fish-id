@@ -6,6 +6,7 @@ import 'package:shelf/shelf.dart';
 
 import 'accounts.dart';
 import 'admin_page.dart';
+import 'book.dart';
 import 'claude.dart';
 import 'collect_page.dart';
 import 'collectors.dart';
@@ -43,6 +44,7 @@ class FishIdApp {
     required this.identify,
     this.contrib,
     this.collectors,
+    this.book,
     this.accounts,
     this.ledger,
     this.staff,
@@ -61,6 +63,9 @@ class FishIdApp {
 
   /// المصوّرين اللي يجمعون صور الأسواق بروابط خاصة، وصورهم تنحفظ في [contrib].
   final CollectorStore? collectors;
+
+  /// أرشيف كتاب أسماك البحر الأحمر (صور وأسماء محلية) للوحة الأدمن.
+  final BookArchive? book;
   final AccountStore? accounts;
 
   /// المحاسبة (الدخل والمصاريف) للوحة الأدمن. تحتاج [accounts].
@@ -447,6 +452,12 @@ class FishIdApp {
         final b = await body();
         await store.saveCode('${b['code']}', scans: (b['scans'] as num?)?.toInt() ?? 0, max: (b['max'] as num?)?.toInt() ?? 0);
         return _json(200, store.codes());
+      case ('GET', 'book') when book != null && parts.length == 2:
+        return _json(200, book!.species);
+      case ('GET', 'book') when book != null && parts.length == 4:
+        final f = book!.file(parts[2], parts[3]);
+        if (f == null) break;
+        return Response.ok(await f.readAsBytes(), headers: {'content-type': 'image/jpeg', 'cache-control': 'private, max-age=86400'});
       case ('GET', 'collectors') when collectors != null:
         return _json(200, [for (final c in collectors!.list()) {...c, 'today': collectors!.today(c, now)}]);
       case ('POST', 'collectors') when collectors != null:
