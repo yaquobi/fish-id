@@ -452,6 +452,8 @@ class FishIdApp {
       case ('POST', 'collectors') when collectors != null:
         final b = await body();
         if (b['add'] is Map) return _json(200, await collectors!.add('${b['add']['name'] ?? ''}', '${b['add']['city'] ?? ''}', now));
+        if (b['invite'] == 'new') return _json(200, {'invite': await collectors!.newInvite()});
+        if (b['invite'] == 'show') return _json(200, {'invite': collectors!.invite ?? await collectors!.newInvite()});
         if (b['key'] is String && b['active'] is bool) await collectors!.setActive(b['key'] as String, b['active'] as bool);
         return _json(200, {'ok': true});
       case ('GET', 'contrib') when contrib != null && parts.length == 2:
@@ -679,6 +681,21 @@ class FishIdApp {
       _collectFails = 0;
     }
     if (_collectFails >= 20) throw const FishIdError('busy', 'محاولات كثيرة، حاول بعد دقيقة', status: 429);
+    if (req.method == 'POST' && path == 'collect/signup') {
+      // كل تسجيل يحسب من حد المحاولات بالدقيقة، عشان ما أحد يغرق القائمة.
+      _collectFails++;
+      final Map b;
+      try {
+        b = jsonDecode(await req.readAsString()) as Map;
+      } on Object {
+        throw const FishIdError('bad_request', 'الطلب غير صالح');
+      }
+      if (b['consent'] != true) throw const FishIdError('contrib_consent', 'لازم توافق على الشروط');
+      final key = await store.signup('${b['invite'] ?? ''}', '${b['name'] ?? ''}', '${b['city'] ?? ''}', '${b['contact'] ?? ''}', now);
+      final c = store.find(key)!;
+      _tell('collector:$key', '👤 مصوّر جديد سجّل: ${c['name']} (${c['city']})\nعدد المصوّرين: ${store.list().length}');
+      return _json(200, {'key': key});
+    }
     final key = req.headers['x-collector'] ?? '';
     final c = store.find(key);
     if (c == null) {
