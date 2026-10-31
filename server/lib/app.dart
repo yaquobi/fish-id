@@ -650,6 +650,28 @@ class FishIdApp {
     if (req.method == 'GET' && path == 'collect') {
       return Response.ok(collectPage, headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer'});
     }
+    if (req.method == 'GET' && path == 'collect/manifest.webmanifest') {
+      // الأيقونة تفتح على نفس رابط المصوّر. المفتاح ينضاف بس إذا شكله صحيح.
+      final k = req.url.queryParameters['k'] ?? '';
+      return Response.ok(
+        jsonEncode({
+          'name': 'FISH ID · تصوير الأسماك',
+          'short_name': 'FISH ID',
+          'lang': 'ar',
+          'dir': 'rtl',
+          'start_url': CollectorStore.keyPattern.hasMatch(k) ? '/api/collect?k=$k' : '/api/collect',
+          'scope': '/api/collect',
+          'display': 'standalone',
+          'background_color': '#0B2236',
+          'theme_color': '#0B2236',
+          'icons': [
+            {'src': '/img/icon-192.png', 'sizes': '192x192', 'type': 'image/png'},
+            {'src': '/img/icon-512.png', 'sizes': '512x512', 'type': 'image/png'},
+          ],
+        }),
+        headers: {'content-type': 'application/manifest+json; charset=utf-8', 'cache-control': 'no-store'},
+      );
+    }
     final now = _clock();
     final minute = now.millisecondsSinceEpoch ~/ 60000;
     if (minute != _collectMinute) {

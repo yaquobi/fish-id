@@ -47,6 +47,9 @@ void main() {
     var (status, page) = await call('GET', 'collect');
     expect(status, 200);
     expect(page, contains('collect/upload'));
+    final (_, manifest) = await call('GET', 'collect/manifest.webmanifest?k=$key');
+    expect(manifest['start_url'], '/api/collect?k=$key');
+    expect(manifest['display'], 'standalone');
 
     var (st, me) = await call('GET', 'collect/me', headers: h);
     expect(st, 200);
