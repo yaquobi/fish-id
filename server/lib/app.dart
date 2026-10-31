@@ -7,6 +7,8 @@ import 'package:shelf/shelf.dart';
 import 'accounts.dart';
 import 'admin_page.dart';
 import 'claude.dart';
+import 'collect_page.dart';
+import 'collectors.dart';
 import 'contrib.dart';
 import 'ledger.dart';
 import 'site.dart';
@@ -33,12 +35,14 @@ typedef Notify = void Function(String text);
 /// POST fishId/sync يتأكد من اشتراك الحساب في RevenueCat بعد الشراء ويرجّع المتبقي.
 /// POST track من صفحة hawat.id: زيارة أو ضغطة ([site])، وتطلع في الملخص اليومي.
 /// POST waitlist من نفس الصفحة: {"contact", "consent": true} إيميل أو جوال لقائمة «بلّغني بالإطلاق» ([waitlist]).
+/// collect?k=... صفحة المصوّرين، و collect/me و collect/join و collect/upload بمفتاح المصوّر في `x-collector` ([collectors]).
 /// admin/... لوحة الأدمن ([adminToken])، و revenuecat يستقبل أحداث الاشتراك. الحدث مجرد تنبيه: الخادم ما يصدّق
 /// محتواه، ويسأل RevenueCat ([revenueCat]) عن الاشتراك الحقيقي، فما نحتاج سر مشترك.
 class FishIdApp {
   FishIdApp({
     required this.identify,
     this.contrib,
+    this.collectors,
     this.accounts,
     this.ledger,
     this.staff,
@@ -54,6 +58,9 @@ class FishIdApp {
 
   final Identify? identify;
   final ContribStore? contrib;
+
+  /// المصوّرين اللي يجمعون صور الأسواق بروابط خاصة، وصورهم تنحفظ في [contrib].
+  final CollectorStore? collectors;
   final AccountStore? accounts;
 
   /// المحاسبة (الدخل والمصاريف) للوحة الأدمن. تحتاج [accounts].
@@ -84,7 +91,7 @@ class FishIdApp {
   static const _cors = {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'POST, GET, OPTIONS',
-    'access-control-allow-headers': 'content-type, x-fishid-user, x-fishid-lang',
+    'access-control-allow-headers': 'content-type, x-fishid-user, x-fishid-lang, x-collector',
     'access-control-expose-headers': 'x-fishid-remaining',
   };
 
@@ -209,6 +216,13 @@ class FishIdApp {
     if (req.method == 'POST' && path == 'revenuecat') {
       try {
         return await _revenueCat(req);
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (path == 'collect' || path.startsWith('collect/')) {
+      try {
+        return await _collect(req, path);
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
@@ -433,6 +447,13 @@ class FishIdApp {
         final b = await body();
         await store.saveCode('${b['code']}', scans: (b['scans'] as num?)?.toInt() ?? 0, max: (b['max'] as num?)?.toInt() ?? 0);
         return _json(200, store.codes());
+      case ('GET', 'collectors') when collectors != null:
+        return _json(200, [for (final c in collectors!.list()) {...c, 'today': collectors!.today(c, now)}]);
+      case ('POST', 'collectors') when collectors != null:
+        final b = await body();
+        if (b['add'] is Map) return _json(200, await collectors!.add('${b['add']['name'] ?? ''}', '${b['add']['city'] ?? ''}', now));
+        if (b['key'] is String && b['active'] is bool) await collectors!.setActive(b['key'] as String, b['active'] as bool);
+        return _json(200, {'ok': true});
       case ('GET', 'contrib') when contrib != null && parts.length == 2:
         return _json(200, contrib!.latest(status: q['status'] ?? ''));
       case ('GET', 'contrib') when contrib != null && parts.length == 5:
@@ -619,6 +640,74 @@ class FishIdApp {
     return id;
   }
 
+  int _collectFails = 0;
+  int _collectMinute = 0;
+
+  /// صفحة المصوّرين وطلباتها. المفتاح في `x-collector`، والمحاولات الغلط محدودة بالدقيقة.
+  Future<Response> _collect(Request req, String path) async {
+    final store = collectors;
+    if (store == null || contrib == null) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+    if (req.method == 'GET' && path == 'collect') {
+      return Response.ok(collectPage, headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer'});
+    }
+    final now = _clock();
+    final minute = now.millisecondsSinceEpoch ~/ 60000;
+    if (minute != _collectMinute) {
+      _collectMinute = minute;
+      _collectFails = 0;
+    }
+    if (_collectFails >= 20) throw const FishIdError('busy', 'محاولات كثيرة، حاول بعد دقيقة', status: 429);
+    final key = req.headers['x-collector'] ?? '';
+    final c = store.find(key);
+    if (c == null) {
+      _collectFails++;
+      throw const FishIdError('collector', 'الرابط غير صالح، اطلب رابط جديد', status: 401);
+    }
+    switch ((req.method, path)) {
+      case ('GET', 'collect/me'):
+        return _json(200, {'name': c['name'], 'city': c['city'], 'joined': '${c['contact'] ?? ''}'.isNotEmpty, 'fish': c['fish'] ?? 0, 'today': store.today(c, now), 'species': speciesNames});
+      case ('POST', 'collect/join'):
+        final Map b;
+        try {
+          b = jsonDecode(await req.readAsString()) as Map;
+        } on Object {
+          throw const FishIdError('bad_request', 'الطلب غير صالح');
+        }
+        if (b['consent'] != true) throw const FishIdError('contrib_consent', 'لازم توافق على الشروط');
+        await store.join(key, '${b['contact'] ?? ''}', now);
+        return _json(200, {'ok': true});
+      case ('POST', 'collect/upload'):
+        if ('${c['contact'] ?? ''}'.isEmpty) throw const FishIdError('collector_join', 'سجّل جوالك أو إيميلك أول');
+        final (photos, body) = await _readPhotos(req, max: CollectorStore.parts.length);
+        if (photos.any((p) => p.mediaType == 'image/webp')) throw const FishIdError('fishid_type', 'نوع الصورة غير مدعوم، استخدم JPG أو PNG');
+        final typed = '${body['name'] ?? ''}'.trim();
+        if (typed.isEmpty || typed.length > 80) throw const FishIdError('bad_request', 'اكتب اسم السمكة');
+        final species = '${body['species'] ?? ''}';
+        if (species.isNotEmpty && !RegExp(r'^\d{4}$').hasMatch(species)) throw const FishIdError('bad_request', 'الطلب غير صالح');
+        final items = body['images'] is List ? body['images'] as List : const [];
+        final parts = [for (final (i, _) in photos.indexed) i < items.length && items[i] is Map && CollectorStore.parts.contains(items[i]['part']) ? '${items[i]['part']}' : 'other'];
+        final note = '${body['note'] ?? ''}'.trim();
+        final id = await contrib!.save(photos, {
+          'source': 'collector',
+          'collector': c['name'],
+          'city': c['city'],
+          'typed_name': typed,
+          'species': species,
+          'species_confirmed': species.isNotEmpty,
+          'parts': parts,
+          'note': note.length > 200 ? note.substring(0, 200) : note,
+          'days_since_catch': -1,
+          'storage': parts.contains('ice') ? 'ice' : 'unknown',
+          'predicted': const <String>[],
+          'app_score': -1,
+        }, now);
+        await store.counted(key, photos.length, now);
+        _tell('collect:${c['name']}', '🐟 ${c['name']} (${c['city']}) رفع صور: $typed · ${photos.length} صور. اليوم: ${store.today(c, now)} سمكة.', every: const Duration(minutes: 30));
+        return _json(200, {'ok': true, 'id': id, 'fish': c['fish'], 'today': store.today(c, now)});
+    }
+    throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+  }
+
   void _limit() {
     final now = _clock().millisecondsSinceEpoch ~/ 60000;
     if (now != _minute) {
@@ -628,12 +717,12 @@ class FishIdApp {
     if (++_count > perMinute) throw const FishIdError('busy', 'الخدمة مشغولة، حاول بعد دقيقة', status: 429);
   }
 
-  Future<(List<Photo>, Map<String, dynamic>)> _readPhotos(Request req) async {
+  Future<(List<Photo>, Map<String, dynamic>)> _readPhotos(Request req, {int max = maxPhotos}) async {
     final Map<String, dynamic> body;
     try {
       // base64 يكبّر الحجم الثلث، فالحد هنا أكبر من حد الصورة.
       final raw = await req.read().fold<BytesBuilder>(BytesBuilder(copy: false), (b, chunk) {
-        if (b.length + chunk.length > maxBytes * maxPhotos * 1.4) throw const FishIdError('fishid_size', 'الصورة كبيرة، صغّرها وحاول مرة ثانية', status: 413);
+        if (b.length + chunk.length > maxBytes * max * 1.4) throw const FishIdError('fishid_size', 'الصورة كبيرة، صغّرها وحاول مرة ثانية', status: 413);
         return b..add(chunk);
       });
       body = jsonDecode(utf8.decode(raw.takeBytes())) as Map<String, dynamic>;
@@ -643,7 +732,7 @@ class FishIdApp {
       throw const FishIdError('bad_request', 'الطلب غير صالح');
     }
     final list = body['images'] is List ? body['images'] as List : [body];
-    if (list.isEmpty || list.length > maxPhotos) throw const FishIdError('fishid_count', 'أرسل من صورة إلى 3 صور لنفس السمكة');
+    if (list.isEmpty || list.length > max) throw FishIdError('fishid_count', 'أرسل من صورة إلى $max صور لنفس السمكة');
     return ([for (final item in list) _photo(item)], body);
   }
 

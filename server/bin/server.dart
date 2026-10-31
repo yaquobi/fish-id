@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:fish_id_server/accounts.dart';
 import 'package:fish_id_server/app.dart';
 import 'package:fish_id_server/claude.dart';
+import 'package:fish_id_server/collectors.dart';
 import 'package:fish_id_server/contrib.dart';
 import 'package:fish_id_server/ledger.dart';
 import 'package:fish_id_server/refs.dart';
@@ -45,6 +46,7 @@ Future<void> main() async {
     identify: ai?.identify,
     // مجلد مساهمات المستخدمين (مربوط بـ data/contrib على السيرفر في docker-compose).
     contrib: ContribStore.open(env['FISHID_CONTRIB'] ?? 'contrib'),
+    collectors: accounts == null ? null : CollectorStore.open(accounts.dir),
     accounts: accounts,
     ledger: accounts == null ? null : Ledger.open(accounts),
     staff: accounts == null ? null : StaffStore.open(accounts.dir),

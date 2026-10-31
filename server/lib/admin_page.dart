@@ -407,22 +407,23 @@ const icons = {
   codes: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 8v12M3 12h18M12 8c-2-4-6-4-6-1.5S10 8 12 8zm0 0c2-4 6-4 6-1.5S14 8 12 8z"/>',
   site: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/>',
   launch: '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>',
+  collectors: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   staff: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/><path d="M17 3l1.5 1.5L21 2"/>',
 };
 const tabName = k => ({home: T('الرئيسية', 'Overview'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
-  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team')})[k];
+  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
-  owner: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes', 'staff'],
-  admin: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'settings', 'codes'],
+  owner: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'settings', 'codes', 'staff'],
+  admin: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'settings', 'codes'],
   accountant: ['home', 'report', 'money', 'alerts'],
   investor: ['report'],
 };
 // مجموعات القائمة الجانبية. أي تبويب جديد ينضاف لمجموعته هنا.
 const navGroups = () => [
   [T('نظرة عامة', 'Overview'), ['home', 'report', 'alerts']],
-  [T('العملاء', 'Customers'), ['users', 'scans', 'contrib', 'launch']],
+  [T('العملاء', 'Customers'), ['users', 'scans', 'contrib', 'collectors', 'launch']],
   [T('المال', 'Money'), ['money', 'settings', 'codes']],
   [T('الموقع والفريق', 'Site & team'), ['site', 'staff']],
 ];
@@ -1182,6 +1183,7 @@ const views = {
       <div class="photos">${list.map(c => `<div class="card" data-day="${esc(c.day)}" data-id="${esc(c.id)}">
         <div class="thumbs">${c.files.map(f => `<img alt="" data-src="contrib/${esc(c.day)}/${esc(c.id)}/${esc(f)}">`).join('')}</div>
         <div><b>${c.species ? sp(c.species) : T('بدون نوع', 'No species')}</b> ${c.species_confirmed ? `<span class="pill ok">${T('أكّده المستخدم', 'user confirmed')}</span>` : ''}</div>
+        ${c.source === 'collector' ? `<div class="k">${T('المصوّر', 'Collector')}: ${esc(c.collector)} · ${esc(c.city)} · ${T('كتب', 'typed')}: <b>${esc(c.typed_name)}</b>${c.note ? ' · ' + esc(c.note) : ''}</div>` : ''}
         <div class="k">${c.days_since_catch >= 0 ? `${num(c.days_since_catch)} ${T('يوم من الصيد', 'days since catch')}` : T('الأيام غير معروفة', 'days unknown')} · ${esc(storageName(c.storage))} · ${when(c.at)}</div>
         <div class="k">${T('التطبيق توقع', 'App predicted')}: ${(c.predicted || []).map(sp).join(', ') || '—'}</div>
         <div class="row noprint" style="margin-top:10px"><button class="act sm" data-r="approved">${T('قبول', 'Approve')}</button><button class="act ghost sm" data-r="rejected">${T('رفض', 'Reject')}</button>
@@ -1239,6 +1241,34 @@ const views = {
       catch (e) { $('#c-msg').textContent = e.message; }
     };
     $('#app').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { await post('codes', {code: b.dataset.del, max: 0}); show('codes'); });
+  },
+
+  // المصوّرين: كل واحد له رابط خاص يفتحه من جواله ويرفع صور الأسماك، وصورهم تطلع في «صور المساهمين».
+  async collectors(added = null) {
+    const list = await api('collectors');
+    const link = k => location.origin + location.pathname.replace(/admin$/, 'collect') + '?k=' + k;
+    const total = list.reduce((t, c) => t + (c.fish || 0), 0);
+    $('#app').innerHTML = heading(T('المصوّرين', 'Photo collectors'), `${num(total)} ${T('سمكة مرفوعة', 'fish uploaded')} · ${T('صورهم تتراجع من «صور المساهمين»', 'review their photos under Contributions')}`) + `
+      ${added ? `<div class="card" style="margin-bottom:14px"><h3>${T('رابط', 'Link for')} ${esc(added.name)}</h3>
+        <div class="k">${T('أرسله له بشكل خاص (واتساب). يفتحه من جواله ويسجل رقمه ويبدأ يصوّر.', 'Send it privately. They open it on their phone, add their number and start.')}</div>
+        <div class="secret"><code>${esc(link(added.key))}</code><button class="act gold sm" data-copy="${esc(added.key)}">${T('نسخ', 'Copy')}</button></div></div>` : ''}
+      <div class="cols"><div class="card"><div class="wrap"><table><tr><th>${T('المصوّر', 'Collector')}</th><th>${T('الجوال أو الإيميل', 'Contact')}</th><th class="num">${T('اليوم', 'Today')}</th><th class="num">${T('المجموع', 'Total')}</th><th class="num">${T('الصور', 'Photos')}</th><th>${T('آخر رفع', 'Last upload')}</th><th class="noprint"></th></tr>
+      ${list.map(c => `<tr${c.active === false ? ' style="opacity:.5"' : ''}><td>${esc(c.name)}<div class="k">${esc(c.city)}</div></td><td class="mono">${esc(c.contact) || `<span class="k">${T('ما سجّل للحين', 'not joined yet')}</span>`}</td>
+        <td class="num">${num(c.today)}</td><td class="num">${num(c.fish)}</td><td class="num">${num(c.photos)}</td><td>${c.last ? when(c.last) : '—'}</td>
+        <td class="noprint"><button class="act ghost sm" data-copy="${esc(c.key)}">${T('نسخ الرابط', 'Copy link')}</button>
+        <button class="act ghost sm" data-key="${esc(c.key)}" data-on="${c.active === false ? 1 : ''}">${c.active === false ? T('تفعيل', 'Enable') : T('إيقاف', 'Stop')}</button></td></tr>`).join('') || `<tr><td colspan="7" class="msg">${T('ما فيه مصوّرين للحين', 'No collectors yet')}</td></tr>`}
+      </table></div></div>
+      <div class="card noprint"><h3>${T('مصوّر جديد', 'New collector')}</h3>
+        <label class="set"><span>${T('الاسم', 'Name')}</span><input id="k-name" style="width:200px"></label>
+        <label class="set"><span>${T('المدينة', 'City')}</span><input id="k-city" style="width:200px" placeholder="${T('القنفذة، جدة، جيزان، الدمام...', 'Al-Qunfudhah, Jeddah...')}"></label>
+        <div class="row" style="margin-top:12px"><button class="act gold" id="k-save">${T('إنشاء رابط', 'Create link')}</button> <span id="k-msg" class="err"></span></div>
+        <div class="note">${T('لو الرابط تسرب أوقف المصوّر وأنشئ له رابط جديد.', 'If a link leaks, stop that collector and create a new link.')}</div></div></div>`;
+    $('#app').querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(link(b.dataset.copy)); b.textContent = T('تم النسخ', 'Copied'); } catch (e) {} });
+    $('#app').querySelectorAll('[data-key]').forEach(b => b.onclick = async () => { await post('collectors', {key: b.dataset.key, active: !!b.dataset.on}); show('collectors'); });
+    $('#k-save').onclick = async () => {
+      try { show('collectors', await post('collectors', {add: {name: $('#k-name').value, city: $('#k-city').value}})); }
+      catch (e) { $('#k-msg').textContent = e.message; }
+    };
   },
 
   // مستخدمين اللوحة (للمالك بس). الرمز ينعرض مرة وحدة.
