@@ -121,6 +121,9 @@ def main():
             for k in ("sci", "fam", "red", "gulf", "en", "code", "url"):
                 if s[k] != o.get(k, ""):
                     changes.append(f"~ {c} {k}: {o.get(k, '')!r} → {s[k]!r}")
+        if not s["famAr"] and d["taxonomy"].get("family"):
+            fam_d = get(f"/families/{d['taxonomy']['family']['slug']}")["data"]
+            s["famAr"] = (fam_d.get("display") or {}).get("arabic_name") or ""
         species.append(s)
 
         have = {v for _, v, *_ in facts.get(c, [])}

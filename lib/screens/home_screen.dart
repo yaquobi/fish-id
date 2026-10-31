@@ -161,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     subtitle: Text(
-                      tr('447 نوعًا من البحر الأحمر والخليج العربي', '447 species of the Red Sea and Arabian Gulf'),
+                      tr('448 نوعًا من البحر الأحمر والخليج العربي', '448 species of the Red Sea and Arabian Gulf'),
                     ),
                     trailing: Icon(L10n.en ? Icons.chevron_right : Icons.chevron_left),
                     onTap: () =>
