@@ -103,4 +103,21 @@ void main() {
     (st, body) = await call('POST', 'collect/upload', body: {'name': 'هامور', 'images': six}, headers: h);
     expect(body['code'], 'fishid_count');
   });
+
+  test('anyone with the invite link signs up and gets their own link; a new invite stops the old one', () async {
+    final (_, inv) = await call('POST', 'admin/collectors', body: {'invite': 'show'}, headers: {'authorization': admin});
+    final code = inv['invite'] as String;
+    var (st, body) = await call('POST', 'collect/signup', body: {'invite': code, 'name': 'فهد', 'city': 'جيزان', 'contact': '0551112222'});
+    expect(body['code'], 'contrib_consent');
+    (st, body) = await call('POST', 'collect/signup', body: {'invite': code, 'name': 'فهد', 'city': 'جيزان', 'contact': '0551112222', 'consent': true});
+    expect(st, 200);
+    final key = body['key'] as String;
+    expect(sent.last, contains('فهد'));
+    (st, body) = await call('GET', 'collect/me', headers: {'x-collector': key});
+    expect((body['name'], body['joined']), ('فهد', true));
+    final (_, again) = await call('POST', 'admin/collectors', body: {'invite': 'new'}, headers: {'authorization': admin});
+    expect(again['invite'], isNot(code));
+    (st, body) = await call('POST', 'collect/signup', body: {'invite': code, 'name': 'ثاني', 'city': 'جدة', 'contact': '0553334444', 'consent': true});
+    expect(st, 401);
+  });
 }

@@ -118,12 +118,40 @@ const PARTS = [
 let me = null, shots = {}, options = {};
 
 async function start() {
-  if (!key) return fail('افتح الرابط الخاص اللي وصلك من فريق FISH ID.');
+  const invite = params.get('i');
+  if (invite && !key) return signup(invite);
+  if (!key) return fail('افتح الرابط اللي وصلك من فريق FISH ID.');
   try { me = await api('collect/me'); } catch (e) { return fail(e.message); }
   $('#who').innerHTML = `${esc(me.name)}<br><span style="opacity:.7">${esc(me.city)}</span>`;
   options = {};
   for (const [id, name] of Object.entries(me.species || {})) options[`${name} (${id})`] = id;
   me.joined ? form() : join();
+}
+
+// رابط الدعوة العام: يسجل اسمه ومدينته وجواله، ويطلع له رابطه الخاص ويتحفظ في الجوال.
+function signup(invite) {
+  $('#app').innerHTML = `<div class="card"><h1>هلا وغلا 👋</h1>
+    <p>سجّل وابدأ تصوّر أسماك السوق. صورك بتعلّم نموذج FISH ID يعرف أسماكنا بأسمائها المحلية.</p>
+    <label class="f" for="nm">اسمك</label><input type="text" id="nm" autocomplete="name">
+    <label class="f" for="ct">مدينتك</label><input type="text" id="ct" placeholder="القنفذة، جدة، جيزان، الدمام...">
+    <label class="f" for="contact">رقم جوالك أو إيميلك</label><input type="tel" id="contact" dir="ltr" placeholder="05xxxxxxxx" autocomplete="tel">
+    <h2 style="margin-top:16px">الشروط باختصار</h2>
+    <ul><li>الصور اللي ترفعها تصير ملك حوات، ونستخدمها لتدريب النموذج وتحسين التطبيق.</li>
+    <li>لا تصوّر وجوه الناس، واستأذن البيّاع قبل التصوير.</li>
+    <li>كل رفعة لسمكة وحدة، وما تتكرر نفس السمكة.</li>
+    <li>المكافأة على كل سمكة تنقبل بعد المراجعة، حسب الاتفاق مع فريق حوات.</li></ul>
+    <label class="check"><input type="checkbox" id="ok"> <span>قريت الشروط وأوافق عليها</span></label>
+    <button class="go" id="go">سجّل وابدأ</button><div id="m"></div></div>`;
+  $('#go').onclick = async () => {
+    if (!$('#nm').value.trim() || !$('#ct').value.trim()) return show('#m', 'اكتب اسمك ومدينتك', true);
+    if (!$('#ok').checked) return show('#m', 'وافق على الشروط أول', true);
+    $('#go').disabled = true;
+    try {
+      const r = await api('collect/signup', {invite, name: $('#nm').value, city: $('#ct').value, contact: $('#contact').value, consent: true});
+      try { localStorage.setItem('fishid-collector', r.key); } catch (e) {}
+      location.replace(location.pathname + '?k=' + encodeURIComponent(r.key));
+    } catch (e) { show('#m', e.message, true); $('#go').disabled = false; }
+  };
 }
 
 function fail(text) {

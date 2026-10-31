@@ -1248,10 +1248,16 @@ const views = {
     const list = await api('collectors');
     const link = k => location.origin + location.pathname.replace(/admin$/, 'collect') + '?k=' + k;
     const total = list.reduce((t, c) => t + (c.fish || 0), 0);
+    const inv = (await post('collectors', {invite: 'show'})).invite;
+    const invLink = location.origin + location.pathname.replace(/admin$/, 'collect') + '?i=' + inv;
     $('#app').innerHTML = heading(T('المصوّرين', 'Photo collectors'), `${num(total)} ${T('سمكة مرفوعة', 'fish uploaded')} · ${T('صورهم تتراجع من «صور المساهمين»', 'review their photos under Contributions')}`) + `
       ${added ? `<div class="card" style="margin-bottom:14px"><h3>${T('رابط', 'Link for')} ${esc(added.name)}</h3>
         <div class="k">${T('أرسله له بشكل خاص (واتساب). يفتحه من جواله ويسجل رقمه ويبدأ يصوّر.', 'Send it privately. They open it on their phone, add their number and start.')}</div>
         <div class="secret"><code>${esc(link(added.key))}</code><button class="act gold sm" data-copy="${esc(added.key)}">${T('نسخ', 'Copy')}</button></div></div>` : ''}
+      <div class="card" style="margin-bottom:14px"><h3>${T('رابط الدعوة العام', 'Public invite link')}</h3>
+        <div class="k">${T('أرسله لأي أحد يبغى يصوّر: يسجل اسمه ومدينته وجواله، ويطلع هنا تحت.', 'Send it to anyone who wants to help: they add their name, city and phone, and show up below.')}</div>
+        <div class="secret"><code>${esc(invLink)}</code><button class="act gold sm" id="inv-copy">${T('نسخ', 'Copy')}</button>
+        <button class="act ghost sm" id="inv-new">${T('رابط جديد (يوقف القديم)', 'New link (stops the old one)')}</button></div></div>
       <div class="cols"><div class="card"><div class="wrap"><table><tr><th>${T('المصوّر', 'Collector')}</th><th>${T('الجوال أو الإيميل', 'Contact')}</th><th class="num">${T('اليوم', 'Today')}</th><th class="num">${T('المجموع', 'Total')}</th><th class="num">${T('الصور', 'Photos')}</th><th>${T('آخر رفع', 'Last upload')}</th><th class="noprint"></th></tr>
       ${list.map(c => `<tr${c.active === false ? ' style="opacity:.5"' : ''}><td>${esc(c.name)}<div class="k">${esc(c.city)}</div></td><td class="mono">${esc(c.contact) || `<span class="k">${T('ما سجّل للحين', 'not joined yet')}</span>`}</td>
         <td class="num">${num(c.today)}</td><td class="num">${num(c.fish)}</td><td class="num">${num(c.photos)}</td><td>${c.last ? when(c.last) : '—'}</td>
@@ -1265,6 +1271,11 @@ const views = {
         <div class="note">${T('لو الرابط تسرب أوقف المصوّر وأنشئ له رابط جديد.', 'If a link leaks, stop that collector and create a new link.')}</div></div></div>`;
     $('#app').querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(link(b.dataset.copy)); b.textContent = T('تم النسخ', 'Copied'); } catch (e) {} });
     $('#app').querySelectorAll('[data-key]').forEach(b => b.onclick = async () => { await post('collectors', {key: b.dataset.key, active: !!b.dataset.on}); show('collectors'); });
+    $('#inv-copy').onclick = async () => { try { await navigator.clipboard.writeText(invLink); $('#inv-copy').textContent = T('تم النسخ', 'Copied'); } catch (e) {} };
+    $('#inv-new').onclick = async () => {
+      if (!$('#inv-new').dataset.sure) { $('#inv-new').dataset.sure = 1; $('#inv-new').textContent = T('متأكد؟', 'Sure?'); return; }
+      await post('collectors', {invite: 'new'}); show('collectors');
+    };
     $('#k-save').onclick = async () => {
       try { show('collectors', await post('collectors', {add: {name: $('#k-name').value, city: $('#k-city').value}})); }
       catch (e) { $('#k-msg').textContent = e.message; }

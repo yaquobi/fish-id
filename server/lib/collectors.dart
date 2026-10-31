@@ -67,6 +67,41 @@ class CollectorStore {
     await _save();
   }
 
+  /// رابط الدعوة العام: أي أحد معه يسجل نفسه مصوّر (اسمه ومدينته وجواله) ويطلع له رابطه الخاص.
+  /// الرمز في `collect_invite.json`، ورمز جديد يوقف القديم.
+  String? get invite {
+    final f = File('$dir/collect_invite.json');
+    return f.existsSync() ? '${(jsonDecode(f.readAsStringSync()) as Map)['code']}' : null;
+  }
+
+  Future<String> newInvite() async {
+    final rnd = Random.secure();
+    final code = List.generate(8, (_) => rnd.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+    await File('$dir/collect_invite.json').writeAsString(jsonEncode({'code': code}));
+    return code;
+  }
+
+  bool inviteOk(String code) {
+    final i = invite;
+    if (i == null || code.length != i.length) return false;
+    var d = 0;
+    for (var n = 0; n < i.length; n++) {
+      d |= i.codeUnitAt(n) ^ code.codeUnitAt(n);
+    }
+    return d == 0;
+  }
+
+  /// تسجيل ذاتي من رابط الدعوة، ويرجّع مفتاح المصوّر الجديد.
+  Future<String> signup(String code, String name, String city, String contact, DateTime now) async {
+    if (!inviteOk(code)) throw const FishIdError('collector', 'رابط الدعوة انتهى، اطلب رابط جديد', status: 401);
+    if (city.trim().isEmpty) throw const FishIdError('bad_request', 'اكتب اسمك ومدينتك');
+    final c = contact.trim().replaceAll(RegExp(r'[\s-]'), '');
+    if (!_email.hasMatch(c) && !_phone.hasMatch(c)) throw const FishIdError('bad_request', 'اكتب رقم جوال أو إيميل صحيح');
+    final key = (await add(name, city, now))['key'] as String;
+    await join(key, c, now);
+    return key;
+  }
+
   Future<void> setActive(String key, bool active) async {
     final c = _all[key];
     if (c == null) return;
