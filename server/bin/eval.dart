@@ -28,9 +28,10 @@ Future<void> main(List<String> args) async {
     prompt: opts.value('prompt', env['FISHID_PROMPT'] ?? 'v1'),
     refs: opts.mode == 'refs' ? null : RefLibrary.load(opts.value('refs', env['FISHID_REFS'] ?? '/nonexistent'), data),
     refsBelow: int.parse(opts.value('refs-below', env['FISHID_REFS_BELOW'] ?? '80')),
+    fast: opts.value('speed', env['FISHID_SPEED'] ?? '') == 'fast',
   );
   stdout.writeln(
-    'النموذج ${ai.model}، الجهد ${ai.effort}، التعليمات ${ai.prompt}، '
+    'النموذج ${ai.model}${ai.fast ? ' (سريع)' : ''}، الجهد ${ai.effort}، التعليمات ${ai.prompt}، '
     'الصور المرجعية: ${ai.refs == null ? 'لا' : '${ai.refs!.speciesCount} نوعًا، تحت ثقة ${ai.refsBelow}'}',
   );
   final family = {
@@ -50,7 +51,7 @@ Future<void> main(List<String> args) async {
       _die(
         'الاستخدام: eval species [--per 2] [--list eval/species.json] [--photos /out/species-….jsonl]\n'
         '         eval refs [--dir /data/refs] [--per 3]   (يبني مكتبة الصور المرجعية)\n'
-        '         (للقياس: --effort low|medium|high  --prompt v1|v2  --model …  --refs /data/refs  --refs-below 80)\n'
+        '         (للقياس: --effort low|medium|high  --prompt v1|v2  --model …  --speed fast  --refs /data/refs  --refs-below 80)\n'
         '         eval fresh --dir /data/ffe [--per 50]',
       );
   }

@@ -35,6 +35,7 @@ Future<void> main() async {
           // الصور المرجعية للأنواع المتشابهة، تنبنى بـ bash server/eval.sh refs. إذا المجلد فاضي تنطفي المرحلة الثانية.
           refs: RefLibrary.load(env['FISHID_REFS'] ?? 'refs', data),
           refsBelow: int.tryParse(env['FISHID_REFS_BELOW'] ?? '') ?? 80,
+          fast: env['FISHID_SPEED'] == 'fast',
         );
   if (ai == null) stderr.writeln('FishId: ANTHROPIC_API_KEY غير موجود، الخدمة ترجع «غير مفعّلة».');
 

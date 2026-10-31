@@ -86,6 +86,15 @@ void main() {
     expect(jsonEncode(en['system']), jsonEncode(ar['system']));
   });
 
+  test('fast mode asks for speed fast and costs double', () {
+    final photo = [Photo(Uint8List.fromList([1, 2]), 'image/png')];
+    expect(FishIdAi(key: 'k', speciesList: '').requestBody(photo).containsKey('speed'), isFalse);
+    expect(FishIdAi(key: 'k', speciesList: '', fast: true).requestBody(photo)['speed'], 'fast');
+    final u = {'model': 'claude-opus-5-5', 'input_tokens': 1000000, 'output_tokens': 0};
+    expect(usageCost([u]), closeTo(4.0, 1e-9));
+    expect(usageCost([{...u, 'speed': 'fast'}]), closeTo(8.0, 1e-9));
+  });
+
   test('prompt v2 asks for observed features before the candidates', () {
     Map<String, dynamic> schemaOf(Map<String, Object> body) =>
         ((body['output_config'] as Map)['format'] as Map)['schema'] as Map<String, dynamic>;
