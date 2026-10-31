@@ -317,6 +317,7 @@ void main() {
     expect(s['expensesSar'], 0);
     final stats = jsonDecode(await (await admin(a, 'stats')).readAsString());
     expect(stats['ledger']['incomeSar'], closeTo(350, 0.01));
+    expect(stats['ledger']['incomeYearSar'], closeTo(350, 0.01));
     expect((stats['daily'] as List).length, 30);
   });
 
