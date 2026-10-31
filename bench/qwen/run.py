@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -83,8 +84,16 @@ def ask(api, system, b64, think, model="", key=""):
         body["cache_prompt"] = True
         body["chat_template_kwargs"] = {"enable_thinking": think}
     req = urllib.request.Request(api, data=json.dumps(body).encode(), headers=headers)
-    with urllib.request.urlopen(req, timeout=1800) as r:
-        out = json.load(r)
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(req, timeout=1800) as r:
+                out = json.load(r)
+            break
+        except urllib.error.HTTPError as e:
+            # الخدمات السحابية ترجع 429 أو 503 وقت الزحمة: ننتظر ونعيد بدل ما نحسبها إجابة غلط.
+            if e.code not in (429, 500, 503) or attempt == 5:
+                raise
+            time.sleep(10 * 2**attempt)
     text = out["choices"][0]["message"].get("content") or ""
     m = re.search(r"\{.*\}", text, re.S)
     ids = []
