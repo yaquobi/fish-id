@@ -253,8 +253,8 @@ class _Loading extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           tr(
-            'نقارنها بـ 447 نوعًا ونفحص العين والخياشيم والجلد',
-            'Comparing with 447 species and checking the eyes, gills and skin',
+            'نقارنها بـ 448 نوعًا ونفحص العين والخياشيم والجلد',
+            'Comparing with 448 species and checking the eyes, gills and skin',
           ),
           textAlign: TextAlign.center,
           style: const TextStyle(color: AppColors.muted),

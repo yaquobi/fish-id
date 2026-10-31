@@ -1,8 +1,8 @@
 # FISH ID
 
-> FISH ID is a Saudi mobile app (Android and iOS, Arabic and English) that identifies a fish's species from a phone photo and estimates its freshness. It covers 447 species of the Red Sea and the Arabian Gulf from the Saudi fish encyclopedia KSAFish, and shows each fish's local Saudi names, scientific name and family. It is an initiative of HUWAT (حوات), made in Saudi Arabia.
+> FISH ID is a Saudi mobile app (Android and iOS, Arabic and English) that identifies a fish's species from a phone photo and estimates its freshness. It covers 448 species of the Red Sea and the Arabian Gulf from the Saudi fish encyclopedia KSAFish, and shows each fish's local Saudi names, scientific name and family. It is an initiative of HUWAT (حوات), made in Saudi Arabia.
 
-FISH ID تطبيق سعودي للجوال (أندرويد وآيفون، عربي وإنجليزي): تصوّر السمكة ويقول لك نوعها واسمها المحلي في البحر الأحمر والخليج واسمها العلمي، ويقدّر طزاجتها من 100 وكم يوم تتحمل. يغطي 447 نوعًا من موسوعة أسماك السعودية KSAFish. وهو إحدى مبادرات منظومة حوات.
+FISH ID تطبيق سعودي للجوال (أندرويد وآيفون، عربي وإنجليزي): تصوّر السمكة ويقول لك نوعها واسمها المحلي في البحر الأحمر والخليج واسمها العلمي، ويقدّر طزاجتها من 100 وكم يوم تتحمل. يغطي 448 نوعًا من موسوعة أسماك السعودية KSAFish. وهو إحدى مبادرات منظومة حوات.
 
 ## What it does
 
@@ -10,7 +10,7 @@ FISH ID تطبيق سعودي للجوال (أندرويد وآيفون، عرب
 - Local names: the name a fishmonger uses in Jeddah, Jazan, Yanbu (Red Sea) or Dammam, Qatif, Jubail (Arabian Gulf), plus the scientific name, English name and family.
 - Freshness score out of 100 using the Quality Index Method (QIM), the European standard used in fish inspection: eight visual signs on the eye, gills, skin and body, giving a grade (Extra, A, B or unfit) and an estimate of days since catch. Extra eye and gill photos improve it. Smell and firmness are checked by hand; the app reminds the user. It is a visual estimate, not a lab test or official certificate.
 - "How long will it keep?" (كم باقي لها؟) shelf-life calculator for fish kept on ice or in the fridge. Warns above 30 °C and about histamine risk for kingfish (كنعد), tuna and sardines.
-- Offline encyclopedia of 447 species and 92 families, with KSAFish species plates.
+- Offline encyclopedia of 448 species and 93 families, with KSAFish species plates.
 - "Contribute your photo" (ساهم بصورتك): with explicit consent, users can donate a photo with its species and days since catch to build the first Saudi dataset of market fish. Location data is removed.
 - No sign-in needed. Photos are sent only for analysis and not stored unless the user contributes them.
 
@@ -40,7 +40,7 @@ Subscriptions are billed and cancelled through Google Play or the App Store.
 
 ## Sources and method
 
-- Species data, local names and plates: KSAFish, the Saudi fish encyclopedia (https://ksafish.com/ar), 447 species, 1,567 published facts, 74 scientific sources, with the fisheries research center in Jeddah as a reference.
+- Species data, local names and plates: KSAFish, the Saudi fish encyclopedia (https://ksafish.com/ar), 448 species, 1,567 published facts, 74 scientific sources, with the fisheries research center in Jeddah as a reference.
 - Freshness: Quality Index Method (QIM) and EU freshness grades.
 - Identification uses a multimodal AI vision model compared against the KSAFish species list.
 

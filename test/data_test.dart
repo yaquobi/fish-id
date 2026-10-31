@@ -10,9 +10,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Ksafish', () {
-    test('loads all 447 species and finds by short or full id', () async {
+    test('loads all 448 species and finds by short or full id', () async {
       final db = await Ksafish.load();
-      expect(db.species, hasLength(447));
+      expect(db.species, hasLength(448));
       expect(db.byId('1')?.sci, 'Alopias pelagicus');
       expect(db.byId('0001'), same(db.byId('HWT-FISH-0001')));
       expect(db.byId('9999'), isNull);
@@ -22,7 +22,7 @@ void main() {
       final db = await Ksafish.load();
       expect(db.search('هامور'), isNotEmpty);
       expect(db.search('EPINEPHELUS'), isNotEmpty);
-      expect(db.search(''), hasLength(447));
+      expect(db.search(''), hasLength(448));
     });
 
     test('links species plates on KSAFish', () async {
