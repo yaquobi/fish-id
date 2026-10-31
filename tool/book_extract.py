@@ -120,6 +120,8 @@ for pno in range(FIRST, min(LAST, len(doc)) + 1):
         continue
     for sp in found:
         nums = [n for n in sp.get("images", []) if isinstance(n, int) and 1 <= n <= len(rects)]
+        if not nums:
+            continue  # سطر مو اسم نوع (مقدمة الكتاب) أو نوع بدون صورة
         n = len(index["species"]) + 1
         folder = f"{n:03d}_{slug(sp.get('sci', 'unknown'))}"
         os.makedirs(f"{OUT}/{folder}", exist_ok=True)
