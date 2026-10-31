@@ -7,12 +7,14 @@
 
 التشغيل على السيرفر:
   python3 bench/qwen/run.py --photos eval-results/species-….jsonl [--limit 10] [--think]
+  Gemini: --api https://generativelanguage.googleapis.com/v1beta/openai/chat/completions --model gemini-… (المفتاح في GEMINI_API_KEY)
 """
 
 import argparse
 import base64
 import io
 import json
+import os
 import re
 import sys
 import time
@@ -59,7 +61,7 @@ def fetch_image(url, cache):
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def ask(api, system, b64, think):
+def ask(api, system, b64, think, model="", key=""):
     body = {
         "messages": [
             {"role": "system", "content": system},
@@ -69,11 +71,18 @@ def ask(api, system, b64, think):
             ]},
         ],
         "temperature": 0,
-        "max_tokens": 4096 if think else 300,
-        "cache_prompt": True,
-        "chat_template_kwargs": {"enable_thinking": think},
+        "max_tokens": 4096 if think or model else 300,
     }
-    req = urllib.request.Request(api, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+    headers = {"Content-Type": "application/json"}
+    if model:
+        # خدمة سحابية متوافقة مع OpenAI (مثل Gemini): نحدد النموذج والمفتاح.
+        body["model"] = model
+        headers["Authorization"] = f"Bearer {key}"
+    else:
+        # llama.cpp على سيرفرنا: نحفظ قائمة الأنواع، ونطفي التفكير إلا إذا طلبناه.
+        body["cache_prompt"] = True
+        body["chat_template_kwargs"] = {"enable_thinking": think}
+    req = urllib.request.Request(api, data=json.dumps(body).encode(), headers=headers)
     with urllib.request.urlopen(req, timeout=1800) as r:
         out = json.load(r)
     text = out["choices"][0]["message"].get("content") or ""
@@ -94,6 +103,8 @@ def main():
     ap.add_argument("--api", default="http://127.0.0.1:18500/v1/chat/completions")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--think", action="store_true")
+    ap.add_argument("--model", default="", help="اسم النموذج في خدمة سحابية، مثل gemini-…")
+    ap.add_argument("--key-env", default="GEMINI_API_KEY", help="متغير البيئة اللي فيه مفتاح الخدمة")
     ap.add_argument("--out", default=str(ROOT / "eval-results"))
     a = ap.parse_args()
 
@@ -103,7 +114,9 @@ def main():
     if a.limit:
         cases = cases[: a.limit]
     stamp = time.strftime("%Y%m%d-%H%M")
-    log = open(Path(a.out) / f"qwen-{'think' if a.think else 'fast'}-{stamp}.jsonl", "w", encoding="utf-8")
+    name = a.model or f"qwen-{'think' if a.think else 'fast'}"
+    key = os.environ.get(a.key_env, "") if a.model else ""
+    log = open(Path(a.out) / f"{name}-{stamp}.jsonl", "w", encoding="utf-8")
     top1 = top3 = famok = n = 0
     secs = []
     for i, c in enumerate(cases, 1):
@@ -115,7 +128,7 @@ def main():
             continue
         t = time.time()
         try:
-            ids, text, timings = ask(a.api, system, b64, a.think)
+            ids, text, timings = ask(a.api, system, b64, a.think, a.model, key)
         except Exception as e:  # noqa: BLE001
             ids, text, timings = [], f"error: {e}", {}
         dt = time.time() - t
@@ -129,7 +142,7 @@ def main():
         print(f"[{i}/{len(cases)}] {c.get('sci')}: {ids} {'✓' if ids[:1] == [exp] else ''} {dt:.1f}s", flush=True)
     if n:
         secs.sort()
-        print(f"\nQwen ({'think' if a.think else 'fast'}): {n} صورة | الأول صح {100*top1/n:.0f}% | ضمن 3 {100*top3/n:.0f}% | العائلة {100*famok/n:.0f}% | الوقت الوسيط {secs[len(secs)//2]:.1f}ث")
+        print(f"\n{name}: {n} صورة | الأول صح {100*top1/n:.0f}% | ضمن 3 {100*top3/n:.0f}% | العائلة {100*famok/n:.0f}% | الوقت الوسيط {secs[len(secs)//2]:.1f}ث")
 
 
 if __name__ == "__main__":
