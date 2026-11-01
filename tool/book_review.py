@@ -37,12 +37,12 @@ OUT = sys.argv[1]
 index = json.load(open(f"{OUT}/index.json"))
 done = set()
 for s in index["species"]:
-    names = APPROVED.get(s["sci"].strip())
+    names = APPROVED.get(s["sci"].strip().replace("Epinphelus", "Epinephelus"))  # الكتاب كاتبها غلط
     if names and not s.get("local"):
         s["local"] = names
         s["local_src"] = "review_2026-11-01"
         json.dump(s, open(f"{OUT}/{s['folder']}/meta.json", "w"), ensure_ascii=False, indent=1)
-        done.add(s["sci"])
+        done.add(s["sci"].strip().replace("Epinphelus", "Epinephelus"))
 json.dump(index, open(f"{OUT}/index.json", "w"), ensure_ascii=False, indent=1)
 print(f"named {len(done)}/{len(APPROVED)}; missing {sorted(set(APPROVED) - done)}")
 print(f"with names {sum(1 for s in index['species'] if s.get('local'))}/{len(index['species'])}")
