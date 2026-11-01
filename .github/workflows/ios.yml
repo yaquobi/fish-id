@@ -52,6 +52,32 @@ jobs:
         run: |
           flutter pub get
           flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+      - name: Free a development certificate slot
+        if: steps.keys.outputs.ok == 'true'
+        # كل تشغيل يسوي شهادة تطوير جديدة، وأبل تسمح بعدد محدود. نحذف شهادات التطوير اللي سواها البناء الآلي فقط.
+        run: |
+          pip3 install -q --break-system-packages pyjwt cryptography 2>/dev/null || pip3 install -q pyjwt cryptography
+          python3 - <<'PY'
+          import json, os, time, urllib.request, jwt
+          key = open(os.environ["RUNNER_TEMP"] + "/asc/AuthKey.p8").read()
+          now = int(time.time())
+          tok = jwt.encode({"iss": os.environ["ASC_ISSUER_ID"], "iat": now, "exp": now + 600, "aud": "appstoreconnect-v1"},
+                           key, algorithm="ES256", headers={"kid": os.environ["ASC_KEY_ID"]})
+          def call(method, url):
+              req = urllib.request.Request(url, method=method, headers={"Authorization": "Bearer " + tok})
+              with urllib.request.urlopen(req) as r:
+                  body = r.read()
+                  return json.loads(body) if body else {}
+          base = "https://api.appstoreconnect.apple.com/v1/certificates"
+          certs = call("GET", base + "?filter[certificateType]=DEVELOPMENT,IOS_DEVELOPMENT&limit=200")["data"]
+          for c in certs:
+              a = c["attributes"]
+              print("certificate", c["id"], a.get("certificateType"), repr(a.get("displayName")), a.get("expirationDate"))
+              if a.get("displayName") == "Created via API":
+                  call("DELETE", base + "/" + c["id"])
+                  print("revoked CI development certificate", c["id"], a.get("expirationDate"))
+          print(len(certs), "development certificates checked")
+          PY
       - name: Archive (cloud signing)
         if: steps.keys.outputs.ok == 'true'
         run: |
