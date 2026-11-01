@@ -78,9 +78,31 @@ if STEP == "read":
 elif STEP == "merge":
     index = json.load(open(f"{OUT}/index.json"))
     key = lambda s: re.sub(r"\s+", " ", s.lower().strip())  # noqa: E731
+
+    def norm(name):
+        """نفس الاسم بكتابة مختلفة (همزات، تشكيل، ى/ي، ة/ه، مسافات) يحسب اسم واحد."""
+        name = re.sub(r"[\u064B-\u0652\u0640]", "", name)
+        name = name.translate(str.maketrans("أإآىة", "ااايه"))
+        return re.sub(r"\s+", "", name)
+
+    def dist(a, b):
+        prev = list(range(len(b) + 1))
+        for i, ca in enumerate(a, 1):
+            cur = [i]
+            for j, cb in enumerate(b, 1):
+                cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+            prev = cur
+        return prev[-1]
+
     by_sci = {}
     for s in index["species"]:
         by_sci.setdefault(key(s["sci"]), s)
+
+    def find(sci):
+        if sci in by_sci:
+            return by_sci[sci]
+        best = min(by_sci, key=lambda k: dist(k, sci) if abs(len(k) - len(sci)) < 4 else 99, default=None)
+        return by_sci[best] if best and dist(best, sci) <= 2 else None
     filled = added_names = new = 0
     for pno, found in scan["pages"].items():
         for f in found:
@@ -88,14 +110,19 @@ elif STEP == "merge":
             sci = key(f.get("sci", ""))
             if not names or len(sci.split()) < 2:
                 continue
-            s = by_sci.get(sci)
+            s = find(sci)
             if s is not None:
                 if not s.get("local"):
                     s["local"] = names
                     s["local_src"] = "scan2"
                     filled += 1
                 else:
-                    extra = [n for n in names if n not in s["local"]]
+                    seen = {norm(n) for n in s["local"]}
+                    extra = []
+                    for n in names:
+                        if norm(n) not in seen:
+                            seen.add(norm(n))
+                            extra.append(n)
                     if extra:
                         s["local"] = s["local"] + extra
                         added_names += len(extra)
