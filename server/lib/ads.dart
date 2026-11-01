@@ -271,6 +271,38 @@ class AdKeys {
     await _save();
   }
 
+  /// ربط سناب: رابط موافقة Snap (OAuth) يرجع لـ [redirect] بكود نبدله بـ refresh token.
+  String? _snapState;
+
+  String snapAuthUrl(String redirect) {
+    final k = get('snapchat');
+    if ('${k['client'] ?? ''}'.isEmpty) throw const FishIdError('bad_request', 'احفظ Client ID و Client secret أول');
+    final rnd = Random.secure();
+    _snapState = List.generate(16, (_) => rnd.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+    return Uri.https('accounts.snapchat.com', '/login/oauth2/authorize', {
+      'client_id': '${k['client']}',
+      'redirect_uri': redirect,
+      'response_type': 'code',
+      'scope': 'snapchat-marketing-api',
+      'state': _snapState,
+    }).toString();
+  }
+
+  /// يبدّل كود الموافقة بـ refresh token ويحفظه. state لازم يطابق آخر رابط طلعناه.
+  Future<void> snapCallback(String code, String state, String redirect, HttpClient http) async {
+    if (_snapState == null || state != _snapState) throw const FishIdError('bad_request', 'الرابط قديم، ارجع للوحة واضغط «ربط سناب» من جديد');
+    _snapState = null;
+    final k = get('snapchat');
+    final req = await http.postUrl(Uri.https('accounts.snapchat.com', '/login/oauth2/access_token'));
+    req.headers.contentType = ContentType('application', 'x-www-form-urlencoded');
+    req.write(Uri(queryParameters: {'grant_type': 'authorization_code', 'client_id': '${k['client']}', 'client_secret': '${k['secret']}', 'code': code, 'redirect_uri': redirect}).query);
+    final res = await req.close();
+    final body = await res.transform(utf8.decoder).join();
+    if (res.statusCode != 200) throw FishIdError('bad_request', 'سناب رفض الكود (${res.statusCode})');
+    final tok = jsonDecode(body) as Map;
+    await set('snapchat', {...k, 'refresh': tok['refresh_token']});
+  }
+
   /// مفتاح الدفع لسكربت قوقل، يتولد أول مرة.
   Future<String> pushKey() async {
     if (_keys['push'] case final String k) return k;

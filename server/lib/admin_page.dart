@@ -819,7 +819,7 @@ const views = {
     if (me.role !== 'owner') return;
     const fields = {
       meta: [['account', T('رقم حساب الإعلانات', 'Ad account ID')], ['token', T('توكن مستخدم النظام', 'System user token')]],
-      snapchat: [['account', T('رقم حساب الإعلانات', 'Ad account ID')], ['client', 'Client ID'], ['secret', 'Client secret'], ['refresh', 'Refresh token']],
+      snapchat: [['account', T('رقم حساب الإعلانات', 'Ad account ID')], ['client', 'Client ID'], ['secret', 'Client secret']],
       x: [['account', T('رقم حساب الإعلانات', 'Ads account ID')], ['consumerKey', 'API key'], ['consumerSecret', 'API secret'], ['token', 'Access token'], ['tokenSecret', 'Access token secret']],
     };
     const drawFields = () => {
@@ -831,7 +831,12 @@ const views = {
     $('#lk-save').onclick = async () => {
       const v = {platform: $('#lk-p').value};
       document.querySelectorAll('[data-lk]').forEach(i => v[i.dataset.lk] = i.value.trim());
-      try { await post('ads', {link: v}); show('brief', day); } catch (e) { $('#lk-msg').textContent = e.message; }
+      try {
+        await post('ads', {link: v});
+        // سناب: بعد حفظ التطبيق نروح لصفحة موافقة سناب، وترجع للخادم بالمفتاح الدائم.
+        if (v.platform === 'snapchat') { location.href = (await post('ads', {snapUrl: true})).url; return; }
+        show('brief', day);
+      } catch (e) { $('#lk-msg').textContent = e.message; }
     };
     $('#gscript').value = `// FISH ID: يرسل صرف وظهور وضغطات قوقل اليوم وأمس لـ hawat.id. شغّله كل ساعة.
 function main() {
