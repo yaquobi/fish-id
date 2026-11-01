@@ -15,7 +15,19 @@ class SiteStats {
   static const sources = ['fb_ad', 'facebook', 'instagram', 'google', 'bing', 'tiktok', 'snapchat', 'x', 'whatsapp', 'telegram', 'ksafish', 'direct'];
 
   /// الروابط اللي نعدّ ضغطاتها (data-track في الصفحة).
-  static const targets = {'facebook', 'instagram', 'x', 'notify_button', 'waitlist_signup', 'store', 'play_testing', 'ksafish', 'email', 'download_button', 'pricing_button'};
+  static const targets = {
+    'facebook',
+    'instagram',
+    'x',
+    'notify_button',
+    'waitlist_signup',
+    'store',
+    'play_testing',
+    'ksafish',
+    'email',
+    'download_button',
+    'pricing_button',
+  };
 
   static const _keep = 120;
   static const _perVisitorDay = 60;
@@ -66,9 +78,9 @@ class SiteStats {
     final who = Object.hash(ip, agent);
     final n = _seen[who] ?? 0;
     if (n >= _perVisitorDay) return false;
-    final d = _days.putIfAbsent(day, () => {'visits': 0, 'unique': 0, 'src': <String, dynamic>{}, 'clicks': <String, dynamic>{}});
+    final d = _days.putIfAbsent(day, () => {'visits': 0, 'unique': 0, 'src': <String, dynamic>{}, 'clicks': <String, dynamic>{}, 'hours': <String, dynamic>{}});
     void bump(String group, String key) {
-      final g = (d[group] as Map).cast<String, dynamic>();
+      final g = ((d[group] as Map?) ?? {}).cast<String, dynamic>();
       g[key] = ((g[key] as num?) ?? 0) + 1;
       d[group] = g;
     }
@@ -78,6 +90,8 @@ class SiteStats {
         d['visits'] = (d['visits'] as num) + 1;
         if (!_seen.containsKey(who)) d['unique'] = (d['unique'] as num) + 1;
         bump('src', sourceOf('${body['src'] ?? ''}'));
+        // ساعة الزيارة بتوقيت السعودية، عشان نعرف وقت الذروة ونوقّت الإعلانات عليه.
+        bump('hours', now.toUtc().add(const Duration(hours: 3)).hour.toString().padLeft(2, '0'));
       case 'click':
         final t = '${body['t']}';
         if (!targets.contains(t)) return false;
@@ -93,15 +107,16 @@ class SiteStats {
   /// مجموع الأيام من [from] إلى [to] (شاملة، بصيغة yyyy-mm-dd).
   Map<String, dynamic> total(String from, String to) {
     var visits = 0, unique = 0;
-    final src = <String, int>{}, clicks = <String, int>{};
+    final src = <String, int>{}, clicks = <String, int>{}, hours = <String, int>{};
     for (final e in _days.entries) {
       if (e.key.compareTo(from) < 0 || e.key.compareTo(to) > 0) continue;
       visits += (e.value['visits'] as num).toInt();
       unique += (e.value['unique'] as num).toInt();
       (e.value['src'] as Map).forEach((k, v) => src['$k'] = (src['$k'] ?? 0) + (v as num).toInt());
       (e.value['clicks'] as Map).forEach((k, v) => clicks['$k'] = (clicks['$k'] ?? 0) + (v as num).toInt());
+      ((e.value['hours'] as Map?) ?? {}).forEach((k, v) => hours['$k'] = (hours['$k'] ?? 0) + (v as num).toInt());
     }
-    return {'visits': visits, 'unique': unique, 'src': src, 'clicks': clicks};
+    return {'visits': visits, 'unique': unique, 'src': src, 'clicks': clicks, 'hours': hours};
   }
 
   /// كل يوم من آخر [days] يوم (الأقدم أول): الزيارات والزوار والضغطات، للوحة الأدمن.
@@ -140,6 +155,8 @@ class SiteStats {
     'direct': 'مباشر',
     'other': 'غيره',
   };
+  static String sourceName(String k) => _srcNames[k] ?? k;
+
   static const _clickNames = {
     'download_button': 'زر حمّل التطبيق',
     'store': 'أزرار المتاجر',

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'accounts.dart';
+import 'ads.dart';
 import 'claude.dart';
 
 /// المحاسبة: الدخل والمصاريف والصافي لكل شهر، بالريال. الملفات في نفس مجلد الحسابات:
@@ -21,6 +22,9 @@ class Ledger {
   final Map<String, dynamic> _alerts;
 
   String get dir => accounts.dir;
+
+  /// صرف الإعلانات الفعلي من البريف اليومي، ينحسب مصروف تلقائي لكل منصة.
+  AdStore? ads;
 
   static const kinds = {'income', 'expense'};
   static const repeats = {'once', 'monthly', 'yearly'};
@@ -162,7 +166,10 @@ class Ledger {
     final income = <Map<String, dynamic>>[];
     final byProduct = <String, Map<String, dynamic>>{};
     for (final s in sales) {
-      final p = byProduct.putIfAbsent('${s['product']}', () => {'store': s['store'], 'n': 0, 'refunds': 0, 'grossSar': 0.0, 'taxSar': 0.0, 'feeSar': 0.0, 'netSar': 0.0});
+      final p = byProduct.putIfAbsent(
+        '${s['product']}',
+        () => {'store': s['store'], 'n': 0, 'refunds': 0, 'grossSar': 0.0, 'taxSar': 0.0, 'feeSar': 0.0, 'netSar': 0.0},
+      );
       if ((s['grossSar'] as num) < 0) {
         p['refunds'] = (p['refunds'] as int) + 1;
       } else {
@@ -190,6 +197,11 @@ class Ledger {
     final claude = scans.fold<double>(0, (t, s) => t + ((s['usd'] as num?) ?? 0)) * _sar;
     if (scans.isNotEmpty) {
       expenses.add({'auto': true, 'provider': 'Anthropic (Claude)', 'label': 'فحوصات التطبيق', 'n': scans.length, 'sar': r(claude)});
+    }
+    for (final e in (ads?.monthSpend(m) ?? const <String, double>{}).entries) {
+      if (e.value > 0) {
+        expenses.add({'auto': true, 'ads': e.key, 'provider': 'إعلانات ${AdStore.names[e.key] ?? e.key}', 'label': 'صرف الإعلانات الفعلي', 'sar': e.value});
+      }
     }
     final grossUsd = sales.fold<double>(0, (t, s) => t + (s['usd'] as num));
     if (grossUsd > rcFreeUsd) {
@@ -238,7 +250,8 @@ class Ledger {
     final y = int.parse(m.substring(0, 4)), mo = int.parse(m.substring(5));
     return [
       for (var i = n - 1; i >= 0; i--)
-        if (statement(month(DateTime.utc(y, mo - i))) case final s) {'month': s['month'], 'incomeSar': s['incomeSar'], 'expensesSar': s['expensesSar'], 'netSar': s['netSar']},
+        if (statement(month(DateTime.utc(y, mo - i))) case final s)
+          {'month': s['month'], 'incomeSar': s['incomeSar'], 'expensesSar': s['expensesSar'], 'netSar': s['netSar']},
     ];
   }
 
@@ -310,7 +323,9 @@ class Ledger {
       final due = _nextDue(e, now);
       if (due == null) continue;
       upcoming.add({'due': due, 'label': e['label'], 'provider': e['provider'], 'sar': r(_entrySar(e)), 'repeat': e['repeat']});
-      if (due.compareTo(soon) <= 0) out.add({'level': 'amber', 'code': 'bill_due', 'due': due, 'label': e['label'], 'provider': e['provider'], 'sar': r(_entrySar(e))});
+      if (due.compareTo(soon) <= 0) {
+        out.add({'level': 'amber', 'code': 'bill_due', 'due': due, 'label': e['label'], 'provider': e['provider'], 'sar': r(_entrySar(e))});
+      }
     }
     upcoming.sort((a, b) => '${a['due']}'.compareTo('${b['due']}'));
     return {'alerts': out, 'balance': balance, 'upcoming': upcoming.take(10).toList()};
@@ -367,9 +382,12 @@ extension Reports on Ledger {
     if (period == 'day') {
       // اليوم: دخل المتجر وتكلفة Claude والقيود اللي تاريخها هاليوم بالضبط (المتكررة الشهرية ما تنقسم على الأيام).
       final manual = _entries.where((e) => e['date'] == key && e['repeat'] == 'once');
-      income = sales.fold<double>(0, (t, s) => t + (s['netSar'] as num)) + manual.where((e) => e['kind'] == 'income').fold<double>(0, (t, e) => t + _entrySar(e));
+      income =
+          sales.fold<double>(0, (t, s) => t + (s['netSar'] as num)) + manual.where((e) => e['kind'] == 'income').fold<double>(0, (t, e) => t + _entrySar(e));
       expenses =
-          scans.fold<double>(0, (t, s) => t + ((s['usd'] as num?) ?? 0)) * _sar + manual.where((e) => e['kind'] == 'expense').fold<double>(0, (t, e) => t + _entrySar(e));
+          scans.fold<double>(0, (t, s) => t + ((s['usd'] as num?) ?? 0)) * _sar +
+          manual.where((e) => e['kind'] == 'expense').fold<double>(0, (t, e) => t + _entrySar(e)) +
+          ((ads?.total(key, key)['spendSar'] as num?) ?? 0);
     } else {
       final st = [for (final m in months) statement(m)];
       income = st.fold<double>(0, (t, s) => t + (s['incomeSar'] as num));

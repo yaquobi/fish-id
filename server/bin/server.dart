@@ -10,6 +10,7 @@ import 'package:fish_id_server/collectors.dart';
 import 'package:fish_id_server/contrib.dart';
 import 'package:fish_id_server/ledger.dart';
 import 'package:fish_id_server/refs.dart';
+import 'package:fish_id_server/ads.dart';
 import 'package:fish_id_server/site.dart';
 import 'package:fish_id_server/staff.dart';
 import 'package:fish_id_server/waitlist.dart';
@@ -49,14 +50,13 @@ Future<void> main() async {
     contrib: ContribStore.open(env['FISHID_CONTRIB'] ?? 'contrib'),
     collectors: accounts == null ? null : CollectorStore.open(accounts.dir),
     // أرشيف كتاب أسماك البحر الأحمر (data/book/archive على السيرفر)، يبنيه tool/book_extract.py.
-    book: BookArchive.open(env['FISHID_BOOK'] ?? 'book', {
-      for (final s in data['species'] as List) '${s['sci']}'.toLowerCase().trim(): s['id'] as String,
-    }),
+    book: BookArchive.open(env['FISHID_BOOK'] ?? 'book', {for (final s in data['species'] as List) '${s['sci']}'.toLowerCase().trim(): s['id'] as String}),
     accounts: accounts,
     ledger: accounts == null ? null : Ledger.open(accounts),
     staff: accounts == null ? null : StaffStore.open(accounts.dir),
     site: accounts == null ? null : SiteStats.open(accounts.dir),
     waitlist: accounts == null ? null : Waitlist.open(accounts.dir),
+    ads: accounts == null ? null : AdStore.open(accounts.dir),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {
@@ -70,19 +70,31 @@ Future<void> main() async {
   final server = await io.serve(app.handler, InternetAddress.anyIPv4, port);
   stdout.writeln('FishId: يستمع على المنفذ ${server.port}، ${(data['species'] as List).length} نوعًا');
 
+  // أرقام الإعلانات: سحب من المنصات كل ساعة (الدقيقة 50)، وقبل كل بريف.
+  if (app.ads != null) {
+    unawaited(app.pullAds(DateTime.now()));
+  }
   final notify = app.notify;
   if (notify != null) {
     notify('✅ FISH ID: السيرفر اشتغل${ai == null ? '، لكن مفتاح Claude ناقص والفحوصات متوقفة' : ''}.');
-    // ملخص يومي الساعة 9 مساءً بتوقيت السعودية (6 مساءً UTC).
-    var sentOn = '';
-    Timer.periodic(const Duration(minutes: 1), (_) {
-      final riyadh = DateTime.now().toUtc().add(const Duration(hours: 3));
-      final day = riyadh.toIso8601String().substring(0, 10);
-      if (riyadh.hour != 21 || sentOn == day) return;
-      sentOn = day;
-      if (app.dailySummary(DateTime.now()) case final String text) notify(text);
-    });
   }
+  // البريف اليومي على تليجرام: 6 الصبح عن أمس كامل، و9 الليل عن اليوم لين الحين (بتوقيت السعودية).
+  final sent = <String>{};
+  Timer.periodic(const Duration(minutes: 1), (_) async {
+    final now = DateTime.now();
+    final riyadh = now.toUtc().add(const Duration(hours: 3));
+    final day = riyadh.toIso8601String().substring(0, 10);
+    if (app.ads != null && riyadh.minute == 50) await app.pullAds(now);
+    if (notify == null || (riyadh.hour != 6 && riyadh.hour != 21) || !sent.add('$day-${riyadh.hour}')) return;
+    if (app.ads != null) await app.pullAds(now);
+    if (riyadh.hour == 6) {
+      notify(app.briefText(SiteStats.dayOf(now.subtract(const Duration(days: 1))), now, full: true));
+    } else {
+      notify(app.briefText(day, now));
+      // ملخص التطبيق والتنبيهات المفتوحة (رصيد Claude، فواتير) يبقى الساعة 9.
+      if (app.dailySummary(now, withSite: false) case final String text) notify(text);
+    }
+  });
 }
 
 /// يرسل التنبيه لكل القنوات المضبوطة، أو null إذا ما فيه ولا وحدة.
