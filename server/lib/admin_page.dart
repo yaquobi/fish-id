@@ -1254,15 +1254,16 @@ const views = {
     const all = await api('book');
     const withOurs = all.filter(s => (s.ours || []).length).length;
     const norm = s => String(s || '').toLowerCase();
-    const list = q ? all.filter(s => [s.sci, s.english, ...(s.local || []), names[s.ksafish]].some(v => norm(v).includes(norm(q)))) : all;
-    $('#app').innerHTML = heading(T('صور الأسماك', 'Fish photos'), `${num(all.length)} ${T('سمكة', 'fish')} · ${num(withOurs)} ${T('لها صور من المصوّرين', 'with our photos')}`,
+    const mine = all.filter(s => (s.ours || []).length);
+    const list = q ? mine.filter(s => [s.sci, s.english, ...(s.local || [])].some(v => norm(v).includes(norm(q)))) : mine;
+    $('#app').innerHTML = heading(T('صور الأسماك', 'Fish photos'), `${num(withOurs)} ${T('سمكة لها صور من المصوّرين', 'fish with collector photos')}`,
       `<input id="bk-q" class="noprint" placeholder="${T('بحث بالاسم', 'Search')}" value="${esc(q)}" style="width:200px">`) + `
       <div class="photos">${list.map(s => `<div class="card">
         <div style="font-size:17px">${esc((s.local || []).join('، '))}</div>
         <div><b dir="ltr" style="font-style:italic">${esc(s.sci)}</b> <span class="k">${esc(s.english)}</span></div>
         ${(() => { const imgs = [...(s.ours || []).map(p => `contrib/${p.day}/${p.id}/${p.file}`)].filter(Boolean);
           return imgs.length ? `<img class="fish-main" alt="" data-src="${esc(imgs[0])}">${imgs.length > 1 ? `<div class="fish-more">${imgs.slice(1).map(u => `<img alt="" data-src="${esc(u)}">`).join('')}</div>` : ''}` : ''; })()}
-        <div class="k">${(s.ours || []).length ? `${num(s.ours.length)} ${T('صورة من المصوّرين، الأولى هي اللي في التطبيق', 'photos from collectors, the first shows in the app')}` : T('ما فيه صور من المصوّرين للحين', 'No collector photos yet')}${s.ksafish ? ` · <span class="mono">${esc(s.ksafish)}</span>` : ''}</div></div>`).join('') || `<div class="card msg">${T('ما فيه نتائج', 'No results')}</div>`}</div>`;
+        <div class="k">${(s.ours || []).length ? `${num(s.ours.length)} ${T('صورة من المصوّرين، الأولى هي اللي في التطبيق', 'photos from collectors, the first shows in the app')}` : T('ما فيه صور من المصوّرين للحين', 'No collector photos yet')}${s.ksafish ? ` · <span class="mono">${esc(s.ksafish)}</span>` : ''}</div></div>`).join('') || `<div class="card msg">${T('ما فيه صور مقبولة من المصوّرين للحين. اقبل صورهم من «صور المساهمين» وتطلع هنا تحت سمكتها.', 'No approved collector photos yet. Approve them under Contributions and they appear here.')}</div>`}</div>`;
     $('#bk-q').onchange = () => show('book', $('#bk-q').value.trim());
     $('#app').querySelectorAll('img[data-src]').forEach(async img => {
       try { img.src = URL.createObjectURL(await api(img.dataset.src)); } catch (e) {}
