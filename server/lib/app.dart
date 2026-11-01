@@ -6,6 +6,7 @@ import 'package:shelf/shelf.dart';
 
 import 'accounts.dart';
 import 'admin_page.dart';
+import 'ads.dart';
 import 'book.dart';
 import 'claude.dart';
 import 'collect_page.dart';
@@ -55,8 +56,11 @@ class FishIdApp {
     this.notify,
     this.site,
     this.waitlist,
+    this.ads,
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+  }) : _clock = clock ?? DateTime.now {
+    ledger?.ads = ads;
+  }
 
   final Identify? identify;
   final ContribStore? contrib;
@@ -88,6 +92,9 @@ class FishIdApp {
 
   /// المسجلين في «بلّغني بالإطلاق».
   final Waitlist? waitlist;
+
+  /// أرقام الإعلانات من المنصات، للبريف اليومي والمحاسبة.
+  final AdStore? ads;
   final DateTime Function() _clock;
 
   static const maxBytes = 5 * 1024 * 1024;
@@ -177,7 +184,11 @@ class FishIdApp {
         final store = accounts;
         if (user == null || store == null) return _json(200, {'plan': 'free', 'remaining': null});
         final v = store.view(user, _clock());
-        return _json(200, {'plan': v['from'] == 'owner' ? 'owner' : (v['active'] == true ? v['plan'] : 'free'), 'until': v['until'], 'remaining': v['remaining']});
+        return _json(200, {
+          'plan': v['from'] == 'owner' ? 'owner' : (v['active'] == true ? v['plan'] : 'free'),
+          'until': v['until'],
+          'remaining': v['remaining'],
+        });
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
@@ -211,6 +222,27 @@ class FishIdApp {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
     }
+    // سكربت Google Ads يرسل أرقام قوقل هنا بمفتاح الدفع (Authorization: Bearer ap_...).
+    if (req.method == 'POST' && path == 'ads/push') {
+      final store = ads;
+      try {
+        final key = (req.headers['authorization'] ?? '').replaceFirst('Bearer ', '');
+        if (store == null || !store.keys.pushMatches(key)) throw const FishIdError('unauthorized', 'المفتاح غير صحيح', status: 401);
+        final text = await req.readAsString();
+        final b = text.length > 4000 ? null : jsonDecode(text);
+        if (b is! Map) throw const FishIdError('bad_request', 'الطلب غير صالح');
+        final now = _clock();
+        final platform = '${b['platform'] ?? 'google'}';
+        final row = await store.put('${b['day']}', platform, b, usdToSar: _usdToSar, src: 'push', now: now);
+        store.keys.status[platform] = {'ok': true, 'at': now.toUtc().toIso8601String()};
+        await store.keys.seen(platform, now);
+        return _json(200, row);
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      } on FormatException {
+        return _json(400, {'code': 'bad_request', 'message': 'الطلب غير صالح'});
+      }
+    }
     if (path == 'admin' || path.startsWith('admin/')) {
       try {
         return await _admin(req, path);
@@ -232,12 +264,15 @@ class FishIdApp {
       final mine = m == null ? null : contrib?.bestPhoto(m.group(1)!);
       final f = mine ?? book?.photo(id);
       if (f == null) return Response.notFound('', headers: {'cache-control': 'public, max-age=86400'});
-      return Response.ok(await f.readAsBytes(), headers: {
-        'content-type': f.path.endsWith('png') ? 'image/png' : 'image/jpeg',
-        'cache-control': 'public, max-age=86400',
-        'x-photo-source': mine != null ? 'fishid' : 'book',
-        'access-control-expose-headers': 'x-photo-source',
-      });
+      return Response.ok(
+        await f.readAsBytes(),
+        headers: {
+          'content-type': f.path.endsWith('png') ? 'image/png' : 'image/jpeg',
+          'cache-control': 'public, max-age=86400',
+          'x-photo-source': mine != null ? 'fishid' : 'book',
+          'access-control-expose-headers': 'x-photo-source',
+        },
+      );
     }
     if (path == 'collect' || path.startsWith('collect/')) {
       try {
@@ -341,7 +376,7 @@ class FishIdApp {
     final allowed = switch (role) {
       'owner' => true,
       'admin' => section != 'staff',
-      'accountant' => const {'me', 'species', 'stats', 'ledger', 'report', 'alerts'}.contains(section),
+      'accountant' => const {'me', 'species', 'stats', 'ledger', 'report', 'alerts', 'brief'}.contains(section),
       'investor' => const {'me', 'species', 'report'}.contains(section) && req.method == 'GET',
       _ => false,
     };
@@ -372,6 +407,28 @@ class FishIdApp {
         final key = q['key'] ?? '';
         if (!Reports.valid(period, key)) throw const FishIdError('bad_request', 'الفترة غير صحيحة');
         return _json(200, ledger!.summary(period, key, now));
+      case ('GET', 'brief'):
+        final d = q['day'] ?? '';
+        return _json(200, brief(AdStore.dayPattern.hasMatch(d) ? d : SiteStats.dayOf(now), now));
+      case ('GET', 'ads') when ads != null:
+        return _json(200, {'platforms': ads!.keys.view(), if (role == 'owner') 'pushKey': await ads!.keys.pushKey()});
+      case ('POST', 'ads') when ads != null && role != 'accountant':
+        final b = await body();
+        if (b['put'] is Map) {
+          final p = (b['put'] as Map);
+          await ads!.put('${p['day']}', '${p['platform']}', p, usdToSar: _usdToSar, src: 'manual', now: now);
+        } else if (b['link'] is Map && role == 'owner') {
+          final l = b['link'] as Map;
+          await ads!.keys.set('${l['platform']}', l);
+          await ads!.pull(SiteStats.dayOf(now), usdToSar: _usdToSar, now: now);
+        } else if (b['unlink'] is String && role == 'owner') {
+          await ads!.keys.remove(b['unlink'] as String);
+        } else if (b['pull'] == true) {
+          await pullAds(now);
+        } else {
+          throw const FishIdError('bad_request', 'الطلب غير صالح');
+        }
+        return _json(200, {'platforms': ads!.keys.view()});
       case ('GET', 'alerts') when ledger != null:
         return _json(200, ledger!.alerts(now));
       case ('POST', 'alerts') when ledger != null:
@@ -393,10 +450,13 @@ class FishIdApp {
       case ('GET', 'stats') when store != null:
         return _json(200, {
           ...store.stats(now),
-          if (ledger != null) 'ledger': {
-            ...ledger!.statement(Ledger.month(now))..remove('income')..remove('expenses'),
-            'incomeYearSar': ledger!.history(Ledger.month(now)).fold<num>(0, (t, h) => t + (h['incomeSar'] as num)),
-          },
+          if (ledger != null)
+            'ledger': {
+              ...ledger!.statement(Ledger.month(now))
+                ..remove('income')
+                ..remove('expenses'),
+              'incomeYearSar': ledger!.history(Ledger.month(now)).fold<num>(0, (t, h) => t + (h['incomeSar'] as num)),
+            },
         });
       case ('GET', 'ledger') when ledger != null:
         final m = q['month'] ?? '';
@@ -450,7 +510,18 @@ class FishIdApp {
             until = (cur != null && cur.isAfter(now) ? cur : now).add(Duration(days: extend));
             plan ??= a?['plan'] == 'free' || a == null ? 'monthly' : a['plan'] as String;
           }
-          out.add(await store.update(id, now, grant: (b['grant'] as num?)?.toInt(), plan: plan, until: until, blocked: b['blocked'] as bool?, owner: b['owner'] as bool?, by: by));
+          out.add(
+            await store.update(
+              id,
+              now,
+              grant: (b['grant'] as num?)?.toInt(),
+              plan: plan,
+              until: until,
+              blocked: b['blocked'] as bool?,
+              owner: b['owner'] as bool?,
+              by: by,
+            ),
+          );
         }
         return _json(200, parts.length == 3 ? out.single : {'updated': out.length});
       case ('GET', 'scans') when store != null:
@@ -469,13 +540,17 @@ class FishIdApp {
       case ('GET', 'book') when book != null && parts.length == 2:
         final ours = contrib?.ours(now: now) ?? const {};
         String? fish(Object? id) => '$id'.startsWith('HWT-FISH-') ? '$id'.substring(9) : null;
-        return _json(200, [for (final s in book!.species) {...s, 'ours': ours[fish(s['ksafish'])] ?? const []}]);
+        return _json(200, [
+          for (final s in book!.species) {...s, 'ours': ours[fish(s['ksafish'])] ?? const []},
+        ]);
       case ('GET', 'book') when book != null && parts.length == 4:
         final f = book!.file(parts[2], parts[3]);
         if (f == null) break;
         return Response.ok(await f.readAsBytes(), headers: {'content-type': 'image/jpeg', 'cache-control': 'private, max-age=86400'});
       case ('GET', 'collectors') when collectors != null:
-        return _json(200, [for (final c in collectors!.list()) {...c, 'today': collectors!.today(c, now)}]);
+        return _json(200, [
+          for (final c in collectors!.list()) {...c, 'today': collectors!.today(c, now)},
+        ]);
       case ('POST', 'collectors') when collectors != null:
         final b = await body();
         if (b['add'] is Map) return _json(200, await collectors!.add('${b['add']['name'] ?? ''}', '${b['add']['city'] ?? ''}', now));
@@ -562,10 +637,144 @@ class FishIdApp {
     _tell('sale:${event['id'] ?? buyer}', '$title$test: باقة $plan$price\nالحساب: $buyer', every: const Duration(days: 7));
   }
 
+  double get _usdToSar => ((accounts?.settings['usdToSar'] as num?) ?? 3.75).toDouble();
+
+  /// يسحب أرقام اليوم من المنصات المربوطة، وأمس كمان في أول ساعات اليوم (المنصات تكمّل أرقام أمس متأخر).
+  Future<Map<String, String>> pullAds(DateTime now) async {
+    final store = ads;
+    if (store == null) return const {};
+    final riyadh = now.toUtc().add(const Duration(hours: 3));
+    final errors = await store.pull(SiteStats.dayOf(now), usdToSar: _usdToSar, now: now);
+    if (riyadh.hour < 8) await store.pull(SiteStats.dayOf(now.subtract(const Duration(days: 1))), usdToSar: _usdToSar, now: now);
+    return errors;
+  }
+
+  /// البريف اليومي ليوم [day] (بتوقيت السعودية): الإعلانات لكل منصة، والموقع بالساعة، والتسجيلات، والتطبيق والفلوس.
+  Map<String, dynamic> brief(String day, DateTime now) {
+    double r(num v) => double.parse(v.toStringAsFixed(2));
+    String shift(int d) {
+      final p = day.split('-').map(int.parse).toList();
+      return DateTime.utc(p[0], p[1], p[2] + d).toIso8601String().substring(0, 10);
+    }
+
+    final adsDay = ads?.total(day, day) ?? {'platforms': {}, 'spendSar': 0, 'impressions': 0, 'clicks': 0};
+    final rows = ads?.day(day) ?? const {};
+    final web = site?.total(day, day) ?? {'visits': 0, 'unique': 0, 'src': {}, 'clicks': {}, 'hours': {}};
+    final week = site?.total(shift(-6), day);
+    String ksa(Object? at) => SiteStats.dayOf(DateTime.parse('$at'));
+    final items = (waitlist?.view(now)['items'] as List? ?? const []).whereType<Map>().toList();
+    final signups = items.where((e) => ksa(e['at']) == day).toList();
+    final app = ledger?.summary('day', day, now);
+    final spend = (adsDay['spendSar'] as num).toDouble();
+    final visits = (web['visits'] as num).toInt();
+    return {
+      'day': day,
+      'today': day == SiteStats.dayOf(now),
+      'generated': now.toUtc().toIso8601String(),
+      'ads': {
+        ...adsDay,
+        'rows': rows,
+        'linked': ads?.keys.view() ?? const {},
+        'cpcSar': (adsDay['clicks'] as num) > 0 ? r(spend / (adsDay['clicks'] as num)) : null,
+      },
+      'site': web,
+      'weekHours': week?['hours'] ?? const {},
+      'signups': {
+        'count': signups.length,
+        'beta': signups.where((e) => e['beta'] == true).length,
+        'total': items.length,
+        'costSar': signups.isNotEmpty ? r(spend / signups.length) : null,
+      },
+      'costPerVisitSar': visits > 0 ? r(spend / visits) : null,
+      if (app != null)
+        'app': {
+          for (final k in const ['newUsers', 'users', 'scans', 'newSubs', 'renewals', 'grossSar', 'incomeSar', 'claudeSar', 'expensesSar', 'netSar']) k: app[k],
+        },
+      // آخر 14 يوم: الصرف والزيارات والتسجيلات، للرسم.
+      'series': [
+        for (var i = -13; i <= 0; i++)
+          () {
+            final d = shift(i);
+            return {
+              'key': d,
+              'spendSar': ads?.total(d, d)['spendSar'] ?? 0,
+              'visits': site?.total(d, d)['visits'] ?? 0,
+              'signups': items.where((e) => ksa(e['at']) == d).length,
+            };
+          }(),
+      ],
+    };
+  }
+
+  /// نص البريف لتليجرام. [full]: اليوم خلص (بريف الصبح عن أمس).
+  String briefText(String day, DateTime now, {bool full = false}) {
+    final b = brief(day, now);
+    String n(Object? v) {
+      final x = (v as num?) ?? 0;
+      final s = x is int || x == x.roundToDouble() ? x.round().toString() : x.toStringAsFixed(2);
+      return s.replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    }
+
+    String sar(Object? v) => ((v as num?) ?? 0).toStringAsFixed(2);
+    String hour(int h) => h == 0
+        ? '12 الليل'
+        : h < 12
+        ? '$h الصبح'
+        : h == 12
+        ? '12 الظهر'
+        : h < 16
+        ? '${h - 12} العصر'
+        : '${h - 12} المساء';
+    final ad = b['ads'] as Map;
+    final rows = (ad['rows'] as Map).cast<String, dynamic>();
+    final linked = (ad['linked'] as Map).cast<String, dynamic>();
+    final lines = <String>[
+      '📊 بريف FISH ID: $day ${full ? '(اليوم كامل)' : '(لين الساعة ${now.toUtc().add(const Duration(hours: 3)).hour}:00)'}',
+      '',
+      '💰 الإعلانات: ${sar(ad['spendSar'])} ريال · ${n(ad['impressions'])} ظهور · ${n(ad['clicks'])} ضغطة',
+    ];
+    for (final p in AdStore.platforms) {
+      final row = rows[p] as Map?;
+      if (row != null) {
+        lines.add('• ${AdStore.names[p]}: ${sar(row['spendSar'])} ريال، ${n(row['impressions'])} ظهور، ${n(row['clicks'])} ضغطة');
+      } else if ((linked[p] as Map?)?['linked'] == true) {
+        lines.add('• ${AdStore.names[p]}: ما فيه أرقام لهاليوم');
+      }
+    }
+    final off = AdStore.platforms
+        .where((p) => p != 'tiktok' && rows[p] == null && (linked[p] as Map?)?['linked'] != true)
+        .map((p) => AdStore.names[p])
+        .toList();
+    if (off.isNotEmpty) lines.add('• غير مربوطة: ${off.join('، ')}');
+    for (final e in linked.entries) {
+      if ((e.value as Map)['ok'] == false) lines.add('🟠 تعذّر سحب ${AdStore.names[e.key]}: ${(e.value as Map)['error']}');
+    }
+    final web = b['site'] as Map;
+    final src = ((web['src'] as Map).cast<String, int>().entries.toList()..sort((a, b) => b.value.compareTo(a.value))).take(5);
+    lines
+      ..add('')
+      ..add('🌐 الموقع: ${n(web['visits'])} زيارة من ${n(web['unique'])} زائر')
+      ..add(src.isEmpty ? 'من وين: لا شيء' : 'من وين: ${src.map((e) => '${SiteStats.sourceName(e.key)} ${e.value}').join('، ')}');
+    MapEntry<String, int>? peak(Map m) => m.isEmpty ? null : (m.cast<String, int>().entries.reduce((a, c) => c.value > a.value ? c : a));
+    if (peak(web['hours'] as Map) case final p?) lines.add('⏰ أكثر ساعة اليوم: ${hour(int.parse(p.key))} (${p.value} زيارة)');
+    if (peak(b['weekHours'] as Map) case final p?) lines.add('⏰ وقت الذروة آخر 7 أيام: ${hour(int.parse(p.key))} (${p.value} زيارة)');
+    final s = b['signups'] as Map;
+    lines
+      ..add('')
+      ..add('📝 تسجيلات «بلّغني»: +${s['count']} (المجموع ${s['total']})${(s['beta'] as int) > 0 ? '، منهم ${s['beta']} للتجربة' : ''}');
+    if (b['app'] case final Map a) {
+      lines.add('📱 التطبيق: مستخدمين جدد ${a['newUsers']} · فحوصات ${a['scans']} · اشتراكات جديدة ${a['newSubs']} · دخل ${sar(a['incomeSar'])} ريال');
+    }
+    lines.add(
+      '💵 تكلفة الزيارة: ${b['costPerVisitSar'] == null ? '-' : '${sar(b['costPerVisitSar'])} ريال'} · تكلفة التسجيل: ${s['costSar'] == null ? '-' : '${sar(s['costSar'])} ريال'}',
+    );
+    return lines.join('\n');
+  }
+
   /// ملخص اليوم للمالك: الفحوصات والتكلفة والمستخدمين والاشتراكات والتنبيهات المفتوحة. null إذا ما فيه حسابات.
-  String? dailySummary(DateTime now) {
+  String? dailySummary(DateTime now, {bool withSite = true}) {
     final store = accounts;
-    final web = site?.summaryLines(now) ?? const <String>[];
+    final web = withSite ? site?.summaryLines(now) ?? const <String>[] : const <String>[];
     if (store == null) return web.isEmpty ? null : ['📊 FISH ID: ملخص اليوم ${SiteStats.dayOf(now)}', ...web.skip(1)].join('\n');
     final s = store.stats(now);
     String sar(Object? v) => (v as num).toStringAsFixed(2);
@@ -592,7 +801,9 @@ class FishIdApp {
       }
     }
     final wl = waitlist?.view(now);
-    if (wl != null) lines.add('📝 «بلّغني بالإطلاق»: ${wl['count']} مسجل (اليوم +${wl['today']})، للتجربة المبكرة: أندرويد ${wl['betaAndroid']}، آيفون ${wl['betaIos']}');
+    if (wl != null) {
+      lines.add('📝 «بلّغني بالإطلاق»: ${wl['count']} مسجل (اليوم +${wl['today']})، للتجربة المبكرة: أندرويد ${wl['betaAndroid']}، آيفون ${wl['betaIos']}');
+    }
     return [...lines, ...web].join('\n');
   }
 
@@ -677,7 +888,10 @@ class FishIdApp {
     final store = collectors;
     if (store == null || contrib == null) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
     if (req.method == 'GET' && path == 'collect') {
-      return Response.ok(collectPage, headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer'});
+      return Response.ok(
+        collectPage,
+        headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer'},
+      );
     }
     if (req.method == 'GET' && path == 'collect/manifest.webmanifest') {
       // الأيقونة تفتح على نفس رابط المصوّر. المفتاح ينضاف بس إذا شكله صحيح.
@@ -731,7 +945,14 @@ class FishIdApp {
     }
     switch ((req.method, path)) {
       case ('GET', 'collect/me'):
-        return _json(200, {'name': c['name'], 'city': c['city'], 'joined': '${c['contact'] ?? ''}'.isNotEmpty, 'fish': c['fish'] ?? 0, 'today': store.today(c, now), 'species': speciesNames});
+        return _json(200, {
+          'name': c['name'],
+          'city': c['city'],
+          'joined': '${c['contact'] ?? ''}'.isNotEmpty,
+          'fish': c['fish'] ?? 0,
+          'today': store.today(c, now),
+          'species': speciesNames,
+        });
       case ('POST', 'collect/join'):
         final Map b;
         try {
@@ -751,7 +972,10 @@ class FishIdApp {
         final species = '${body['species'] ?? ''}';
         if (species.isNotEmpty && !RegExp(r'^\d{4}$').hasMatch(species)) throw const FishIdError('bad_request', 'الطلب غير صالح');
         final items = body['images'] is List ? body['images'] as List : const [];
-        final parts = [for (final (i, _) in photos.indexed) i < items.length && items[i] is Map && CollectorStore.parts.contains(items[i]['part']) ? '${items[i]['part']}' : 'other'];
+        final parts = [
+          for (final (i, _) in photos.indexed)
+            i < items.length && items[i] is Map && CollectorStore.parts.contains(items[i]['part']) ? '${items[i]['part']}' : 'other',
+        ];
         final note = '${body['note'] ?? ''}'.trim();
         final id = await contrib!.save(photos, {
           'source': 'collector',
@@ -768,7 +992,11 @@ class FishIdApp {
           'app_score': -1,
         }, now);
         await store.counted(key, photos.length, now);
-        _tell('collect:${c['name']}', '🐟 ${c['name']} (${c['city']}) رفع صور: $typed · ${photos.length} صور. اليوم: ${store.today(c, now)} سمكة.', every: const Duration(minutes: 30));
+        _tell(
+          'collect:${c['name']}',
+          '🐟 ${c['name']} (${c['city']}) رفع صور: $typed · ${photos.length} صور. اليوم: ${store.today(c, now)} سمكة.',
+          every: const Duration(minutes: 30),
+        );
         return _json(200, {'ok': true, 'id': id, 'fish': c['fish'], 'today': store.today(c, now)});
     }
     throw const FishIdError('not_found', 'المسار غير موجود', status: 404);

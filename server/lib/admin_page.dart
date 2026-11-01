@@ -110,6 +110,10 @@ label.set input{width:120px;direction:ltr}
 .bars div{flex:1;background:var(--navy-3);border-radius:4px 4px 0 0;min-height:2px;position:relative}
 .bars div.neg{background:var(--bad);opacity:.7}
 .bars div:hover{background:var(--gold)}
+.bars div.dim{opacity:.35}
+.bars div.top{background:var(--gold)}
+.hours-axis{display:grid;grid-template-columns:repeat(24,1fr);color:var(--muted);font-size:11px;margin-top:4px;direction:ltr;text-align:center}
+textarea.code{width:100%;min-height:150px;direction:ltr;font-family:ui-monospace,Menlo,monospace;font-size:12px}
 .axis{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:6px;direction:ltr}
 .pl{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;align-items:end;height:180px}
 .pl .m{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;cursor:pointer}
@@ -414,21 +418,22 @@ const icons = {
   launch: '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>',
   collectors: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   book: '<path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/>',
+  brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h5"/>',
   staff: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/><path d="M17 3l1.5 1.5L21 2"/>',
 };
-const tabName = k => ({home: T('الرئيسية', 'Overview'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
+const tabName = k => ({home: T('الرئيسية', 'Overview'), brief: T('البريف اليومي', 'Daily brief'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
   codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), book: T('صور الأسماك', 'Fish photos')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
-  owner: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes', 'staff'],
-  admin: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes'],
-  accountant: ['home', 'report', 'money', 'alerts'],
+  owner: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes', 'staff'],
+  admin: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes'],
+  accountant: ['home', 'brief', 'report', 'money', 'alerts'],
   investor: ['report'],
 };
 // مجموعات القائمة الجانبية. أي تبويب جديد ينضاف لمجموعته هنا.
 const navGroups = () => [
-  [T('نظرة عامة', 'Overview'), ['home', 'report', 'alerts']],
+  [T('نظرة عامة', 'Overview'), ['home', 'brief', 'report', 'alerts']],
   [T('العملاء', 'Customers'), ['users', 'scans', 'contrib', 'collectors', 'book', 'launch']],
   [T('المال', 'Money'), ['money', 'settings', 'codes']],
   [T('الموقع والفريق', 'Site & team'), ['site', 'staff']],
@@ -715,6 +720,131 @@ const views = {
         <div class="card"><h3>${T('أكثر الأنواع فحصًا هالشهر', 'Top species this month')}</h3>
           <table>${s.topSpecies.map(t => `<tr><td>${sp(t.id)}<div class="meter"><i style="width:${t.n / s.topSpecies[0].n * 100}%"></i></div></td><td class="num">${num(t.n)}</td></tr>`).join('') || `<tr><td class="msg">${T('ما فيه فحوصات للحين', 'No scans yet')}</td></tr>`}</table></div>
       </div>`;
+  },
+
+  // البريف اليومي: صرف كل منصة إعلانات وأرقامها الحقيقية، والموقع ساعة بساعة، والتسجيلات والتطبيق.
+  async brief(day = '') {
+    const [b, keys] = await Promise.all([api('brief' + (day ? '?day=' + day : '')), me.role === 'accountant' ? null : api('ads').catch(() => null)]);
+    const pName = k => ({meta: T('ميتا (فيسبوك وإنستغرام)', 'Meta (Facebook & Instagram)'), snapchat: T('سناب شات', 'Snapchat'), x: T('إكس', 'X'), google: T('قوقل', 'Google'), tiktok: T('تيك توك', 'TikTok')})[k] || k;
+    const srcNames = {fb_ad: T('إعلان فيسبوك/إنستغرام', 'Facebook/Instagram ad'), facebook: T('فيسبوك', 'Facebook'), instagram: T('إنستغرام', 'Instagram'), google: T('قوقل', 'Google'), bing: 'Bing',
+      tiktok: T('تيك توك', 'TikTok'), snapchat: T('سناب', 'Snapchat'), x: T('إكس', 'X'), whatsapp: T('واتساب', 'WhatsApp'), telegram: T('تليجرام', 'Telegram'), ksafish: T('الموسوعة', 'KSAFish'), direct: T('مباشر', 'Direct'), other: T('غيره', 'Other')};
+    const hourName = h => h === 0 ? T('12 الليل', '12 am') : h < 12 ? `${h} ${T('الصبح', 'am')}` : h === 12 ? T('12 الظهر', '12 pm') : `${h - 12} ${h < 16 ? T('العصر', 'pm') : T('المساء', 'pm')}`;
+    const platforms = ['meta', 'snapchat', 'x', 'google', 'tiktok'];
+    const linked = b.ads.linked || {};
+    const a = b.app || {};
+    const hoursChart = (m, from = 0, to = 23) => {
+      const vals = Array.from({length: 24}, (_, h) => m[String(h).padStart(2, '0')] || 0);
+      const max = Math.max(1, ...vals);
+      const peak = vals.indexOf(Math.max(...vals));
+      return `<div class="bars">${vals.map((v, h) => `<div class="${h < from || h > to ? 'dim' : ''} ${v && h === peak ? 'top' : ''}" style="height:${v / max * 100}%" title="${hourName(h)}: ${num(v)}"></div>`).join('')}</div>
+        <div class="hours-axis">${vals.map((_, h) => `<span>${h % 3 ? '' : h}</span>`).join('')}</div>
+        <div class="note">${vals.some(Boolean) ? `${T('أكثر ساعة', 'Busiest hour')}: <b>${hourName(peak)}</b> (${num(vals[peak])} ${T('زيارة', 'visits')}) · ${T('بين 6 الصبح و9 الليل', 'Between 6 am and 9 pm')}: ${num(vals.slice(6, 22).reduce((x, y) => x + y, 0))}` : T('ما فيه زيارات', 'No visits')}</div>`;
+    };
+    const src = Object.entries(b.site.src || {}).sort((x, y) => y[1] - x[1]);
+    const s = b.signups;
+    $('#app').innerHTML = heading(T('البريف اليومي', 'Daily brief'),
+      `${b.day} · ${b.today ? T('اليوم لين الحين، والأرقام تتحدث كل ساعة', 'Today so far, refreshed hourly') : T('يوم كامل', 'Full day')} · ${T('يوصلك على تيليجرام 6 الصبح و9 الليل', 'Sent to Telegram at 6 am and 9 pm')}`,
+      `<input type="date" id="bday" class="noprint" value="${b.day}">${keys ? `<button class="act ghost noprint" id="bpull">${T('حدّث الأرقام الحين', 'Refresh now')}</button>` : ''}`) + `
+      <div class="grid">
+        ${kpi(T('صرف الإعلانات', 'Ad spend'), sar(b.ads.spendSar), `${num(Object.keys(b.ads.rows).length)} ${T('منصة', 'platforms')} · ${T('ينزل في المحاسبة تلقائي', 'Goes to accounting automatically')}`, 'hero')}
+        ${kpi(T('الظهور', 'Impressions'), num(b.ads.impressions))}
+        ${kpi(T('الضغطات', 'Clicks'), num(b.ads.clicks), b.ads.cpcSar != null ? `${T('تكلفة الضغطة', 'Cost per click')} ${money(b.ads.cpcSar)}` : '')}
+        ${kpi(T('زيارات الموقع', 'Website visits'), num(b.site.visits), `${num(b.site.unique)} ${T('زائر', 'visitors')}${b.costPerVisitSar != null ? ` · ${T('تكلفة الزيارة', 'cost per visit')} ${money(b.costPerVisitSar)}` : ''}`)}
+        ${kpi(T('تسجيلات بلّغني', 'Waitlist signups'), '+' + num(s.count), `${T('المجموع', 'Total')} ${num(s.total)}${s.costSar != null ? ` · ${T('تكلفة التسجيل', 'cost per signup')} ${money(s.costSar)}` : ''}`)}
+        ${kpi(T('التطبيق', 'App'), num(a.newUsers || 0), `${T('مستخدمين جدد', 'new users')} · ${T('فحوصات', 'scans')} ${num(a.scans || 0)} · ${T('اشتراكات', 'subs')} ${num(a.newSubs || 0)} · ${T('دخل', 'income')} ${money(a.incomeSar || 0)}`)}
+      </div>
+      <div class="card" style="margin-top:14px"><h3>${T('الإعلانات حسب المنصة', 'Ads by platform')}</h3><div class="wrap"><table>
+        <tr><th>${T('المنصة', 'Platform')}</th><th class="num">${T('الصرف', 'Spend')}</th><th class="num">${T('الظهور', 'Impressions')}</th><th class="num">${T('الضغطات', 'Clicks')}</th><th class="num">${T('تكلفة الضغطة', 'CPC')}</th><th>${T('المصدر', 'Source')}</th></tr>
+        ${platforms.map(p => {
+          const r = b.ads.rows[p], l = linked[p] || {};
+          if (!r && !l.linked && p === 'tiktok') return '';
+          const how = r ? (r.src === 'api' || r.src === 'push' ? `<span class="pill ok">${T('مربوط', 'Live')}</span> ${when(r.at)}` : `<span class="pill">${T('يدوي', 'Manual')}</span> ${when(r.at)}`)
+            : l.linked ? `<span class="pill ok">${T('مربوط', 'Live')}</span>` : `<span class="pill no">${T('غير مربوط', 'Not linked')}</span>`;
+          return `<tr><td>${pName(p)}${l.ok === false ? `<div class="k err">${esc(l.error || '')}</div>` : ''}</td>
+            <td class="num">${r ? money(r.spendSar) : '-'}${r && r.currency === 'USD' ? `<div class="k mono">$${money(r.spend)}</div>` : ''}</td>
+            <td class="num">${r ? num(r.impressions) : '-'}</td><td class="num">${r ? num(r.clicks) : '-'}</td>
+            <td class="num">${r && r.clicks ? money(r.spendSar / r.clicks) : '-'}</td><td>${how}</td></tr>`;
+        }).join('')}
+        <tfoot><tr><td>${T('المجموع', 'Total')}</td><td class="num">${money(b.ads.spendSar)}</td><td class="num">${num(b.ads.impressions)}</td><td class="num">${num(b.ads.clicks)}</td><td class="num">${b.ads.cpcSar != null ? money(b.ads.cpcSar) : '-'}</td><td></td></tr></tfoot>
+      </table></div></div>
+      <div class="cols" style="margin-top:14px">
+        <div class="card"><h3>${T('زيارات الموقع بالساعة', 'Website visits by hour')} · ${b.day}</h3>${hoursChart(b.site.hours || {}, 6, 21)}</div>
+        <div class="card"><h3>${T('وقت الذروة آخر 7 أيام', 'Peak hours, last 7 days')}</h3>${hoursChart(b.weekHours || {}, 6, 21)}</div>
+      </div>
+      <div class="cols" style="margin-top:14px">
+        <div class="card"><h3>${T('صرف الإعلانات آخر 14 يوم', 'Ad spend, last 14 days')}</h3>${bars(b.series, 'spendSar', d => d.slice(5), money)}</div>
+        <div class="card"><h3>${T('الزيارات آخر 14 يوم', 'Visits, last 14 days')}</h3>${bars(b.series, 'visits', d => d.slice(5))}</div>
+      </div>
+      <div class="cols" style="margin-top:14px">
+        <div class="card"><h3>${T('من وين جوا', 'Where visitors came from')}</h3><table>${src.map(([k, n]) => `<tr><td>${esc(srcNames[k] || k)}<div class="meter"><i style="width:${n / src[0][1] * 100}%"></i></div></td><td class="num">${num(n)}</td></tr>`).join('') || `<tr><td class="msg">${T('ما فيه زيارات', 'No visits')}</td></tr>`}</table></div>
+        <div class="card"><h3>${T('التطبيق والفلوس', 'App and money')}</h3><table>
+          <tr><td>${T('مستخدمين جدد', 'New users')}</td><td class="num">${num(a.newUsers || 0)}</td></tr>
+          <tr><td>${T('الفحوصات', 'Scans')}</td><td class="num">${num(a.scans || 0)}</td></tr>
+          <tr><td>${T('اشتراكات جديدة', 'New subscriptions')}</td><td class="num">${num(a.newSubs || 0)}</td></tr>
+          <tr><td>${T('الدخل الصافي', 'Net income')}</td><td class="num">${money(a.incomeSar || 0)}</td></tr>
+          <tr><td>${T('تكلفة Claude', 'Claude cost')}</td><td class="num">${money(a.claudeSar || 0)}</td></tr>
+          <tr><td>${T('كل المصاريف (مع الإعلانات)', 'All expenses (incl. ads)')}</td><td class="num">${money(a.expensesSar || 0)}</td></tr>
+          <tr><td><b>${T('الصافي', 'Net')}</b></td><td class="num">${signed(a.netSar || 0)}</td></tr>
+        </table></div>
+      </div>
+      ${keys ? `<div class="card noprint" style="margin-top:14px"><h3>${T('ربط منصات الإعلانات', 'Ad platform connections')}</h3>
+        <div class="note">${T('السيرفر يسحب أرقام ميتا وسناب وإكس كل ساعة بمفاتيحها، وقوقل يرسلها سكربت داخل حساب Google Ads. المفاتيح تنحفظ في السيرفر بس وما تنعرض مرة ثانية.', 'The server pulls Meta, Snapchat and X every hour with their keys; Google is pushed by a script inside Google Ads. Keys stay on the server and are never shown again.')}</div>
+        ${me.role === 'owner' ? `<div class="form" style="margin-top:12px">
+          <label>${T('المنصة', 'Platform')}<select id="lk-p"><option value="meta">${pName('meta')}</option><option value="snapchat">${pName('snapchat')}</option><option value="x">${pName('x')}</option></select></label>
+          <span id="lk-fields" style="display:contents"></span>
+          <div><button class="act gold" id="lk-save" style="width:100%">${T('ربط', 'Link')}</button></div></div><div id="lk-msg" class="err" style="margin-top:6px"></div>
+          <h3 style="margin-top:18px">${T('سكربت قوقل', 'Google script')}</h3>
+          <div class="note">${T('في Google Ads: الأدوات ← السكربتات ← سكربت جديد، الصق هذا، وخلّه يشتغل كل ساعة.', 'In Google Ads: Tools → Scripts → new script, paste this and schedule it hourly.')}</div>
+          <textarea class="code" id="gscript" readonly></textarea>` : ''}
+        <h3 style="margin-top:18px">${T('إدخال يدوي', 'Manual entry')}</h3>
+        <div class="note">${T('لمنصة مو مربوطة (مثل تيك توك). يحل محل أرقام نفس اليوم والمنصة.', 'For a platform that is not linked (e.g. TikTok). Replaces that day and platform.')}</div>
+        <div class="form" style="margin-top:8px">
+          <label>${T('المنصة', 'Platform')}<select id="m-p">${platforms.map(p => `<option value="${p}">${pName(p)}</option>`).join('')}</select></label>
+          <label>${T('اليوم', 'Day')}<input id="m-d" type="date" value="${b.day}"></label>
+          <label>${T('الصرف', 'Spend')}<input id="m-s" type="number" min="0" step="0.01" dir="ltr"></label>
+          <label>${T('العملة', 'Currency')}<select id="m-c"><option value="SAR">${T('ريال', 'SAR')}</option><option value="USD">${T('دولار', 'USD')}</option></select></label>
+          <label>${T('الظهور', 'Impressions')}<input id="m-i" type="number" min="0" dir="ltr"></label>
+          <label>${T('الضغطات', 'Clicks')}<input id="m-k" type="number" min="0" dir="ltr"></label>
+          <div><button class="act gold" id="m-save" style="width:100%">${T('حفظ', 'Save')}</button></div>
+        </div><div id="m-msg" class="err" style="margin-top:6px"></div></div>` : ''}`;
+    $('#bday').onchange = e => e.target.value && show('brief', e.target.value);
+    if (!keys) return;
+    $('#bpull').onclick = async () => { $('#bpull').disabled = true; try { await post('ads', {pull: true}); } catch (e) {} show('brief', day); };
+    $('#m-save').onclick = async () => {
+      try {
+        await post('ads', {put: {platform: $('#m-p').value, day: $('#m-d').value, spend: parseFloat($('#m-s').value || 0), currency: $('#m-c').value, impressions: parseInt($('#m-i').value || 0), clicks: parseInt($('#m-k').value || 0)}});
+        show('brief', day);
+      } catch (e) { $('#m-msg').textContent = e.message; }
+    };
+    if (me.role !== 'owner') return;
+    const fields = {
+      meta: [['account', T('رقم حساب الإعلانات', 'Ad account ID')], ['token', T('توكن مستخدم النظام', 'System user token')]],
+      snapchat: [['account', T('رقم حساب الإعلانات', 'Ad account ID')], ['client', 'Client ID'], ['secret', 'Client secret'], ['refresh', 'Refresh token']],
+      x: [['account', T('رقم حساب الإعلانات', 'Ads account ID')], ['consumerKey', 'API key'], ['consumerSecret', 'API secret'], ['token', 'Access token'], ['tokenSecret', 'Access token secret']],
+    };
+    const drawFields = () => {
+      const p = $('#lk-p').value;
+      $('#lk-fields').innerHTML = fields[p].map(([k, l]) => `<label>${l}<input data-lk="${k}" type="${k === 'account' ? 'text' : 'password'}" autocomplete="off" dir="ltr"></label>`).join('');
+    };
+    $('#lk-p').onchange = drawFields;
+    drawFields();
+    $('#lk-save').onclick = async () => {
+      const v = {platform: $('#lk-p').value};
+      document.querySelectorAll('[data-lk]').forEach(i => v[i.dataset.lk] = i.value.trim());
+      try { await post('ads', {link: v}); show('brief', day); } catch (e) { $('#lk-msg').textContent = e.message; }
+    };
+    $('#gscript').value = `// FISH ID: يرسل صرف وظهور وضغطات قوقل اليوم وأمس لـ hawat.id. شغّله كل ساعة.
+function main() {
+  var tz = AdsApp.currentAccount().getTimeZone();
+  [0, 1].forEach(function (back) {
+    var d = Utilities.formatDate(new Date(Date.now() - back * 864e5), tz, 'yyyy-MM-dd');
+    var rows = AdsApp.search("SELECT metrics.cost_micros, metrics.impressions, metrics.clicks, customer.currency_code FROM customer WHERE segments.date = '" + d + "'");
+    var spend = 0, imp = 0, clicks = 0, cur = 'SAR';
+    while (rows.hasNext()) { var r = rows.next(); spend += Number(r.metrics.costMicros) / 1e6; imp += Number(r.metrics.impressions); clicks += Number(r.metrics.clicks); cur = r.customer.currencyCode; }
+    UrlFetchApp.fetch('${location.origin}/api/ads/push', {method: 'post', contentType: 'application/json', headers: {Authorization: 'Bearer ${keys.pushKey}'},
+      payload: JSON.stringify({platform: 'google', day: d, spend: spend, currency: cur, impressions: imp, clicks: clicks})});
+  });
+}`;
   },
 
   // حالة الخادم وزيارات hawat.id ومن وين جوا وش ضغطوا (يعدّها الخادم من الصفحة نفسها).
