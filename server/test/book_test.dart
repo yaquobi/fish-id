@@ -21,6 +21,11 @@ void main() {
     expect(book.file('001_Epinphelus_bleekeri', '1.jpg'), isNotNull);
     expect(book.file('../accounts', '1.jpg'), isNull);
     expect(book.file('001_Epinphelus_bleekeri', 'meta.json'), isNull);
+    expect(book.photo('HWT-FISH-0101')?.path, endsWith('001_Epinphelus_bleekeri/1.jpg'));
+    expect(book.photo('HWT-FISH-0300'), isNull, reason: 'no photo file on disk');
+    expect(book.photo('../0101'), isNull);
+    File('${dir.path}/001_Epinphelus_bleekeri/app.jpg').writeAsBytesSync([4]);
+    expect(book.photo('HWT-FISH-0101')?.path, endsWith('app.jpg'));
     dir.deleteSync(recursive: true);
   });
 }

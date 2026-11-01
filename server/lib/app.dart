@@ -225,6 +225,12 @@ class FishIdApp {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
     }
+    // صورة النوع من كتاب أسماك البحر الأحمر للتطبيق، تنحفظ في الجوال وما تتغير.
+    if (req.method == 'GET' && path.startsWith('book/') && path.endsWith('.jpg')) {
+      final f = book?.photo(path.substring(5, path.length - 4));
+      if (f == null) return Response.notFound('', headers: {'cache-control': 'public, max-age=86400'});
+      return Response.ok(await f.readAsBytes(), headers: {'content-type': 'image/jpeg', 'cache-control': 'public, max-age=2592000'});
+    }
     if (path == 'collect' || path.startsWith('collect/')) {
       try {
         return await _collect(req, path);
