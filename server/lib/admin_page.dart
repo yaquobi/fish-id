@@ -97,6 +97,11 @@ input:focus,select:focus{outline:2px solid var(--gold);outline-offset:0;border-c
 .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
 .thumbs{display:flex;gap:6px;margin-bottom:8px}
 .thumbs img{width:33%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--chip)}
+.fish-main{display:block;width:100%;height:200px;object-fit:contain;background:#fff;border:1px solid var(--line);cursor:zoom-in;margin-bottom:6px}
+.fish-more{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.fish-more img{width:64px;height:44px;object-fit:contain;background:#fff;border:1px solid var(--line);cursor:zoom-in}
+#lightbox{position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+#lightbox img{max-width:96vw;max-height:94vh;object-fit:contain;background:#fff}
 .msg{color:var(--muted);padding:28px;text-align:center}
 .err{color:var(--bad)}
 label.set{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -1255,10 +1260,20 @@ const views = {
       <div class="photos">${list.map(s => `<div class="card">
         <div style="font-size:17px">${esc((s.local || []).join('، '))}</div>
         <div><b dir="ltr" style="font-style:italic">${esc(s.sci)}</b> <span class="k">${esc(s.english)}</span></div>
-        <div class="thumbs">${(s.ours || []).map(p => `<img alt="" data-src="contrib/${esc(p.day)}/${esc(p.id)}/${esc(p.file)}">`).join('')}${(s.files || []).map(f => `<img alt="" style="opacity:.55" data-src="book/${esc(s.folder)}/${esc(f)}">`).join('')}</div>
+        ${(() => { const imgs = [...(s.ours || []).map(p => `contrib/${p.day}/${p.id}/${p.file}`), ...(s.files || []).map(f => `book/${s.folder}/${f}`)].filter(Boolean);
+          return imgs.length ? `<img class="fish-main" alt="" data-src="${esc(imgs[0])}">${imgs.length > 1 ? `<div class="fish-more">${imgs.slice(1).map(u => `<img alt="" data-src="${esc(u)}">`).join('')}</div>` : ''}` : ''; })()}
         <div class="k">${(s.ours || []).length ? `${num(s.ours.length)} ${T('صورة من المصوّرين، الأولى هي اللي في التطبيق', 'photos from collectors, the first shows in the app')}` : T('للحين بالصورة القديمة، تتبدل أول ما تنقبل صورة من المصوّرين', 'Old photo for now, replaced once a collector photo is approved')}${s.ksafish ? ` · ${sp(s.ksafish)}` : ''}</div></div>`).join('') || `<div class="card msg">${T('ما فيه نتائج', 'No results')}</div>`}</div>`;
     $('#bk-q').onchange = () => show('book', $('#bk-q').value.trim());
-    $('#app').querySelectorAll('img[data-src]').forEach(async img => { try { img.src = URL.createObjectURL(await api(img.dataset.src)); } catch (e) {} });
+    $('#app').querySelectorAll('img[data-src]').forEach(async img => {
+      try { img.src = URL.createObjectURL(await api(img.dataset.src)); } catch (e) {}
+      img.onclick = () => {
+        const box = document.createElement('div');
+        box.id = 'lightbox';
+        box.innerHTML = `<img alt="" src="${img.src}">`;
+        box.onclick = () => box.remove();
+        document.body.append(box);
+      };
+    });
   },
 
   // المصوّرين: كل واحد له رابط خاص يفتحه من جواله ويرفع صور الأسماك، وصورهم تطلع في «صور المساهمين».
