@@ -114,6 +114,18 @@ void main() {
     expect(File('${dir.path}/ad_keys.json').readAsStringSync(), contains('very-secret'));
   });
 
+  test('snapchat connect gives a consent link with a one-time state', () async {
+    final app = make();
+    expect((await call(app, 'POST', 'admin/ads', body: {'snapUrl': true})).statusCode, 400);
+    await call(app, 'POST', 'admin/ads', body: {'link': {'platform': 'snapchat', 'account': 'acc', 'client': 'cid', 'secret': 'sec'}});
+    final url = Uri.parse((await json(call(app, 'POST', 'admin/ads', body: {'snapUrl': true})))['url'] as String);
+    expect(url.host, 'accounts.snapchat.com');
+    expect(url.queryParameters['redirect_uri'], FishIdApp.snapRedirect);
+    expect(url.queryParameters['client_id'], 'cid');
+    final bad = await (await call(app, 'GET', 'ads/snap?code=x&state=wrong')).readAsString();
+    expect(bad, contains('الرابط قديم'));
+  });
+
   test('x request signature follows OAuth 1.0a', () {
     final h = AdStore.oauth1(
       'GET',

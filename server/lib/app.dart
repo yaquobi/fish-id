@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:shelf/shelf.dart';
@@ -243,6 +244,25 @@ class FishIdApp {
         return _json(400, {'code': 'bad_request', 'message': 'الطلب غير صالح'});
       }
     }
+    // سناب يرجّع المالك هنا بعد الموافقة، ونبدّل الكود بمفتاح دائم.
+    if (req.method == 'GET' && path == 'ads/snap') {
+      final store = ads;
+      final q = req.url.queryParameters;
+      var msg = 'تم ربط سناب ✅ ارجع للوحة الإدارة.';
+      try {
+        if (store == null || q['code'] == null) throw const FishIdError('bad_request', 'ما وصل كود من سناب');
+        final http = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+        await store.keys.snapCallback(q['code']!, q['state'] ?? '', snapRedirect, http);
+        http.close();
+        await store.pull(SiteStats.dayOf(_clock()), usdToSar: _usdToSar, now: _clock());
+      } on FishIdError catch (e) {
+        msg = e.message;
+      } on Object {
+        msg = 'تعذّر الربط، حاول مرة ثانية';
+      }
+      return Response.ok('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;padding:40px;text-align:center" dir="rtl"><h2>${const HtmlEscape().convert(msg)}</h2><a href="admin#brief">لوحة الإدارة</a>',
+          headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'});
+    }
     if (path == 'admin' || path.startsWith('admin/')) {
       try {
         return await _admin(req, path);
@@ -421,6 +441,8 @@ class FishIdApp {
           final l = b['link'] as Map;
           await ads!.keys.set('${l['platform']}', l);
           await ads!.pull(SiteStats.dayOf(now), usdToSar: _usdToSar, now: now);
+        } else if (b['snapUrl'] == true && role == 'owner') {
+          return _json(200, {'url': ads!.keys.snapAuthUrl(snapRedirect)});
         } else if (b['unlink'] is String && role == 'owner') {
           await ads!.keys.remove(b['unlink'] as String);
         } else if (b['pull'] == true) {
@@ -636,6 +658,9 @@ class FishIdApp {
     // RevenueCat يعيد إرسال الحدث إذا تأخر الرد، فنفس الحدث ما يتكرر تنبيهه.
     _tell('sale:${event['id'] ?? buyer}', '$title$test: باقة $plan$price\nالحساب: $buyer', every: const Duration(days: 7));
   }
+
+  /// رابط رجوع سناب بعد الموافقة (لازم يتسجل نفسه في تطبيق سناب).
+  static const snapRedirect = 'https://hawat.id/api/ads/snap';
 
   double get _usdToSar => ((accounts?.settings['usdToSar'] as num?) ?? 3.75).toDouble();
 
