@@ -27,10 +27,10 @@ for sci in sys.argv[1:]:
             continue
         names = get(f"https://www.fishbase.se/ComNames/CommonNamesList.php?ID={m.group(1)}&GenusName={g}&SpeciesName={s}&StockCode=1")
         rows = []
-        for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", names, re.S):
-            cells = [html.unescape(re.sub(r"<[^>]+>", "", c)).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
-            if len(cells) >= 3 and "Arabic" in cells[2]:
-                rows.append({"name": cells[0], "country": cells[1]})
+        m2 = re.search(r"var table_data_arr = (\{.*?\});\s*\n", names, re.S)
+        for r in (json.loads(m2.group(1)).get("table_filter", []) if m2 else []):
+            if len(r) >= 3 and "Arabic" in str(r[2]):
+                rows.append({"name": html.unescape(re.sub(r"<[^>]+>", "", r[0])).strip(), "country": r[1]})
         out[sci] = {"id": m.group(1), "arabic": rows}
     except Exception as e:  # noqa: BLE001
         out[sci] = {"error": str(e)}
