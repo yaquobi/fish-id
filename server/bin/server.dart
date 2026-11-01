@@ -50,7 +50,7 @@ Future<void> main() async {
     collectors: accounts == null ? null : CollectorStore.open(accounts.dir),
     // أرشيف كتاب أسماك البحر الأحمر (data/book/archive على السيرفر)، يبنيه tool/book_extract.py.
     book: BookArchive.open(env['FISHID_BOOK'] ?? 'book', {
-      for (final s in data['species'] as List) '${s['sci']}'.toLowerCase().trim(): (s['id'] as String).split('-').last,
+      for (final s in data['species'] as List) '${s['sci']}'.toLowerCase().trim(): s['id'] as String,
     }),
     accounts: accounts,
     ledger: accounts == null ? null : Ledger.open(accounts),
