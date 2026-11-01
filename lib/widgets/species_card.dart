@@ -4,9 +4,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/ksafish.dart';
 import '../l10n.dart';
 import '../theme.dart';
+import 'species_photo.dart';
 
 /// بطاقة النوع: لوحة النوع والأسماء والعائلة والمعلومات المنشورة في KSAFish ورابط صفحته.
-/// اللوحة تُحمَّل من موقع KSAFish وقت العرض، وإذا ما فيه إنترنت تختفي بهدوء.
+/// الصورة من كتاب أسماك البحر الأحمر على سيرفرنا (SpeciesPhoto)، وإلا لوحة KSAFish.
 class SpeciesCard extends StatelessWidget {
   const SpeciesCard({super.key, required this.species, required this.facts, this.confidence, this.reason});
 
@@ -42,7 +43,7 @@ class SpeciesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (s.plateUrl != null) _Plate(s.plateUrl!),
+            SpeciesPhoto(s, key: ValueKey(s.id)),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -134,44 +135,6 @@ String _label(Fact f) {
   final label = L10n.en ? _enLabels[f.label] ?? f.label : f.label;
   final scope = L10n.en ? _enScopes[f.scope] ?? f.scope : f.scope;
   return scope.isEmpty ? label : '$label ($scope)';
-}
-
-class _Plate extends StatelessWidget {
-  const _Plate(this.url);
-  final String url;
-
-  @override
-  Widget build(BuildContext context) => Image.network(
-    url,
-    fit: BoxFit.contain,
-    // اللوحات رسومات على خلفية بيضاء، فنعرضها كاملة بإطار خفيف ومصدرها تحتها.
-    frameBuilder: (context, child, frame, _) => frame == null
-        ? const SizedBox.shrink()
-        : Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.line),
-                  ),
-                  constraints: const BoxConstraints(maxHeight: 180),
-                  child: child,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  tr('المصدر: موسوعة KSAFish', 'Source: KSAFish encyclopedia'),
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-    errorBuilder: (_, _, _) => const SizedBox.shrink(),
-  );
 }
 
 class _Confidence extends StatelessWidget {

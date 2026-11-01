@@ -14,3 +14,5 @@ services:
       - ../data/contrib:/app/contrib
       # الحسابات وسجل الفحوصات وإعدادات الباقات (لوحة الأدمن على https://hawat.id/api/admin).
       - ../data/accounts:/app/accounts
+      # أرشيف كتاب أسماك البحر الأحمر (صور وأسماء محلية)، للقراءة بس.
+      - ../data/book/archive:/app/book:ro
