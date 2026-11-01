@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fish_id_server/app.dart';
+import 'package:fish_id_server/claude.dart';
 import 'package:fish_id_server/contrib.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
