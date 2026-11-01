@@ -824,7 +824,7 @@ const views = {
     };
     const drawFields = () => {
       const p = $('#lk-p').value;
-      $('#lk-msg').textContent = p === 'snapchat' ? T('إذا سبق حفظت مفاتيح سناب، اترك الخانات فاضية واضغط ربط.', 'If Snapchat keys were saved before, leave the fields empty and press Link.') : '';
+      $('#lk-msg').textContent = p === 'snapchat' ? T('الخانة الفاضية تبقي القيمة المحفوظة، فما تحتاج تعيد لصق المفاتيح.', 'Empty fields keep the saved value, so you do not need to paste keys again.') : '';
       $('#lk-fields').innerHTML = fields[p].map(([k, l]) => `<label>${l}<input data-lk="${k}" type="${k === 'account' ? 'text' : 'password'}" autocomplete="off" dir="ltr"></label>`).join('');
     };
     $('#lk-p').onchange = drawFields;
@@ -833,9 +833,9 @@ const views = {
       const v = {platform: $('#lk-p').value};
       document.querySelectorAll('[data-lk]').forEach(i => v[i.dataset.lk] = i.value.trim());
       try {
-        // سناب بمفاتيح محفوظة من قبل: نترك الخانات فاضية ونروح لصفحة الموافقة على طول.
-        const reuse = v.platform === 'snapchat' && !v.account && !v.client && !v.secret;
-        if (!reuse) await post('ads', {link: v});
+        // الخانات الفاضية تبقي المحفوظ. سناب مربوط من قبل: نحدّث الأرقام بدون صفحة الموافقة.
+        const saved = await post('ads', {link: v});
+        if (v.platform === 'snapchat' && saved.platforms?.snapchat?.linked) { await post('ads', {pull: true}); show('brief', day); return; }
         // سناب: بعد حفظ التطبيق نروح لصفحة موافقة سناب، وترجع للخادم بالمفتاح الدائم.
         if (v.platform === 'snapchat') { location.href = (await post('ads', {snapUrl: true})).url; return; }
         show('brief', day);

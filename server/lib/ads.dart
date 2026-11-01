@@ -261,7 +261,11 @@ class AdKeys {
 
   Future<void> set(String p, Map v) async {
     if (!fields.containsKey(p)) throw const FishIdError('bad_request', 'المنصة غير معروفة');
-    _keys[p] = {for (final f in fields[p]!) f: '${v[f] ?? ''}'.trim()};
+    // خانة فاضية تبقي القيمة المحفوظة، عشان تقدر تغيّر رقم الحساب بدون ما تعيد لصق المفاتيح.
+    final old = get(p);
+    _keys[p] = {
+      for (final f in fields[p]!) f: '${v[f] ?? ''}'.trim().isEmpty ? '${old[f] ?? ''}' : '${v[f]}'.trim(),
+    };
     await _save();
   }
 

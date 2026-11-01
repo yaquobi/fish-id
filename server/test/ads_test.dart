@@ -122,6 +122,11 @@ void main() {
     expect(url.host, 'accounts.snapchat.com');
     expect(url.queryParameters['redirect_uri'], FishIdApp.snapRedirect);
     expect(url.queryParameters['client_id'], 'cid');
+    // خانات فاضية تبقي المحفوظ: نغيّر رقم الحساب بس.
+    await call(app, 'POST', 'admin/ads', body: {'link': {'platform': 'snapchat', 'account': 'acc2', 'client': '', 'secret': ''}});
+    final saved = jsonDecode(File('${dir.path}/ad_keys.json').readAsStringSync())['snapchat'] as Map;
+    expect(saved['account'], 'acc2');
+    expect(saved['secret'], 'sec');
     final bad = await (await call(app, 'GET', 'ads/snap?code=x&state=wrong')).readAsString();
     expect(bad, contains('الرابط قديم'));
   });
