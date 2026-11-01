@@ -14,13 +14,14 @@ class BookArchive {
   final String dir;
   final List<Map<String, dynamic>> _species;
 
-  /// رقم الموسوعة ← مجلد أول نوع بنفس الرقم في الكتاب.
+  /// رقم الموسوعة الكامل (HWT-FISH-0408) ← مجلد أول نوع بنفسه في الكتاب.
   final Map<String, String> _byId;
 
   static final _part = RegExp(r'^[0-9]{3}_[A-Za-z_]{1,80}$');
   static final _file = RegExp(r'^[1-3]\.jpg$');
 
-  /// null إذا الأرشيف مو موجود. [sciToId] الاسم العلمي (بحروف صغيرة) ← رقم الموسوعة (4 أرقام).
+  /// null إذا الأرشيف مو موجود. [sciToId] الاسم العلمي (بحروف صغيرة) ← رقم الموسوعة الكامل (HWT-FISH-0408).
+  /// الرقم الكامل لازم، لأن الأسماك والروبيان يتشاركون نفس الأرقام الأربعة.
   static BookArchive? open(String dir, Map<String, String> sciToId) {
     final f = File('$dir/index.json');
     if (!f.existsSync()) return null;
@@ -78,8 +79,7 @@ class BookArchive {
   /// صورة التطبيق للنوع من رقمه الكامل (HWT-FISH-0408): النسخة المصغّرة app.jpg
   /// (يسويها tool/book_thumbs.py)، وإلا الصورة الأصلية.
   File? photo(String id) {
-    final m = RegExp(r'^HWT-FISH-([0-9]{4})$').firstMatch(id);
-    final folder = m == null ? null : _byId[m.group(1)];
+    final folder = RegExp(r'^HWT-[A-Z]{2,10}-[0-9]{4}$').hasMatch(id) ? _byId[id] : null;
     if (folder == null) return null;
     for (final name in ['app.jpg', '1.jpg']) {
       final f = File('$dir/$folder/$name');

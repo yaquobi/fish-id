@@ -1249,7 +1249,7 @@ const views = {
     $('#app').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { await post('codes', {code: b.dataset.del, max: 0}); show('codes'); });
   },
 
-  // صور الأسماك المتداولة واسمها المحلي. صور المصوّرين المقبولة تنضاف لكل سمكة، وأول وحدة منها تطلع في التطبيق بدل الصورة القديمة.
+  // الأسماك المتداولة واسمها المحلي مع صور المصوّرين المقبولة. صور الكتاب تبقى على السيرفر للتطبيق وما تنعرض هنا عشان اللوحة تبقى خفيفة.
   async book(q = '') {
     const all = await api('book');
     const withOurs = all.filter(s => (s.ours || []).length).length;
@@ -1260,9 +1260,9 @@ const views = {
       <div class="photos">${list.map(s => `<div class="card">
         <div style="font-size:17px">${esc((s.local || []).join('، '))}</div>
         <div><b dir="ltr" style="font-style:italic">${esc(s.sci)}</b> <span class="k">${esc(s.english)}</span></div>
-        ${(() => { const imgs = [...(s.ours || []).map(p => `contrib/${p.day}/${p.id}/${p.file}`), ...(s.files || []).map(f => `book/${s.folder}/${f}`)].filter(Boolean);
+        ${(() => { const imgs = [...(s.ours || []).map(p => `contrib/${p.day}/${p.id}/${p.file}`)].filter(Boolean);
           return imgs.length ? `<img class="fish-main" alt="" data-src="${esc(imgs[0])}">${imgs.length > 1 ? `<div class="fish-more">${imgs.slice(1).map(u => `<img alt="" data-src="${esc(u)}">`).join('')}</div>` : ''}` : ''; })()}
-        <div class="k">${(s.ours || []).length ? `${num(s.ours.length)} ${T('صورة من المصوّرين، الأولى هي اللي في التطبيق', 'photos from collectors, the first shows in the app')}` : T('للحين بالصورة القديمة، تتبدل أول ما تنقبل صورة من المصوّرين', 'Old photo for now, replaced once a collector photo is approved')}${s.ksafish ? ` · ${sp(s.ksafish)}` : ''}</div></div>`).join('') || `<div class="card msg">${T('ما فيه نتائج', 'No results')}</div>`}</div>`;
+        <div class="k">${(s.ours || []).length ? `${num(s.ours.length)} ${T('صورة من المصوّرين، الأولى هي اللي في التطبيق', 'photos from collectors, the first shows in the app')}` : T('ما فيه صور من المصوّرين للحين', 'No collector photos yet')}${s.ksafish ? ` · <span class="mono">${esc(s.ksafish)}</span>` : ''}</div></div>`).join('') || `<div class="card msg">${T('ما فيه نتائج', 'No results')}</div>`}</div>`;
     $('#bk-q').onchange = () => show('book', $('#bk-q').value.trim());
     $('#app').querySelectorAll('img[data-src]').forEach(async img => {
       try { img.src = URL.createObjectURL(await api(img.dataset.src)); } catch (e) {}

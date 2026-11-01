@@ -468,7 +468,8 @@ class FishIdApp {
         return _json(200, store.codes());
       case ('GET', 'book') when book != null && parts.length == 2:
         final ours = contrib?.ours(now: now) ?? const {};
-        return _json(200, [for (final s in book!.species) {...s, 'ours': ours['${s['ksafish']}'] ?? const []}]);
+        String? fish(Object? id) => '$id'.startsWith('HWT-FISH-') ? '$id'.substring(9) : null;
+        return _json(200, [for (final s in book!.species) {...s, 'ours': ours[fish(s['ksafish'])] ?? const []}]);
       case ('GET', 'book') when book != null && parts.length == 4:
         final f = book!.file(parts[2], parts[3]);
         if (f == null) break;
