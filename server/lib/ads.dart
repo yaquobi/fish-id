@@ -132,7 +132,7 @@ class AdStore {
     headers.forEach(req.headers.set);
     final res = await req.close();
     final body = await res.transform(utf8.decoder).join();
-    if (res.statusCode != 200) throw HttpException('${url.host} ${res.statusCode}: ${body.substring(0, min(body.length, 200))}');
+    if (res.statusCode != 200) throw HttpException('${url.host} ${res.statusCode}: ${body.substring(0, min(body.length, 400))}');
     return jsonDecode(body) as Map<String, dynamic>;
   }
 
@@ -175,18 +175,25 @@ class AdStore {
     final tok = jsonDecode(body) as Map;
     if (tok['refresh_token'] is String && tok['refresh_token'] != k['refresh']) await keys.set('snapchat', {...k, 'refresh': tok['refresh_token']});
     final (start, end) = _ksaDay(day);
-    final r = await _get(
-      http,
-      Uri.https('adsapi.snapchat.com', '/v1/adaccounts/${k['account']}/stats', {'granularity': 'HOUR', 'fields': 'impressions,swipes,spend', 'start_time': start, 'end_time': end}),
-      headers: {'authorization': 'Bearer ${tok['access_token']}'},
-    );
+    final auth = {'authorization': 'Bearer ${tok['access_token']}'};
+    // إحصائية حساب الإعلانات في سناب ترجع الصرف بس، فنجمع الظهور والضغطات من كل حملة.
+    final list = await _get(http, Uri.https('adsapi.snapchat.com', '/v1/adaccounts/${k['account']}/campaigns'), headers: auth);
     num spend = 0, imp = 0, clicks = 0;
-    for (final s in (r['timeseries_stats'] as List? ?? const [])) {
-      for (final t in ((s as Map)['timeseries_stat']?['timeseries'] as List? ?? const [])) {
-        final st = ((t as Map)['stats'] as Map?) ?? const {};
-        spend += (st['spend'] as num?) ?? 0;
-        imp += (st['impressions'] as num?) ?? 0;
-        clicks += (st['swipes'] as num?) ?? 0;
+    for (final c in (list['campaigns'] as List? ?? const [])) {
+      final id = ((c as Map)['campaign'] as Map?)?['id'];
+      if (id == null) continue;
+      final r = await _get(
+        http,
+        Uri.https('adsapi.snapchat.com', '/v1/campaigns/$id/stats', {'granularity': 'HOUR', 'fields': 'impressions,swipes,spend', 'start_time': start, 'end_time': end}),
+        headers: auth,
+      );
+      for (final s in (r['timeseries_stats'] as List? ?? const [])) {
+        for (final t in ((s as Map)['timeseries_stat']?['timeseries'] as List? ?? const [])) {
+          final st = ((t as Map)['stats'] as Map?) ?? const {};
+          spend += (st['spend'] as num?) ?? 0;
+          imp += (st['impressions'] as num?) ?? 0;
+          clicks += (st['swipes'] as num?) ?? 0;
+        }
       }
     }
     return {'spend': spend / 1e6, 'impressions': imp, 'clicks': clicks};
