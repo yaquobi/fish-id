@@ -124,7 +124,8 @@ elif STEP == "merge":
                             seen.add(norm(n))
                             extra.append(n)
                     if extra:
-                        s["local"] = s["local"] + extra
+                        # قراءة السكانر فيها أخطاء أحرف (دكار/ذكار)، فالأسماء الزيادة نحفظها لحالها ونراجعها قبل نعرضها.
+                        s["local_scan2"] = extra
                         added_names += len(extra)
                 json.dump(s, open(f"{OUT}/{s['folder']}/meta.json", "w"), ensure_ascii=False, indent=1)
                 continue
