@@ -10,7 +10,8 @@ from PIL import Image
 
 doc = fitz.open(sys.argv[1])
 page = doc[int(sys.argv[2]) - 1]
-pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+clip = fitz.Rect(*map(float, sys.argv[4].split(","))) if len(sys.argv) > 4 else None
+pix = page.get_pixmap(matrix=fitz.Matrix(4 if clip else 2, 4 if clip else 2), clip=clip)
 img = Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB")
 img.save(f"/b/page{sys.argv[2]}.jpg", "JPEG", quality=80)
 buf = io.BytesIO()
