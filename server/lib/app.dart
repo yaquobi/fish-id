@@ -225,11 +225,19 @@ class FishIdApp {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
     }
-    // صورة النوع من كتاب أسماك البحر الأحمر للتطبيق، تنحفظ في الجوال وما تتغير.
+    // صورة النوع للتطبيق: صورنا المقبولة من المصوّرين أولًا، وإلا صورة الكتاب. المصدر في x-photo-source.
     if (req.method == 'GET' && path.startsWith('book/') && path.endsWith('.jpg')) {
-      final f = book?.photo(path.substring(5, path.length - 4));
+      final id = path.substring(5, path.length - 4);
+      final m = RegExp(r'^HWT-FISH-([0-9]{4})$').firstMatch(id);
+      final mine = m == null ? null : contrib?.bestPhoto(m.group(1)!);
+      final f = mine ?? book?.photo(id);
       if (f == null) return Response.notFound('', headers: {'cache-control': 'public, max-age=86400'});
-      return Response.ok(await f.readAsBytes(), headers: {'content-type': 'image/jpeg', 'cache-control': 'public, max-age=2592000'});
+      return Response.ok(await f.readAsBytes(), headers: {
+        'content-type': f.path.endsWith('png') ? 'image/png' : 'image/jpeg',
+        'cache-control': 'public, max-age=86400',
+        'x-photo-source': mine != null ? 'fishid' : 'book',
+        'access-control-expose-headers': 'x-photo-source',
+      });
     }
     if (path == 'collect' || path.startsWith('collect/')) {
       try {
@@ -459,7 +467,8 @@ class FishIdApp {
         await store.saveCode('${b['code']}', scans: (b['scans'] as num?)?.toInt() ?? 0, max: (b['max'] as num?)?.toInt() ?? 0);
         return _json(200, store.codes());
       case ('GET', 'book') when book != null && parts.length == 2:
-        return _json(200, book!.species);
+        final ours = contrib?.ours(now: now) ?? const {};
+        return _json(200, [for (final s in book!.species) {...s, 'ours': ours['${s['ksafish']}'] ?? const []}]);
       case ('GET', 'book') when book != null && parts.length == 4:
         final f = book!.file(parts[2], parts[3]);
         if (f == null) break;

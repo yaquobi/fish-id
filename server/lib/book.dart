@@ -25,7 +25,11 @@ class BookArchive {
     final f = File('$dir/index.json');
     if (!f.existsSync()) return null;
     final index = jsonDecode(f.readAsStringSync()) as Map<String, dynamic>;
-    final list = [for (final s in index['species'] as List) (s as Map).cast<String, dynamic>()];
+    // نحتاج بس الأسماك المتداولة: اللي لها اسم محلي. الباقي نادر وما نعرضه.
+    final list = [
+      for (final s in index['species'] as List)
+        if ((s['local'] as List?)?.isNotEmpty == true) (s as Map).cast<String, dynamic>(),
+    ];
     for (final s in list) {
       s['ksafish'] = match('${s['sci']}', sciToId);
     }

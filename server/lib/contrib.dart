@@ -62,6 +62,57 @@ class ContribStore {
     return f.existsSync() ? f : null;
   }
 
+  Map<String, List<Map<String, dynamic>>>? _ours;
+  DateTime _oursAt = DateTime(2000);
+
+  /// صورنا المقبولة لكل نوع (رقم الموسوعة 4 أرقام ← صور)، الأحدث أولًا. كل صورة {day, id, file, part}.
+  /// تنحسب كل دقيقة على الأكثر لأن التطبيق يطلبها مع كل بطاقة.
+  Map<String, List<Map<String, dynamic>>> ours({DateTime? now}) {
+    final t = now ?? DateTime.now();
+    if (_ours != null && t.difference(_oursAt).inSeconds < 60) return _ours!;
+    final out = <String, List<Map<String, dynamic>>>{};
+    final root = Directory(dir);
+    if (root.existsSync()) {
+      final days = root.listSync().whereType<Directory>().map((d) => d.uri.pathSegments.reversed.elementAt(1)).where(_part.hasMatch).toList()..sort();
+      for (final day in days.reversed) {
+        final ids = Directory('$dir/$day').listSync().whereType<Directory>().map((d) => d.uri.pathSegments.reversed.elementAt(1)).toList()..sort();
+        for (final id in ids.reversed) {
+          final meta = File('$dir/$day/$id/meta.json');
+          if (!meta.existsSync()) continue;
+          final Map<String, dynamic> m;
+          try {
+            m = jsonDecode(meta.readAsStringSync()) as Map<String, dynamic>;
+          } catch (_) {
+            continue;
+          }
+          final sp = '${m['species'] ?? ''}';
+          if (m['review'] != 'approved' || !RegExp(r'^\d{4}$').hasMatch(sp)) continue;
+          final parts = (m['parts'] as List?) ?? const [];
+          final files = Directory('$dir/$day/$id').listSync().map((f) => f.uri.pathSegments.last).where(_file.hasMatch).toList()..sort();
+          for (final f in files) {
+            final i = int.parse(f.substring(0, 1)) - 1;
+            out.putIfAbsent(sp, () => []).add({'day': day, 'id': id, 'file': f, 'part': i < parts.length ? '${parts[i]}' : 'other'});
+          }
+        }
+      }
+    }
+    _oursAt = t;
+    return _ours = out;
+  }
+
+  /// أحسن صورة عندنا للنوع تطلع في التطبيق: السمكة كاملة من جنبها، وإلا أي صورة مقبولة.
+  File? bestPhoto(String sp) {
+    final list = ours()[sp];
+    if (list == null || list.isEmpty) return null;
+    for (final part in const ['right', 'whole', 'left', 'ice']) {
+      for (final p in list) {
+        if (p['part'] == part) return file(p['day'] as String, p['id'] as String, p['file'] as String);
+      }
+    }
+    final p = list.first;
+    return file(p['day'] as String, p['id'] as String, p['file'] as String);
+  }
+
   /// مراجعة الأدمن: قبول أو رفض، وتصحيح النوع إذا لزم.
   Future<Map<String, dynamic>?> review(String day, String id, {required String status, String? species}) async {
     if (!_part.hasMatch(day) || !_part.hasMatch(id) || !const {'approved', 'rejected', 'new'}.contains(status)) return null;
@@ -74,6 +125,7 @@ class ContribStore {
       m['species_confirmed'] = true;
     }
     await f.writeAsString(const JsonEncoder.withIndent(' ').convert(m));
+    _ours = null;
     return m;
   }
 }

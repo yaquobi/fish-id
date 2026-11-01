@@ -9,8 +9,8 @@ import '../data/ksafish.dart';
 import '../l10n.dart';
 import '../theme.dart';
 
-/// صورة النوع في البطاقة: صورة كتاب «أسماك البحر الأحمر» من سيرفرنا (مصغّرة وسريعة)،
-/// تنحفظ في الجوال أول مرة وبعدها تطلع على طول حتى بدون إنترنت.
+/// صورة النوع في البطاقة من سيرفرنا: صورنا من المصوّرين، وإلا صورة كتاب «أسماك البحر الأحمر».
+/// تنحفظ في الجوال وتطلع على طول حتى بدون إنترنت، وتتجدد كل أسبوع عشان توصل الصور الجديدة.
 /// إذا النوع ما له صورة في الكتاب نعرض لوحته من موقع KSAFish زي قبل، وإذا ما فيه شي تختفي بهدوء.
 class SpeciesPhoto extends StatefulWidget {
   const SpeciesPhoto(this.species, {super.key});
@@ -23,9 +23,13 @@ class SpeciesPhoto extends StatefulWidget {
 class _SpeciesPhotoState extends State<SpeciesPhoto> {
   /// الأنواع اللي تأكدنا إنها ما لها صورة كتاب، عشان ما نسأل السيرفر كل مرة.
   static final _missing = <String>{};
-  static final _memory = <String, Uint8List>{};
+  static final _memory = <String, (Uint8List, bool)>{};
+
+  /// بعد كم نسأل السيرفر مرة ثانية عن صورة محفوظة (يمكن صارت لها صورة من عندنا).
+  static const _refresh = Duration(days: 7);
 
   Uint8List? _bytes;
+  bool _ours = false;
   bool _done = false;
 
   @override
@@ -36,30 +40,38 @@ class _SpeciesPhotoState extends State<SpeciesPhoto> {
 
   Future<void> _load() async {
     final id = widget.species.id;
-    var bytes = _memory[id];
-    if (bytes == null && !_missing.contains(id)) {
+    var cached = _memory[id];
+    if (cached == null && !_missing.contains(id)) {
+      final file = File('${Directory.systemTemp.path}/book/$id.jpg');
+      final mark = File('${Directory.systemTemp.path}/book/$id.ours');
       try {
-        final file = File('${Directory.systemTemp.path}/book/$id.jpg');
-        if (file.existsSync()) {
-          bytes = await file.readAsBytes();
-        } else {
+        if (file.existsSync()) cached = (await file.readAsBytes(), mark.existsSync());
+        final fresh = cached != null && DateTime.now().difference(file.lastModifiedSync()) < _refresh;
+        if (!fresh) {
           final res = await http.get(Uri.parse('${apiUrl}book/$id.jpg')).timeout(const Duration(seconds: 15));
           if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
-            bytes = res.bodyBytes;
+            final ours = res.headers['x-photo-source'] == 'fishid';
+            cached = (res.bodyBytes, ours);
             await file.parent.create(recursive: true);
-            await file.writeAsBytes(bytes, flush: true);
-          } else if (res.statusCode == 404) {
+            await file.writeAsBytes(res.bodyBytes, flush: true);
+            if (ours) {
+              await mark.writeAsString('1');
+            } else if (mark.existsSync()) {
+              await mark.delete();
+            }
+          } else if (res.statusCode == 404 && cached == null) {
             _missing.add(id);
           }
         }
       } catch (_) {
-        // بدون إنترنت أو الكاش ما ينكتب: نرجع للوحة الموسوعة.
+        // بدون إنترنت أو الكاش ما ينكتب: نعرض المحفوظ، وإلا لوحة الموسوعة.
       }
-      if (bytes != null) _memory[id] = bytes;
+      if (cached != null) _memory[id] = cached;
     }
     if (!mounted) return;
     setState(() {
-      _bytes = bytes;
+      _bytes = cached?.$1;
+      _ours = cached?.$2 ?? false;
       _done = true;
     });
   }
@@ -69,8 +81,10 @@ class _SpeciesPhotoState extends State<SpeciesPhoto> {
     if (_bytes != null) {
       return _Framed(
         image: Image.memory(_bytes!, fit: BoxFit.contain, gaplessPlayback: true),
-        source: tr('المصدر: كتاب أسماك البحر الأحمر، مركز أبحاث الثروة السمكية بجدة',
-            'Source: Red Sea Fishes book, Jeddah Fisheries Research Center'),
+        source: _ours
+            ? tr('تصوير فريق FISH ID', 'Photo by the FISH ID team')
+            : tr('المصدر: كتاب أسماك البحر الأحمر، مركز أبحاث الثروة السمكية بجدة',
+                'Source: Red Sea Fishes book, Jeddah Fisheries Research Center'),
       );
     }
     final plate = widget.species.plateUrl;

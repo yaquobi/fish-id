@@ -413,7 +413,7 @@ const icons = {
 };
 const tabName = k => ({home: T('الرئيسية', 'Overview'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
-  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), book: T('كتاب البحر الأحمر', 'Red Sea book')})[k];
+  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), book: T('صور الأسماك', 'Fish photos')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
   owner: ['home', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes', 'staff'],
@@ -1244,19 +1244,19 @@ const views = {
     $('#app').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { await post('codes', {code: b.dataset.del, max: 0}); show('codes'); });
   },
 
-  // أرشيف كتاب «أسماك المياه الإقليمية للمملكة في البحر الأحمر» (مركز أبحاث الثروة السمكية بجدة 2011).
+  // صور الأسماك المتداولة واسمها المحلي. صور المصوّرين المقبولة تنضاف لكل سمكة، وأول وحدة منها تطلع في التطبيق بدل الصورة القديمة.
   async book(q = '') {
     const all = await api('book');
-    const matched = all.filter(s => s.ksafish).length;
+    const withOurs = all.filter(s => (s.ours || []).length).length;
     const norm = s => String(s || '').toLowerCase();
     const list = q ? all.filter(s => [s.sci, s.english, ...(s.local || []), names[s.ksafish]].some(v => norm(v).includes(norm(q)))) : all;
-    $('#app').innerHTML = heading(T('كتاب البحر الأحمر', 'Red Sea book'), `${num(all.length)} ${T('نوع', 'species')} · ${num(matched)} ${T('مربوط بالموسوعة', 'linked to KSAFish')} · ${num(all.length - matched)} ${T('مو في الموسوعة', 'not in KSAFish')}`,
+    $('#app').innerHTML = heading(T('صور الأسماك', 'Fish photos'), `${num(all.length)} ${T('سمكة', 'fish')} · ${num(withOurs)} ${T('لها صور من المصوّرين', 'with our photos')}`,
       `<input id="bk-q" class="noprint" placeholder="${T('بحث بالاسم', 'Search')}" value="${esc(q)}" style="width:200px">`) + `
       <div class="photos">${list.map(s => `<div class="card">
-        <div class="thumbs">${(s.files || []).map(f => `<img alt="" data-src="book/${esc(s.folder)}/${esc(f)}">`).join('')}</div>
+        <div style="font-size:17px">${esc((s.local || []).join('، '))}</div>
         <div><b dir="ltr" style="font-style:italic">${esc(s.sci)}</b> <span class="k">${esc(s.english)}</span></div>
-        <div>${(s.local || []).length ? esc(s.local.join('، ')) : `<span class="k">${T('بدون اسم محلي', 'No local name')}</span>`}</div>
-        <div class="k">${s.ksafish ? `${T('الموسوعة', 'KSAFish')}: ${sp(s.ksafish)}` : `<span class="pill">${T('مو في الموسوعة', 'Not in KSAFish')}</span>`} · ${T('صفحة', 'page')} ${num(s.page)}${s.note ? ' · ' + esc(s.note) : ''}</div></div>`).join('') || `<div class="card msg">${T('ما فيه نتائج', 'No results')}</div>`}</div>`;
+        <div class="thumbs">${(s.ours || []).map(p => `<img alt="" data-src="contrib/${esc(p.day)}/${esc(p.id)}/${esc(p.file)}">`).join('')}${(s.files || []).map(f => `<img alt="" style="opacity:.55" data-src="book/${esc(s.folder)}/${esc(f)}">`).join('')}</div>
+        <div class="k">${(s.ours || []).length ? `${num(s.ours.length)} ${T('صورة من المصوّرين، الأولى هي اللي في التطبيق', 'photos from collectors, the first shows in the app')}` : T('للحين بالصورة القديمة، تتبدل أول ما تنقبل صورة من المصوّرين', 'Old photo for now, replaced once a collector photo is approved')}${s.ksafish ? ` · ${sp(s.ksafish)}` : ''}</div></div>`).join('') || `<div class="card msg">${T('ما فيه نتائج', 'No results')}</div>`}</div>`;
     $('#bk-q').onchange = () => show('book', $('#bk-q').value.trim());
     $('#app').querySelectorAll('img[data-src]').forEach(async img => { try { img.src = URL.createObjectURL(await api(img.dataset.src)); } catch (e) {} });
   },

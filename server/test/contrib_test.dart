@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fish_id_server/app.dart';
+import 'package:fish_id_server/claude.dart';
 import 'package:fish_id_server/contrib.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
@@ -93,6 +94,21 @@ void main() {
       503,
     );
     expect(dir.listSync(), isEmpty);
+    dir.deleteSync(recursive: true);
+  });
+
+  test('approved collector photos per species, whole side first', () async {
+    final dir = Directory.systemTemp.createTempSync('contrib');
+    final store = ContribStore(dir.path);
+    final photo = Photo(jpeg, 'image/jpeg');
+    final now = DateTime.utc(2026, 11, 1, 9);
+    final a = await store.save([photo, photo], {'species': '0408', 'parts': ['tail', 'right']}, now);
+    await store.save([photo], {'species': '0408', 'parts': ['left']}, now);
+    expect(store.ours(now: now), isEmpty, reason: 'not approved yet');
+    await store.review('2026-11-01', a, status: 'approved');
+    expect([for (final p in store.ours(now: now)['0408']!) p['part']], ['tail', 'right']);
+    expect(store.bestPhoto('0408')?.path, endsWith('$a/2.jpg'));
+    expect(store.bestPhoto('0101'), isNull);
     dir.deleteSync(recursive: true);
   });
 }
