@@ -298,8 +298,19 @@ class AdKeys {
     req.write(Uri(queryParameters: {'grant_type': 'authorization_code', 'client_id': '${k['client']}', 'client_secret': '${k['secret']}', 'code': code, 'redirect_uri': redirect}).query);
     final res = await req.close();
     final body = await res.transform(utf8.decoder).join();
-    if (res.statusCode != 200) throw FishIdError('bad_request', 'سناب رفض الكود (${res.statusCode})');
+    if (res.statusCode != 200) {
+      // نعرض سبب سناب (مثل invalid_client أو redirect_uri) بدون أي مفتاح.
+      var why = '';
+      try {
+        final e = jsonDecode(body) as Map;
+        why = [e['error'], e['error_description']].whereType<String>().join(': ');
+      } on Object {
+        why = '';
+      }
+      throw FishIdError('bad_request', 'سناب رفض الكود (${res.statusCode}${why.isEmpty ? '' : ' - $why'})');
+    }
     final tok = jsonDecode(body) as Map;
+    if (tok['refresh_token'] is! String) throw const FishIdError('bad_request', 'سناب ما أرسل مفتاح دائم، تأكد من صلاحية snapchat-marketing-api');
     await set('snapchat', {...k, 'refresh': tok['refresh_token']});
   }
 

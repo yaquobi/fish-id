@@ -257,10 +257,11 @@ class FishIdApp {
         await store.pull(SiteStats.dayOf(_clock()), usdToSar: _usdToSar, now: _clock());
       } on FishIdError catch (e) {
         msg = e.message;
-      } on Object {
+      } on Object catch (e) {
+        stderr.writeln('snap connect: $e');
         msg = 'تعذّر الربط، حاول مرة ثانية';
       }
-      return Response.ok('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;padding:40px;text-align:center" dir="rtl"><h2>${const HtmlEscape().convert(msg)}</h2><a href="admin#brief">لوحة الإدارة</a>',
+      return Response.ok('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;padding:40px;text-align:center" dir="rtl"><h2>${const HtmlEscape().convert(msg)}</h2><a href="/api/admin#brief">لوحة الإدارة</a>',
           headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'});
     }
     if (path == 'admin' || path.startsWith('admin/')) {
