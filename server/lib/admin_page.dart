@@ -417,24 +417,25 @@ const icons = {
   site: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/>',
   launch: '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>',
   collectors: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  shops: '<path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6"/>',
   book: '<path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/>',
   brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h5"/>',
   staff: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/><path d="M17 3l1.5 1.5L21 2"/>',
 };
 const tabName = k => ({home: T('الرئيسية', 'Overview'), brief: T('البريف اليومي', 'Daily brief'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
-  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), book: T('صور الأسماك', 'Fish photos')})[k];
+  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), shops: T('المحلات', 'Shops'), book: T('صور الأسماك', 'Fish photos')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
-  owner: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes', 'staff'],
-  admin: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes'],
+  owner: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes', 'staff'],
+  admin: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes'],
   accountant: ['home', 'brief', 'report', 'money', 'alerts'],
   investor: ['report'],
 };
 // مجموعات القائمة الجانبية. أي تبويب جديد ينضاف لمجموعته هنا.
 const navGroups = () => [
   [T('نظرة عامة', 'Overview'), ['home', 'brief', 'report', 'alerts']],
-  [T('العملاء', 'Customers'), ['users', 'scans', 'contrib', 'collectors', 'book', 'launch']],
+  [T('العملاء', 'Customers'), ['users', 'shops', 'scans', 'contrib', 'collectors', 'book', 'launch']],
   [T('المال', 'Money'), ['money', 'settings', 'codes']],
   [T('الموقع والفريق', 'Site & team'), ['site', 'staff']],
 ];
@@ -1120,7 +1121,7 @@ function main() {
       x: '<path d="M6 6l12 12M18 6L6 18"/>',
     };
     const stName = k => ({active: T('نشط', 'Active'), soon: T('ينتهي قريب', 'Ending soon'), free: T('مجاني', 'Free'), empty: T('خلص رصيده', 'Out of scans'), blocked: T('موقوف', 'Blocked'), owner: T('المالك', 'Owner')})[k] || k;
-    const fromName = k => ({store: T('المتجر', 'Store'), manual: T('يدوي من الأدمن', 'Set by admin'), code: T('رمز هدية', 'Gift code'), owner: T('المالك', 'Owner')})[k] || '';
+    const fromName = k => ({store: T('المتجر', 'Store'), shop: T('محل (أونلاين)', 'Shop (online)'), manual: T('يدوي من الأدمن', 'Set by admin'), code: T('رمز هدية', 'Gift code'), owner: T('المالك', 'Owner')})[k] || '';
     const ago = s => {
       if (!s) return T('ما فحص', 'Never');
       const h = (Date.now() - new Date(s)) / 36e5;
@@ -1130,7 +1131,7 @@ function main() {
     const viewsList = [['all', T('الكل', 'All')], ['paid', T('المشتركين', 'Subscribers')], ['free', T('المجاني', 'Free')], ['soon', T('ينتهي قريب', 'Ending soon')], ['blocked', T('الموقوفين', 'Blocked')]];
     const filters = {
       plan: [T('الباقة', 'Plan'), [['free', planName('free')], ['monthly', planName('monthly')], ['yearly', planName('yearly')], ['shop', planName('shop')]]],
-      from: [T('المصدر', 'Source'), [['store', fromName('store')], ['manual', fromName('manual')], ['code', fromName('code')]]],
+      from: [T('المصدر', 'Source'), [['store', fromName('store')], ['shop', fromName('shop')], ['manual', fromName('manual')], ['code', fromName('code')]]],
       activity: [T('آخر نشاط', 'Last activity'), [['24', T('آخر 24 ساعة', 'Last 24 hours')], ['168', T('آخر أسبوع', 'Last week')], ['none', T('ما فحص أبد', 'Never scanned')]]],
     };
     // قوائم الإجراءات (هدية، باقة، إيقاف) نفسها للسطر وللتحديد الجماعي.
@@ -1371,6 +1372,7 @@ function main() {
       ['freeScans', T('الفحوصات المجانية لكل حساب (مرة وحدة)', 'Free scans per account (one time)')],
       ['monthlyCap', T('سقف الفحوصات بالشهر للشهري والسنوي', 'Monthly scan cap, monthly and yearly plans')],
       ['shopCap', T('سقف الفحوصات بالشهر للمحلات', 'Monthly scan cap, shops')],
+      ['shopDevices', T('كم جوال للمحل الواحد (يشتركون في نفس الرصيد)', 'Phones per shop (sharing one balance)')],
       ['priceMonthly', T(`سعر الشهري (${RIYAL})`, `Monthly price (${RIYAL})`)],
       ['priceYearly', T(`سعر السنوي (${RIYAL})`, `Yearly price (${RIYAL})`)],
       ['priceShop', T(`سعر باقة المحل بالشهر (${RIYAL})`, `Shop plan per month (${RIYAL})`)],
@@ -1436,6 +1438,49 @@ function main() {
         document.body.append(box);
       };
     });
+  },
+
+  // المحلات اللي اشتركت من hawat.id/shop: الدفع أونلاين من ميسر، أو تحويل بنكي يسجله الأدمن هنا.
+  async shops() {
+    const r = await api('shops');
+    const link = k => location.origin + location.pathname.replace(/admin$/, 'shop') + '?k=' + k;
+    const active = r.items.filter(s => s.active).length;
+    const status = s => s.stopped ? `<span class="pill">${T('موقوف', 'Stopped')}</span>` : s.active ? `<span class="pill auto">${T('مفعّل', 'Active')}</span><div class="k">${T('لين', 'until')} <span class="mono">${(s.until || '').slice(0, 10)}</span></div>` : s.until ? `<span class="pill">${T('منتهي', 'Expired')}</span><div class="k mono">${s.until.slice(0, 10)}</div>` : `<span class="pill">${T('ما دفع', 'Not paid')}</span>`;
+    $('#app').innerHTML = heading(T('المحلات', 'Shops'), `${num(active)} ${T('محل مفعّل من', 'active of')} ${num(r.items.length)} · ${r.ready ? (r.test ? T('ميسر في وضع التجربة', 'Moyasar in test mode') : T('الدفع الإلكتروني شغّال (ميسر)', 'Online payment on (Moyasar)')) : T('الدفع الإلكتروني مو مفعّل: المحلات تسجل وتكلمك للتحويل', 'Online payment off: shops register and contact you to transfer')}`) + `
+      <div class="card"><div class="wrap"><table><tr><th>${T('المحل', 'Shop')}</th><th>${T('الجوال', 'Phone')}</th><th>${T('الحالة', 'Status')}</th><th class="num">${T('الفحوصات', 'Scans')}</th><th class="num">${T('الأجهزة', 'Devices')}</th><th>${T('التجديد', 'Renewal')}</th><th>${T('آخر دفعة', 'Last payment')}</th><th class="noprint"></th></tr>
+      ${r.items.map(s => `<tr${s.stopped ? ' style="opacity:.5"' : ''}><td>${esc(s.name)}<div class="k">${esc(s.city)} · <span class="mono">${esc(s.join)}</span>${s.cr ? ` · ${T('س.ت', 'CR')} <span class="mono">${esc(s.cr)}</span>` : ''}</div></td>
+        <td class="mono"><a href="https://wa.me/${esc(String(s.phone).replace(/^0/, '966').replace(/^\+/, ''))}" target="_blank" rel="noopener">${esc(s.phone)}</a>${s.email ? `<div class="k">${esc(s.email)}</div>` : ''}</td>
+        <td>${status(s)}${s.renewError ? `<div class="k err">${esc(s.renewError)}</div>` : ''}</td>
+        <td class="num">${num(s.used)} / ${num(s.cap)}</td><td class="num">${num(s.devices.length)} / ${num(s.maxDevices)}</td>
+        <td>${s.autoRenew && s.canRenew ? `<span class="pill auto">${T('تلقائي', 'Auto')}</span><div class="k">${esc(s.card || '')}</div>` : `<span class="k">${T('يدوي', 'Manual')}</span>`}</td>
+        <td>${s.payments[0] ? `<span class="mono">${s.payments[0].at.slice(0, 10)}</span><div class="k">${num(s.payments[0].sar)} · ${s.payments[0].method === 'transfer' ? T('تحويل', 'Transfer') : esc(s.payments[0].card || s.payments[0].method || '')}</div>` : '—'}</td>
+        <td class="noprint"><button class="act ghost sm" data-copy="${esc(s.key)}">${T('رابط لوحته', 'Dashboard link')}</button>
+          <button class="act ghost sm" data-tr="${esc(s.id)}">${T('وصل تحويل (+شهر)', 'Transfer received (+1 month)')}</button>
+          <button class="act ghost sm" data-stop="${esc(s.id)}" data-on="${s.stopped ? 1 : ''}">${s.stopped ? T('تفعيل', 'Enable') : T('إيقاف', 'Stop')}</button></td></tr>`).join('') || `<tr><td colspan="8" class="msg">${T('ما فيه محلات للحين. رابط الاشتراك:', 'No shops yet. Sign-up link:')} <span class="mono">${esc(location.origin)}/shop</span></td></tr>`}
+      </table></div></div>
+      <div class="card noprint" id="tr-box" style="display:none"><h3 id="tr-title"></h3>
+        <label class="set"><span>${T('المبلغ اللي وصل', 'Amount received')}</span><input id="tr-sar" type="number" min="1" style="width:140px"></label>
+        <div class="row" style="margin-top:12px"><button class="act gold" id="tr-save">${T('سجّل وفعّل شهر', 'Record and activate a month')}</button> <span id="tr-msg" class="err"></span></div>
+        <div class="note">${T('ينضاف شهر بعد تاريخ الانتهاء (أو من اليوم)، والمبلغ ينسجل دخل في المحاسبة.', 'Adds a month after the end date (or from today) and records the amount as income.')}</div></div>
+      <div class="card"><div class="note">${T('المحل يشترك من', 'Shops sign up at')} <span class="mono">${esc(location.origin)}/shop</span> ${T('ويضيف جوالات موظفينه برقم الحساب من التطبيق أو برمز المحل (أندرويد). كل الأجهزة تسحب من رصيد واحد.', 'and add staff phones by app account ID or the shop code (Android). All devices share one balance.')}</div></div>`;
+    $('#app').querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(link(b.dataset.copy)); b.textContent = T('تم النسخ', 'Copied'); } catch (e) {} });
+    $('#app').querySelectorAll('[data-stop]').forEach(b => b.onclick = async () => {
+      if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = T('متأكد؟', 'Sure?'); return; }
+      await post('shops', {id: b.dataset.stop, stopped: !b.dataset.on}); show('shops');
+    });
+    let trId = '';
+    $('#app').querySelectorAll('[data-tr]').forEach(b => b.onclick = () => {
+      trId = b.dataset.tr;
+      const s = r.items.find(x => x.id === trId);
+      $('#tr-title').textContent = T('تحويل بنكي من ', 'Bank transfer from ') + s.name;
+      $('#tr-sar').value = s.price;
+      $('#tr-box').style.display = '';
+      $('#tr-box').scrollIntoView({behavior: 'smooth'});
+    });
+    $('#tr-save').onclick = async () => {
+      try { await post('shops', {id: trId, transfer: Number($('#tr-sar').value)}); show('shops'); }
+      catch (e) { $('#tr-msg').textContent = e.message; }
+    };
   },
 
   // المصوّرين: كل واحد له رابط خاص يفتحه من جواله ويرفع صور الأسماك، وصورهم تطلع في «صور المساهمين».

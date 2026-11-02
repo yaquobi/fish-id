@@ -223,6 +223,8 @@ abstract final class FishIdApi {
     'bad_code': 'This code is not valid.',
     'code_used': 'You have already used this code.',
     'code_full': 'This code has run out.',
+    'shop_taken': 'This phone is already linked to another shop.',
+    'shop_full': 'This shop has reached its phone limit.',
   };
 
   /// رسالة الخطأ من رد الخادم بلغة التطبيق، إن وجدت.

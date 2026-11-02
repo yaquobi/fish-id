@@ -149,6 +149,38 @@ class Ledger {
     return true;
   }
 
+  /// يسجّل دفعة محل من بوابة ميسر (اشتراك من hawat.id/shop). [payment] عملية الدفع كما رجعت من ميسر بعد التأكد منها.
+  /// رسوم ميسر من حقل fee في العملية، وإذا ما وصل نقدّرها 2.5%. ما فيه ضريبة قيمة مضافة لين يتسجل النشاط فيها.
+  Future<bool> recordShop(Map<String, dynamic> payment, {required String shop, required bool test, required bool renewal, required DateTime now}) async {
+    final id = '${payment['id'] ?? ''}';
+    final amount = payment['amount'];
+    if (id.isEmpty || amount is! num || amount <= 0) return false;
+    final at = DateTime.tryParse('${payment['created_at'] ?? ''}')?.toUtc() ?? now.toUtc();
+    final recent = [for (var i = 0; i < 2; i++) ..._sales(month(DateTime.utc(now.year, now.month - i))), ..._sales(month(at))];
+    if (recent.any((s) => s['id'] == id)) return false;
+    double r(double v) => double.parse(v.toStringAsFixed(2));
+    final gross = amount / 100;
+    final fee = payment['fee'] is num && (payment['fee'] as num) > 0 ? (payment['fee'] as num) / 100 : gross * 0.025;
+    final line = jsonEncode({
+      'id': id,
+      'at': at.toIso8601String(),
+      'type': renewal ? 'RENEWAL' : 'INITIAL_PURCHASE',
+      'user': shop,
+      'product': 'fishid_shop',
+      'store': 'MOYASAR',
+      'sandbox': test,
+      'currency': 'SAR',
+      'usd': r(gross / _sar),
+      'grossSar': r(gross),
+      'taxSar': 0.0,
+      'feeSar': r(fee),
+      'netSar': r(gross - fee),
+    });
+    Directory('$dir/sales').createSync();
+    await File('$dir/sales/${month(at)}.jsonl').writeAsString('$line\n', mode: FileMode.append, flush: true);
+    return true;
+  }
+
   List<Map<String, dynamic>> _sales(String m) {
     final f = File('$dir/sales/$m.jsonl');
     if (!f.existsSync()) return [];
@@ -182,8 +214,12 @@ class Ledger {
     for (final e in byProduct.entries) {
       income.add({
         'auto': true,
-        'provider': e.value['store'] == 'APP_STORE' ? 'App Store' : 'Google Play',
-        'label': e.key.isEmpty ? 'اشتراكات المتجر' : e.key,
+        'provider': switch (e.value['store']) {
+          'APP_STORE' => 'App Store',
+          'MOYASAR' => 'ميسر · hawat.id',
+          _ => 'Google Play',
+        },
+        'label': e.key == 'fishid_shop' ? 'باقة المحلات (دفع أونلاين)' : (e.key.isEmpty ? 'اشتراكات المتجر' : e.key),
         'n': e.value['n'],
         'refunds': e.value['refunds'],
         'grossSar': r(e.value['grossSar'] as double),
@@ -203,7 +239,8 @@ class Ledger {
         expenses.add({'auto': true, 'ads': e.key, 'provider': 'إعلانات ${AdStore.names[e.key] ?? e.key}', 'label': 'صرف الإعلانات الفعلي', 'sar': e.value});
       }
     }
-    final grossUsd = sales.fold<double>(0, (t, s) => t + (s['usd'] as num));
+    // رسوم RevenueCat على مبيعات المتاجر بس، مو دفعات المحلات من ميسر.
+    final grossUsd = sales.where((s) => s['store'] != 'MOYASAR').fold<double>(0, (t, s) => t + (s['usd'] as num));
     if (grossUsd > rcFreeUsd) {
       expenses.add({'auto': true, 'provider': 'RevenueCat', 'label': 'رسوم 1% من دخل المتجر', 'sar': r(grossUsd * rcShare * _sar)});
     }

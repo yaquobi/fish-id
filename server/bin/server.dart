@@ -11,6 +11,7 @@ import 'package:fish_id_server/contrib.dart';
 import 'package:fish_id_server/ledger.dart';
 import 'package:fish_id_server/refs.dart';
 import 'package:fish_id_server/ads.dart';
+import 'package:fish_id_server/shops.dart';
 import 'package:fish_id_server/site.dart';
 import 'package:fish_id_server/staff.dart';
 import 'package:fish_id_server/waitlist.dart';
@@ -20,6 +21,8 @@ import 'package:shelf/shelf_io.dart' as io;
 /// ANTHROPIC_API_KEY إلزامي، و FISHID_MODEL و FISHID_EFFORT و FISHID_PROMPT و FISHID_PER_MINUTE و PORT اختيارية.
 /// FISHID_ADMIN_TOKEN يفتح لوحة الأدمن. FISHID_RC_KEY مفتاح RevenueCat العام (نفس اللي في التطبيق) للتأكد من الاشتراكات.
 /// FISHID_TELEGRAM_TOKEN و FISHID_TELEGRAM_CHAT لتنبيهات المالك على تليجرام (يضبطها: bash server/telegram.sh).
+/// FISHID_MOYASAR_PK و FISHID_MOYASAR_SK مفاتيح ميسر لدفع المحلات (hawat.id/shop)، و FISHID_MOYASAR_WEBHOOK الرمز السري للأحداث،
+/// و FISHID_MOYASAR_METHODS طرق الدفع (creditcard,applepay,stcpay). بدون المفاتيح الصفحة تسجّل الطلب وتحوّل للواتساب.
 /// FISHID_NTFY_TOPIC لنفس التنبيهات كإشعارات على الجوال عن طريق ntfy (يضبطها: bash server/ntfy.sh).
 Future<void> main() async {
   final env = Platform.environment;
@@ -57,6 +60,8 @@ Future<void> main() async {
     site: accounts == null ? null : SiteStats.open(accounts.dir),
     waitlist: accounts == null ? null : Waitlist.open(accounts.dir),
     ads: accounts == null ? null : AdStore.open(accounts.dir),
+    shops: accounts == null ? null : ShopStore.open(accounts.dir),
+    gateway: _moyasar(env),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {
@@ -85,6 +90,8 @@ Future<void> main() async {
     final riyadh = now.toUtc().add(const Duration(hours: 3));
     final day = riyadh.toIso8601String().substring(0, 10);
     if (app.ads != null && riyadh.minute == 50) await app.pullAds(now);
+    // تجديد باقات المحلات بالبطاقة المحفوظة، والتذكير بالمنتهية (كل ساعة، الدقيقة 20).
+    if (riyadh.minute == 20) await app.renewShops(now);
     if (notify == null || (riyadh.hour != 6 && riyadh.hour != 21) || !sent.add('$day-${riyadh.hour}')) return;
     if (app.ads != null) await app.pullAds(now);
     if (riyadh.hour == 6) {
@@ -170,4 +177,46 @@ SubscriberLookup? _revenueCat(String key) {
       return null;
     }
   };
+}
+
+/// بوابة ميسر بالمفتاح السري (Basic auth، المفتاح اسم المستخدم وكلمة السر فاضية). null إذا المفاتيح ناقصة.
+Gateway? _moyasar(Map<String, String> env) {
+  final pk = env['FISHID_MOYASAR_PK'] ?? '', sk = env['FISHID_MOYASAR_SK'] ?? '';
+  if (!pk.startsWith('pk_') || !sk.startsWith('sk_')) return null;
+  if (pk.startsWith('pk_test') != sk.startsWith('sk_test')) {
+    stderr.writeln('FishId: مفاتيح ميسر وحدة تجربة ووحدة حقيقية، الدفع متوقف.');
+    return null;
+  }
+  final http = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+  final auth = 'Basic ${base64Encode(utf8.encode('$sk:'))}';
+  Future<Map<String, dynamic>?> send(String method, String path, [Map<String, dynamic>? body]) async {
+    try {
+      final req = await http.openUrl(method, Uri.https('api.moyasar.com', path));
+      req.headers.set('authorization', auth);
+      if (body != null) {
+        req.headers.contentType = ContentType.json;
+        req.write(jsonEncode(body));
+      }
+      final res = await req.close().timeout(const Duration(seconds: 30));
+      final text = await res.transform(utf8.decoder).join();
+      if (res.statusCode >= 500) {
+        stderr.writeln('FishId: ميسر رد ${res.statusCode}');
+        return null;
+      }
+      final out = jsonDecode(text);
+      return out is Map ? out.cast<String, dynamic>() : null;
+    } on Object catch (e) {
+      stderr.writeln('FishId: تعذّر الاتصال بميسر: $e');
+      return null;
+    }
+  }
+
+  final methods = (env['FISHID_MOYASAR_METHODS'] ?? 'creditcard').split(',').map((m) => m.trim()).where({'creditcard', 'applepay', 'stcpay'}.contains).toList();
+  return Gateway(
+    publishableKey: pk,
+    webhookSecret: env['FISHID_MOYASAR_WEBHOOK'] ?? '',
+    methods: methods.isEmpty ? const ['creditcard'] : methods,
+    fetch: (id) => send('GET', '/v1/payments/${Uri.encodeComponent(id)}'),
+    charge: (body) => send('POST', '/v1/payments', body),
+  );
 }

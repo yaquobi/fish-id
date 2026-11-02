@@ -27,6 +27,8 @@ class AccountStore {
     'freeScans': 3,
     'monthlyCap': 15,
     'shopCap': 300,
+    // كم جوال يقدر المحل يربط بباقته، وكلها تسحب من نفس رصيد [shopCap].
+    'shopDevices': 5,
     // false: التطبيقات القديمة اللي ما ترسل رقم حساب تشتغل بدون حد. نخليها true بعد ما ينتشر التحديث.
     'requireAccount': false,
     'priceMonthly': 25,
@@ -55,6 +57,18 @@ class AccountStore {
   /// حساب المالك (صاحب التطبيق): كل الخصائص مفتوحة للأبد بدون دفع، وما يتأثر بالمتجر.
   static bool _owner(Map<String, dynamic> a) => a['owner'] == true;
 
+  /// باقة المحل المربوط فيها الحساب ([ShopStore])، فيها تاريخ الانتهاء وعداد الشهر المشترك بين أجهزة المحل.
+  Map<String, dynamic>? Function(String shop)? pool;
+
+  /// يحفظ عداد المحل بعد كل فحص.
+  Future<void> Function()? savePool;
+
+  // لو اشترى صاحب الجهاز اشتراك من المتجر بنفسه، اشتراكه هو اللي يمشي.
+  Map<String, dynamic>? _pool(Map<String, dynamic> a) => a['pool'] is String && a['source'] == 'shop' ? pool?.call(a['pool'] as String) : null;
+
+  /// تاريخ انتهاء الباقة: للجهاز المربوط بمحل من المحل نفسه، فيتجدد مع دفعة المحل بدون ما نلمس كل جهاز.
+  String? _until(Map<String, dynamic> a) => (_pool(a)?['until'] ?? a['until']) as String?;
+
   int _int(String k) => (settings[k] as num?)?.toInt() ?? (defaults[k] as num).toInt();
   bool get requireAccount => settings['requireAccount'] == true;
 
@@ -68,18 +82,21 @@ class AccountStore {
   /// كل الحسابات، للتقارير.
   Iterable<Map<String, dynamic>> get all => _accounts.values;
 
-  /// عدد المشتركين الحاليين في كل باقة مدفوعة.
+  /// عدد المشتركين الحاليين في كل باقة مدفوعة. أجهزة المحل الواحد تنحسب اشتراك واحد.
   Map<String, int> paying(DateTime now) {
     final out = {'monthly': 0, 'yearly': 0, 'shop': 0};
+    final shops = <String>{};
     for (final a in _accounts.values) {
-      if (_active(a, now)) out[a['plan'] as String] = (out[a['plan']] ?? 0) + 1;
+      if (!_active(a, now)) continue;
+      if (_pool(a) != null && !shops.add(a['pool'] as String)) continue;
+      out[a['plan'] as String] = (out[a['plan']] ?? 0) + 1;
     }
     return out;
   }
 
   bool _active(Map<String, dynamic> a, DateTime now) {
     if (a['plan'] == 'free') return false;
-    final until = DateTime.tryParse('${a['until']}');
+    final until = DateTime.tryParse('${_until(a)}');
     return until != null && until.isAfter(now);
   }
 
@@ -87,7 +104,8 @@ class AccountStore {
   int _base(Map<String, dynamic> a, DateTime now) {
     if (_owner(a)) return ownerRemaining;
     if (_active(a, now)) {
-      final used = a['month'] == _month(now) ? (a['monthUsed'] as int? ?? 0) : 0;
+      final c = _pool(a) ?? a;
+      final used = c['month'] == _month(now) ? (c['monthUsed'] as int? ?? 0) : 0;
       return _int(a['plan'] == 'shop' ? 'shopCap' : 'monthlyCap') - used;
     }
     return _int('freeScans') - (a['freeUsed'] as int? ?? 0);
@@ -120,9 +138,11 @@ class AccountStore {
         // المالك ما ينحسب عليه شي.
       } else if (_base(a, now) > 0) {
         if (_active(a, now)) {
-          if (a['month'] != _month(now)) a['monthUsed'] = 0;
-          a['month'] = _month(now);
-          a['monthUsed'] = (a['monthUsed'] as int? ?? 0) + 1;
+          final c = _pool(a) ?? a;
+          if (c['month'] != _month(now)) c['monthUsed'] = 0;
+          c['month'] = _month(now);
+          c['monthUsed'] = (c['monthUsed'] as int? ?? 0) + 1;
+          if (!identical(c, a)) await savePool?.call();
         } else {
           a['freeUsed'] = (a['freeUsed'] as int? ?? 0) + 1;
         }
@@ -159,13 +179,33 @@ class AccountStore {
   }
 
   /// تعديل من الأدمن أو من RevenueCat: هدية فحوصات، أو باقة لعدد أيام، أو إيقاف.
-  Future<Map<String, dynamic>> update(String id, DateTime now, {int? grant, String? plan, DateTime? until, bool? blocked, bool? owner, String? source, String? by}) async {
+  /// [pool] يربط الحساب بمحل (رقم المحل) أو يفكه ('').
+  Future<Map<String, dynamic>> update(
+    String id,
+    DateTime now, {
+    int? grant,
+    String? plan,
+    DateTime? until,
+    bool? blocked,
+    bool? owner,
+    String? source,
+    String? by,
+    String? pool,
+  }) async {
     final a = account(id, now);
     // سجل تعديلات الأدمن (آخر 30) يظهر في تفاصيل الحساب.
     if (by != null) {
       a['log'] = [
         ...((a['log'] as List?) ?? const []).skip(((a['log'] as List?)?.length ?? 0) >= 30 ? 1 : 0),
-        {'at': now.toUtc().toIso8601String(), 'by': by, 'grant': ?grant, 'plan': ?plan, 'until': ?until?.toUtc().toIso8601String(), 'blocked': ?blocked, 'owner': ?owner},
+        {
+          'at': now.toUtc().toIso8601String(),
+          'by': by,
+          'grant': ?grant,
+          'plan': ?plan,
+          'until': ?until?.toUtc().toIso8601String(),
+          'blocked': ?blocked,
+          'owner': ?owner,
+        },
       ];
     }
     if (grant != null) a['bonus'] = ((a['bonus'] as int? ?? 0) + grant).clamp(0, 100000);
@@ -183,6 +223,13 @@ class AccountStore {
         a['until'] = until.toUtc().toIso8601String();
       }
     }
+    if (pool != null) {
+      if (pool.isEmpty) {
+        a.remove('pool');
+      } else {
+        a['pool'] = pool;
+      }
+    }
     if (blocked != null) a['blocked'] = blocked;
     if (owner == true) {
       a['owner'] = true;
@@ -196,7 +243,16 @@ class AccountStore {
 
   Map<String, dynamic> view(String id, DateTime now) {
     final a = account(id, now);
-    final out = {'id': id, ...a, 'active': _active(a, now), 'remaining': remaining(id, now), 'cap': _cap(a, now), 'status': _status(a, now), 'from': _from(a)};
+    final out = {
+      'id': id,
+      ...a,
+      'until': ?_until(a),
+      'active': _active(a, now),
+      'remaining': remaining(id, now),
+      'cap': _cap(a, now),
+      'status': _status(a, now),
+      'from': _from(a),
+    };
     out.remove('log');
     return out;
   }
@@ -204,20 +260,22 @@ class AccountStore {
   /// سقف الفحوصات اللي يُقاس عليه الرصيد: سقف الشهر للمشترك، والمجانية لغيره.
   int _cap(Map<String, dynamic> a, DateTime now) => _owner(a)
       ? ownerRemaining
-      : _active(a, now) ? _int(a['plan'] == 'shop' ? 'shopCap' : 'monthlyCap') : _int('freeScans');
+      : _active(a, now)
+      ? _int(a['plan'] == 'shop' ? 'shopCap' : 'monthlyCap')
+      : _int('freeScans');
 
   /// حالة الحساب في لوحة الأدمن: blocked موقوف، soon ينتهي خلال 7 أيام، active مشترك، empty مجاني خلص رصيده، free مجاني.
   String _status(Map<String, dynamic> a, DateTime now) {
     if (a['blocked'] == true) return 'blocked';
     if (_owner(a)) return 'owner';
-    if (_active(a, now)) return DateTime.parse('${a['until']}').difference(now).inDays < 7 ? 'soon' : 'active';
+    if (_active(a, now)) return DateTime.parse('${_until(a)}').difference(now).inDays < 7 ? 'soon' : 'active';
     return _base(a, now) > 0 || (a['bonus'] as int? ?? 0) > 0 ? 'free' : 'empty';
   }
 
-  /// من وين جت الباقة أو الرصيد: store المتجر، manual من الأدمن، code رمز هدية، وفاضي للمجاني العادي.
+  /// من وين جت الباقة أو الرصيد: store المتجر، shop جهاز محل اشترك من الموقع، manual من الأدمن، code رمز هدية، وفاضي للمجاني العادي.
   String _from(Map<String, dynamic> a) {
     if (_owner(a)) return 'owner';
-    if (a['plan'] != 'free') return a['source'] == 'store' ? 'store' : 'manual';
+    if (a['plan'] != 'free') return a['source'] == 'store' || a['source'] == 'shop' ? a['source'] as String : 'manual';
     return (a['codes'] as List?)?.isNotEmpty == true ? 'code' : '';
   }
 
@@ -236,7 +294,16 @@ class AccountStore {
 
   /// صفحة من الحسابات (الأحدث نشاطًا أولًا) مع الفلاتر، وعدد كل عرض للأرقام والتبويبات.
   /// [q] جزء من رقم الحساب أو اسم الباقة، [activity] 24 أو 168 ساعة أو none (ما فحص أبد).
-  Map<String, dynamic> users(DateTime now, {String q = '', String tab = 'all', String plan = '', String from = '', String activity = '', int page = 1, int size = 50}) {
+  Map<String, dynamic> users(
+    DateTime now, {
+    String q = '',
+    String tab = 'all',
+    String plan = '',
+    String from = '',
+    String activity = '',
+    int page = 1,
+    int size = 50,
+  }) {
     bool match(String id) {
       final a = _accounts[id]!;
       if (q.isNotEmpty && !id.contains(q) && a['plan'] != q) return false;
@@ -320,9 +387,8 @@ class AccountStore {
   }
 
   /// فحوصات الشهر الحالي (والشهر اللي قبله إذا [months] = 2)، الأحدث أولًا.
-  List<Map<String, dynamic>> scans(DateTime now, {int months = 1}) => [
-    for (var i = months - 1; i >= 0; i--) ...monthScans(_month(DateTime.utc(now.year, now.month - i))),
-  ].reversed.toList();
+  List<Map<String, dynamic>> scans(DateTime now, {int months = 1}) =>
+      [for (var i = months - 1; i >= 0; i--) ...monthScans(_month(DateTime.utc(now.year, now.month - i)))].reversed.toList();
 
   /// فحوصات شهر واحد ([month] بصيغة YYYY-MM) بترتيبها.
   List<Map<String, dynamic>> monthScans(String month) {
@@ -349,11 +415,12 @@ class AccountStore {
       if ('${a['created']}'.startsWith(today)) newToday++;
       if (p == 'free' && (a['freeUsed'] as int? ?? 0) >= _int('freeScans')) outOfFree++;
     }
+    // أجهزة المحل الواحد اشتراك واحد في الدخل.
+    final shops = paying(now)['shop']!;
     final net = (settings['netShare'] as num).toDouble();
     final sar = (settings['usdToSar'] as num).toDouble();
     // دخل شهري تقديري: الشهري بسعره، والسنوي مقسوم على 12، والمحلات (بوابة دفع، بدون عمولة متجر تقريبًا).
-    final mrr =
-        byPlan['monthly']! * _int('priceMonthly') * net + byPlan['yearly']! * _int('priceYearly') / 12 * net + byPlan['shop']! * _int('priceShop') * 0.97;
+    final mrr = byPlan['monthly']! * _int('priceMonthly') * net + byPlan['yearly']! * _int('priceYearly') / 12 * net + shops * _int('priceShop') * 0.97;
     final costMonth = usd(month) * sar;
     final species = <String, int>{};
     for (final s in month) {
@@ -365,7 +432,7 @@ class AccountStore {
       'newWeek': newWeek,
       'plans': byPlan,
       'outOfFree': outOfFree,
-      'paying': byPlan['monthly']! + byPlan['yearly']! + byPlan['shop']!,
+      'paying': byPlan['monthly']! + byPlan['yearly']! + shops,
       'scansToday': todays.length,
       'scansMonth': month.length,
       'costTodaySar': usd(todays) * sar,
@@ -390,7 +457,9 @@ class AccountStore {
       d['n'] = d['n']! + 1;
       d['sar'] = d['sar']! + ((s['usd'] as num?) ?? 0) * sar;
     }
-    return [for (final e in days.entries) {'day': e.key, ...e.value}];
+    return [
+      for (final e in days.entries) {'day': e.key, ...e.value},
+    ];
   }
 
   Future<void> _save() => _write('accounts.json', _accounts);

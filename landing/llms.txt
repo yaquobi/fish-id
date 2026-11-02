@@ -17,7 +17,7 @@ FISH ID تطبيق سعودي للجوال (أندرويد وآيفون، عرب
 ## Who it is for
 
 - Shoppers at Saudi fish markets who want to know the species and how fresh it is before buying.
-- Fish shops and restaurants checking deliveries and labelling species correctly.
+- Fish shops and restaurants checking deliveries and labelling species correctly. Shop plan: 350 SAR/month, 300 scans shared by up to 5 staff phones, sign up and pay online (mada, cards) at https://hawat.id/shop/
 - Fishermen and anglers naming their catch.
 - Students and researchers who need Saudi local names linked to scientific names.
 
@@ -48,4 +48,4 @@ Subscriptions are billed and cancelled through Google Play or the App Store.
 
 - Website: https://hawat.id/
 - Privacy policy: https://hawat.id/privacy.html
-- Contact: yaquobi@hawat.sa
+- Contact: info@hawat.id
