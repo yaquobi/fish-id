@@ -89,8 +89,8 @@ class AiConsentDialog extends StatelessWidget {
           _Point(
             icon: Icons.auto_awesome_outlined,
             text: tr(
-              'خدمة الذكاء الاصطناعي Claude من شركة Anthropic، وهي اللي تحلل الصورة.',
-              'Claude, an AI service by Anthropic, which analyzes the photo.',
+              'محرّك FISH ID الذكي (مبني على Claude من شركة Anthropic)، وهو اللي يحلل الصورة.',
+              'The FISH ID smart engine (built on Claude by Anthropic), which analyzes the photo.',
             ),
           ),
           const SizedBox(height: 10),
