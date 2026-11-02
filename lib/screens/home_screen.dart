@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/fish_id_api.dart';
 import '../l10n.dart';
 import '../theme.dart';
+import '../widgets/ai_consent.dart';
 import '../widgets/logo.dart';
 import 'browse_screen.dart';
 import 'result_screen.dart';
@@ -29,6 +30,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _pick(ImageSource source) async {
     if (_busy) return;
+    // قبل الكاميرا: موافقة إرسال الصورة للذكاء الاصطناعي (مرة وحدة).
+    if (!await AiConsent.ensure(context) || !mounted) return;
     setState(() => _busy = true);
     try {
       // تصغير الصورة يسرّع الرفع ويبقيها تحت حد الخادم (5MB).
@@ -323,6 +326,15 @@ class _Menu extends StatelessWidget {
               final id = await FishIdApi.userId();
               await Clipboard.setData(ClipboardData(text: id));
               messenger.showSnackBar(SnackBar(content: Text(tr('نسخنا رقم حسابك: $id', 'Account ID copied: $id'))));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.auto_awesome_outlined),
+            title: Text(tr('تحليل الصور بالذكاء الاصطناعي', 'AI photo analysis')),
+            subtitle: Text(tr('اعرض أو اسحب موافقتك', 'View or withdraw your consent')),
+            onTap: () async {
+              await AiConsent.review(context);
+              if (context.mounted) Navigator.of(context).pop();
             },
           ),
           ListTile(
