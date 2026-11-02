@@ -809,7 +809,7 @@ const views = {
         </div><div id="m-msg" class="err" style="margin-top:6px"></div></div>` : ''}`;
     $('#bday').onchange = e => e.target.value && show('brief', e.target.value);
     if (!keys) return;
-    $('#bpull').onclick = async () => { $('#bpull').disabled = true; try { await post('ads', {pull: true}); } catch (e) {} show('brief', day); };
+    $('#bpull').onclick = async () => { $('#bpull').disabled = true; try { await post('ads', {pull: true, day: b.day}); } catch (e) {} show('brief', day); };
     $('#m-save').onclick = async () => {
       try {
         await post('ads', {put: {platform: $('#m-p').value, day: $('#m-d').value, spend: parseFloat($('#m-s').value || 0), currency: $('#m-c').value, impressions: parseInt($('#m-i').value || 0), clicks: parseInt($('#m-k').value || 0)}});
