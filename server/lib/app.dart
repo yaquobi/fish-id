@@ -432,7 +432,11 @@ class FishIdApp {
         final d = q['day'] ?? '';
         return _json(200, brief(AdStore.dayPattern.hasMatch(d) ? d : SiteStats.dayOf(now), now));
       case ('GET', 'ads') when ads != null:
-        return _json(200, {'platforms': ads!.keys.view(), if (role == 'owner') 'pushKey': await ads!.keys.pushKey()});
+        return _json(200, {
+          'platforms': ads!.keys.view(),
+          'tiktok': {'handle': ads!.keys.has('tiktok') ? '${ads!.keys.get('tiktok')['handle']}' : null, 'promos': ads!.keys.promos},
+          if (role == 'owner') 'pushKey': await ads!.keys.pushKey(),
+        });
       case ('POST', 'ads') when ads != null && role != 'accountant':
         final b = await body();
         if (b['put'] is Map) {
@@ -444,6 +448,11 @@ class FishIdApp {
           await ads!.pull(SiteStats.dayOf(now), usdToSar: _usdToSar, now: now);
         } else if (b['snapUrl'] == true && role == 'owner') {
           return _json(200, {'url': ads!.keys.snapAuthUrl(snapRedirect)});
+        } else if (b['promo'] is Map && role == 'owner') {
+          await ads!.keys.addPromo(b['promo'] as Map);
+          await ads!.pull(SiteStats.dayOf(now), usdToSar: _usdToSar, now: now);
+        } else if (b['unpromo'] is int && role == 'owner') {
+          await ads!.keys.removePromo(b['unpromo'] as int);
         } else if (b['unlink'] is String && role == 'owner') {
           await ads!.keys.remove(b['unlink'] as String);
         } else if (b['pull'] == true) {
@@ -711,6 +720,13 @@ class FishIdApp {
         'linked': ads?.keys.view() ?? const {},
         'cpcSar': (adsDay['clicks'] as num) > 0 ? r(spend / (adsDay['clicks'] as num)) : null,
       },
+      if (ads?.tiktok(day) case final tt?)
+        'tiktok': {
+          ...tt,
+          'goal': AdStore.tiktokGoal,
+          // الزيادة: آخر رقم لهاليوم ناقص آخر رقم قبله.
+          'gained': tt['day'] == day && ads!.tiktok(shift(-1)) != null ? (tt['followers'] as int) - (ads!.tiktok(shift(-1))!['followers'] as int) : null,
+        },
       'site': web,
       'weekHours': week?['hours'] ?? const {},
       'signups': {
@@ -782,6 +798,12 @@ class FishIdApp {
     if (off.isNotEmpty) lines.add('• غير مربوطة: ${off.join('، ')}');
     for (final e in linked.entries) {
       if ((e.value as Map)['ok'] == false) lines.add('🟠 تعذّر سحب ${AdStore.names[e.key]}: ${(e.value as Map)['error']}');
+    }
+    if (b['tiktok'] case final Map tt) {
+      final g = tt['gained'] as int?;
+      lines
+        ..add('')
+        ..add('🎵 تيك توك: ${n(tt['followers'])} متابع${g == null ? '' : ' (${g >= 0 ? '+' : ''}$g اليوم)'} · باقي ${n(((tt['goal'] as int) - (tt['followers'] as int)).clamp(0, 1 << 30))} على ${n(tt['goal'])} · ${n(tt['likes'])} لايك');
     }
     final web = b['site'] as Map;
     final src = ((web['src'] as Map).cast<String, int>().entries.toList()..sort((a, b) => b.value.compareTo(a.value))).take(5);

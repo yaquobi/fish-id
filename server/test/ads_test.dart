@@ -32,8 +32,9 @@ void main() {
     );
   }
 
-  Future<Response> call(FishIdApp app, String method, String path, {Object? body, String auth = 'Bearer secret'}) async =>
-      app.handler(Request(method, Uri.parse('http://x/api/$path'), body: body == null ? null : jsonEncode(body), headers: {'authorization': auth, 'x-forwarded-for': '1.2.3.4', 'user-agent': 'Mozilla/5.0'}));
+  Future<Response> call(FishIdApp app, String method, String path, {Object? body, String auth = 'Bearer secret'}) async => app.handler(
+    Request(method, Uri.parse('http://x/api/$path'), body: body == null ? null : jsonEncode(body), headers: {'authorization': auth, 'x-forwarded-for': '1.2.3.4', 'user-agent': 'Mozilla/5.0'}),
+  );
   Future<Map<String, dynamic>> json(Future<Response> r) async => jsonDecode(await (await r).readAsString()) as Map<String, dynamic>;
 
   test('google pushes with its key, manual entries convert dollars, and the brief adds it all up', () async {
@@ -117,18 +118,96 @@ void main() {
   test('snapchat connect gives a consent link with a one-time state', () async {
     final app = make();
     expect((await call(app, 'POST', 'admin/ads', body: {'snapUrl': true})).statusCode, 400);
-    await call(app, 'POST', 'admin/ads', body: {'link': {'platform': 'snapchat', 'account': 'acc', 'client': 'cid', 'secret': 'sec'}});
+    await call(
+      app,
+      'POST',
+      'admin/ads',
+      body: {
+        'link': {'platform': 'snapchat', 'account': 'acc', 'client': 'cid', 'secret': 'sec'},
+      },
+    );
     final url = Uri.parse((await json(call(app, 'POST', 'admin/ads', body: {'snapUrl': true})))['url'] as String);
     expect(url.host, 'accounts.snapchat.com');
     expect(url.queryParameters['redirect_uri'], FishIdApp.snapRedirect);
     expect(url.queryParameters['client_id'], 'cid');
     // خانات فاضية تبقي المحفوظ: نغيّر رقم الحساب بس.
-    await call(app, 'POST', 'admin/ads', body: {'link': {'platform': 'snapchat', 'account': 'acc2', 'client': '', 'secret': ''}});
+    await call(
+      app,
+      'POST',
+      'admin/ads',
+      body: {
+        'link': {'platform': 'snapchat', 'account': 'acc2', 'client': '', 'secret': ''},
+      },
+    );
     final saved = jsonDecode(File('${dir.path}/ad_keys.json').readAsStringSync())['snapchat'] as Map;
     expect(saved['account'], 'acc2');
     expect(saved['secret'], 'sec');
     final bad = await (await call(app, 'GET', 'ads/snap?code=x&state=wrong')).readAsString();
     expect(bad, contains('الرابط قديم'));
+  });
+
+  test('tiktok promote spreads the paid amount over its days, and the brief shows followers to the goal', () async {
+    File('${dir.path}/social.json').writeAsStringSync(
+      jsonEncode({
+        '2026-10-31': {
+          'tiktok': {'followers': 39, 'likes': 120, 'videos': 20, 'at': '2026-10-31T20:00:00Z'},
+        },
+        '2026-11-01': {
+          'tiktok': {'followers': 52, 'likes': 180, 'videos': 22, 'at': '2026-11-01T16:00:00Z'},
+        },
+      }),
+    );
+    final app = make();
+    expect(
+      (await call(
+        app,
+        'POST',
+        'admin/ads',
+        body: {
+          'promo': {'start': '2026-11-01', 'days': 0, 'totalSar': 10},
+        },
+      )).statusCode,
+      400,
+    );
+    await call(
+      app,
+      'POST',
+      'admin/ads',
+      body: {
+        'promo': {'start': '2026-11-01', 'days': 5, 'totalSar': 149.5},
+      },
+    );
+    final b = await json(call(app, 'GET', 'admin/brief?day=2026-11-01'));
+    final row = (b['ads']['rows'] as Map)['tiktok'] as Map;
+    expect(row['spendSar'], 29.9);
+    expect(row['src'], 'promote');
+    expect(b['tiktok'], containsPair('followers', 52));
+    expect(b['tiktok']['gained'], 13);
+    expect(b['tiktok']['goal'], 1000);
+    final text = app.briefText('2026-11-01', t);
+    expect(text, contains('تيك توك: 29.90 ريال'));
+    expect(text, contains('🎵 تيك توك: 52 متابع (+13 اليوم) · باقي 948 على 1,000'));
+    // يدوي يغلب الترويج، والترويج ما يتعدى أيامه.
+    await call(
+      app,
+      'POST',
+      'admin/ads',
+      body: {
+        'put': {'platform': 'tiktok', 'day': '2026-11-01', 'spend': 20},
+      },
+    );
+    await call(app, 'POST', 'admin/ads', body: {'pull': true});
+    expect(((await json(call(app, 'GET', 'admin/brief?day=2026-11-01')))['ads']['rows'] as Map)['tiktok']['spendSar'], 20.0);
+    final keys = AdStore.open(dir.path).keys;
+    expect(keys.promoFor('2026-11-05'), closeTo(29.9, 0.001));
+    expect(keys.promoFor('2026-11-06'), isNull);
+    expect((await json(call(app, 'GET', 'admin/ads')))['tiktok']['promos'], hasLength(1));
+  });
+
+  test('tiktok profile page gives followers, likes and posts', () {
+    const html = '<script>{"userInfo":{"stats":{"followerCount":57,"followingCount":3,"heart":210,"heartCount":210,"videoCount":24}}}</script>';
+    expect(AdStore.parseTiktok(html), {'followers': 57, 'likes': 210, 'videos': 24});
+    expect(() => AdStore.parseTiktok('<html></html>'), throwsA(isA<HttpException>()));
   });
 
   test('x request signature follows OAuth 1.0a', () {

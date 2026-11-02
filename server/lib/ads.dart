@@ -13,11 +13,17 @@ import 'claude.dart';
 /// وقوقل يرسلها سكربت داخل حساب Google Ads على `ads/push` بمفتاح الدفع.
 /// الملف `ads.json` في مجلد الحسابات: {يوم: {منصة: {spend, currency, spendSar, impressions, clicks, reach, at, src}}}.
 class AdStore {
-  AdStore._(this.dir, this._days, this.keys);
+  AdStore._(this.dir, this._days, this.keys, this._social);
 
   final String dir;
   final Map<String, Map<String, dynamic>> _days;
   final AdKeys keys;
+
+  /// أرقام الحسابات نفسها (مو الإعلانات) آخر قراءة لكل يوم: {يوم: {tiktok: {followers, likes, videos, at}}}.
+  final Map<String, Map<String, dynamic>> _social;
+
+  /// هدف متابعين تيك توك (رابط الموقع في البايو يفتح من 1000).
+  static const tiktokGoal = 1000;
 
   static const platforms = ['meta', 'snapchat', 'x', 'google', 'tiktok'];
   static const names = {'meta': 'ميتا (فيسبوك وإنستغرام)', 'snapchat': 'سناب شات', 'x': 'إكس', 'google': 'قوقل', 'tiktok': 'تيك توك'};
@@ -26,7 +32,9 @@ class AdStore {
   static AdStore open(String dir) {
     final f = File('$dir/ads.json');
     final m = f.existsSync() ? (jsonDecode(f.readAsStringSync()) as Map).map((k, v) => MapEntry('$k', (v as Map).cast<String, dynamic>())) : <String, Map<String, dynamic>>{};
-    return AdStore._(dir, m, AdKeys.open(dir));
+    final sf = File('$dir/social.json');
+    final social = sf.existsSync() ? (jsonDecode(sf.readAsStringSync()) as Map).map((k, v) => MapEntry('$k', (v as Map).cast<String, dynamic>())) : <String, Map<String, dynamic>>{};
+    return AdStore._(dir, m, AdKeys.open(dir), social);
   }
 
   /// يحفظ أرقام [platform] ليوم [day]. المنصة ترجّع مجموع اليوم كامل، فالسطر الجديد يحل محل القديم.
@@ -112,6 +120,22 @@ class AdStore {
       if (keys.has('snapchat')) 'snapchat': () => _snap(http, day),
       if (keys.has('x')) 'x': () => _x(http, day),
     };
+    if (keys.has('tiktok') && day == _dayOf(now)) {
+      try {
+        final st = await _tiktok(http, '${keys.get('tiktok')['handle']}').timeout(const Duration(seconds: 30));
+        _social.putIfAbsent(day, () => {})['tiktok'] = {...st, 'at': now.toUtc().toIso8601String()};
+        await _saveSocial();
+        keys.status['tiktok'] = {'ok': true, 'at': now.toUtc().toIso8601String()};
+      } on Object catch (e) {
+        final msg = '$e';
+        errors['tiktok'] = msg.substring(0, min(msg.length, 300));
+        keys.status['tiktok'] = {'ok': false, 'at': now.toUtc().toIso8601String(), 'error': errors['tiktok']};
+      }
+    }
+    // ترويج تيك توك (Promote) ما له واجهة برمجية: الصرف = المبلغ المدفوع مقسوم على الأيام، إلا إذا انكتب يدوي.
+    if (keys.promoFor(day) case final daily? when (_days[day]?['tiktok'] as Map?)?['src'] != 'manual') {
+      await put(day, 'tiktok', {'spend': daily, 'currency': 'SAR'}, usdToSar: usdToSar, src: 'promote', now: now);
+    }
     for (final j in jobs.entries) {
       try {
         final row = await j.value().timeout(const Duration(seconds: 60));
@@ -125,6 +149,42 @@ class AdStore {
     }
     if (client == null) http.close();
     return errors;
+  }
+
+  static String _dayOf(DateTime t) => t.toUtc().add(const Duration(hours: 3)).toIso8601String().substring(0, 10);
+
+  /// آخر أرقام حساب تيك توك ليوم [day]، أو آخر يوم قبله فيه أرقام.
+  Map<String, dynamic>? tiktok(String day) {
+    final keys = _social.keys.where((d) => d.compareTo(day) <= 0 && _social[d]!['tiktok'] is Map).toList()..sort();
+    return keys.isEmpty ? null : {...(_social[keys.last]!['tiktok'] as Map).cast<String, dynamic>(), 'day': keys.last};
+  }
+
+  Future<void> _saveSocial() async {
+    final text = jsonEncode(_social);
+    final tmp = File('$dir/social.json.tmp');
+    await tmp.writeAsString(text, flush: true);
+    await tmp.rename('$dir/social.json');
+  }
+
+  /// تيك توك: صفحة الحساب العامة فيها المتابعين واللايكات وعدد المنشورات (بدون مفاتيح).
+  static Future<Map<String, int>> _tiktok(HttpClient http, String handle) async {
+    final h = handle.replaceAll('@', '').trim();
+    final req = await http.getUrl(Uri.https('www.tiktok.com', '/@$h'));
+    req.headers
+      ..set('user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36')
+      ..set('accept-language', 'en-US,en;q=0.9');
+    final res = await req.close();
+    final body = await res.transform(utf8.decoder).join();
+    if (res.statusCode != 200) throw HttpException('tiktok ${res.statusCode}');
+    return parseTiktok(body);
+  }
+
+  /// يقرأ أرقام الحساب من صفحة تيك توك.
+  static Map<String, int> parseTiktok(String html) {
+    int? n(String k) => int.tryParse(RegExp('"$k":(\\d+)').firstMatch(html)?.group(1) ?? '');
+    final followers = n('followerCount');
+    if (followers == null) throw const HttpException('tiktok: ما لقيت عدد المتابعين في صفحة الحساب');
+    return {'followers': followers, 'likes': n('heartCount') ?? n('heart') ?? 0, 'videos': n('videoCount') ?? 0};
   }
 
   static Future<Map<String, dynamic>> _get(HttpClient http, Uri url, {Map<String, String> headers = const {}}) async {
@@ -204,7 +264,15 @@ class AdStore {
     final k = keys.get('x');
     final (start, end) = _ksaDay(day);
     String iso(String t) => DateTime.parse(t).toUtc().toIso8601String().replaceFirst('.000', '');
-    final params = {'entity': 'ACCOUNT', 'entity_ids': '${k['account']}', 'start_time': iso(start), 'end_time': iso(end), 'granularity': 'HOUR', 'metric_groups': 'ENGAGEMENT,BILLING', 'placement': 'ALL_ON_TWITTER'};
+    final params = {
+      'entity': 'ACCOUNT',
+      'entity_ids': '${k['account']}',
+      'start_time': iso(start),
+      'end_time': iso(end),
+      'granularity': 'HOUR',
+      'metric_groups': 'ENGAGEMENT,BILLING',
+      'placement': 'ALL_ON_TWITTER',
+    };
     final url = Uri.https('ads-api.x.com', '/12/stats/accounts/${k['account']}', params);
     final r = await _get(http, url, headers: {'authorization': oauth1('GET', url, k)});
     num sum(Map m, String f) => ((m[f] as List?) ?? const []).fold<num>(0, (t, v) => t + ((v as num?) ?? 0));
@@ -255,6 +323,7 @@ class AdKeys {
     'meta': ['account', 'token'],
     'snapchat': ['account', 'client', 'secret', 'refresh'],
     'x': ['account', 'consumerKey', 'consumerSecret', 'token', 'tokenSecret'],
+    'tiktok': ['handle'],
   };
 
   static AdKeys open(String dir) {
@@ -270,9 +339,7 @@ class AdKeys {
     if (!fields.containsKey(p)) throw const FishIdError('bad_request', 'المنصة غير معروفة');
     // خانة فاضية تبقي القيمة المحفوظة، عشان تقدر تغيّر رقم الحساب بدون ما تعيد لصق المفاتيح.
     final old = get(p);
-    _keys[p] = {
-      for (final f in fields[p]!) f: '${v[f] ?? ''}'.trim().isEmpty ? '${old[f] ?? ''}' : '${v[f]}'.trim(),
-    };
+    _keys[p] = {for (final f in fields[p]!) f: '${v[f] ?? ''}'.trim().isEmpty ? '${old[f] ?? ''}' : '${v[f]}'.trim()};
     await _save();
   }
 
@@ -280,6 +347,40 @@ class AdKeys {
     _keys.remove(p);
     status.remove(p);
     await _save();
+  }
+
+  /// حملات ترويج تيك توك المدفوعة: [{start, days, totalSar}].
+  List<Map<String, dynamic>> get promos => [for (final p in (_keys['tiktok_promote'] as List? ?? const [])) (p as Map).cast<String, dynamic>()];
+
+  Future<void> addPromo(Map b) async {
+    final start = '${b['start'] ?? ''}';
+    final days = b['days'] is num ? (b['days'] as num).toInt() : int.tryParse('${b['days']}') ?? 0;
+    final total = b['totalSar'] is num ? (b['totalSar'] as num).toDouble() : double.tryParse('${b['totalSar']}') ?? 0;
+    if (!AdStore.dayPattern.hasMatch(start) || days < 1 || days > 60 || total <= 0 || total > 100000) throw const FishIdError('bad_request', 'بيانات الترويج غير صحيحة');
+    _keys['tiktok_promote'] = [
+      ...promos,
+      {'start': start, 'days': days, 'totalSar': total},
+    ];
+    await _save();
+  }
+
+  Future<void> removePromo(int i) async {
+    final l = promos;
+    if (i < 0 || i >= l.length) throw const FishIdError('bad_request', 'الترويج غير موجود');
+    l.removeAt(i);
+    _keys['tiktok_promote'] = l;
+    await _save();
+  }
+
+  /// صرف ترويج تيك توك في [day] (مجموع الحملات اللي شغالة ذاك اليوم)، أو null.
+  double? promoFor(String day) {
+    double? sum;
+    for (final p in promos) {
+      final s = '${p['start']}'.split('-').map(int.parse).toList();
+      final end = DateTime.utc(s[0], s[1], s[2] + (p['days'] as num).toInt()).toIso8601String().substring(0, 10);
+      if (day.compareTo('${p['start']}') >= 0 && day.compareTo(end) < 0) sum = (sum ?? 0) + (p['totalSar'] as num) / (p['days'] as num);
+    }
+    return sum;
   }
 
   /// ربط سناب: رابط موافقة Snap (OAuth) يرجع لـ [redirect] بكود نبدله بـ refresh token.
