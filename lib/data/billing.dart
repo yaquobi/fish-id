@@ -25,7 +25,9 @@ abstract final class Billing {
 
   static Future<bool> _configure() => _ready ??= () async {
     try {
-      await Purchases.configure(PurchasesConfiguration(isIOS ? _iosKey : _androidKey)..appUserID = await FishIdApi.userId());
+      await Purchases.configure(
+        PurchasesConfiguration(isIOS ? _iosKey : _androidKey)..appUserID = await FishIdApi.userId(),
+      );
       return true;
     } on Object {
       _ready = null;
@@ -41,6 +43,18 @@ abstract final class Billing {
       return offerings.current?.availablePackages ?? const [];
     } on PlatformException {
       return const [];
+    }
+  }
+
+  /// باقة المحلات: عرض «shops» في RevenueCat (اشتراك fishid_shop)، أو null لو مو جاهز.
+  static Future<Package?> shopPackage() async {
+    if (!supported || !await _configure()) return null;
+    try {
+      final offerings = await Purchases.getOfferings();
+      final list = offerings.all['shops']?.availablePackages ?? const <Package>[];
+      return list.isEmpty ? null : list.first;
+    } on PlatformException {
+      return null;
     }
   }
 
@@ -75,7 +89,11 @@ abstract final class Billing {
     for (var i = 0; i < 5; i++) {
       await Future<void>.delayed(const Duration(seconds: 2));
       await FishIdApi.sync();
-      if ((FishIdApi.remaining.value ?? 0) > 0) return;
+      if ((FishIdApi.remaining.value ?? 0) > 0) {
+        // صاحب باقة المحلات ياخذ رمز محله من نفس الرد.
+        await FishIdApi.refreshRemaining();
+        return;
+      }
     }
   }
 

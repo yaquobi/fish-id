@@ -111,6 +111,38 @@ class ShopStore {
 
   Map<String, dynamic>? byId(String id) => _all[id];
 
+  /// محل اشترى باقة المحلات من داخل التطبيق (Google Play أو App Store): نسوي له سجل برمز للموظفين، وصاحب الحساب أول جهاز فيه.
+  /// تاريخ الانتهاء يمشي مع المتجر ([until] من RevenueCat). يرجّع رقم المحل.
+  Future<String> fromStore(String owner, DateTime until, DateTime now) async {
+    var id = _all.entries.where((e) => e.value['owner'] == owner).map((e) => e.key).firstOrNull;
+    if (id == null) {
+      id = 'shop_${_hex(5)}';
+      _all[id] = {
+        'key': 's_${_hex(16)}',
+        'name': 'محل (من المتجر)',
+        'kind': 'other',
+        'city': '',
+        'phone': '',
+        'email': '',
+        'cr': '',
+        'join': _joinCode(),
+        'created': now.toUtc().toIso8601String(),
+        'store': true,
+        'owner': owner,
+        'autoRenew': true,
+        'devices': <String>[],
+        'payments': <Map<String, dynamic>>[],
+      };
+    }
+    final s = _all[id]!;
+    s['until'] = until.toUtc().toIso8601String();
+    s.remove('stopped');
+    final devices = (s['devices'] as List).cast<String>();
+    if (!devices.contains(owner)) s['devices'] = [owner, ...devices];
+    await save();
+    return id;
+  }
+
   /// صاحب المفتاح، بمقارنة بوقت ثابت مع كل المفاتيح.
   (String, Map<String, dynamic>)? byKey(String key) {
     if (!keyPattern.hasMatch(key)) return null;

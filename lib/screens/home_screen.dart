@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/billing.dart';
 import '../data/fish_id_api.dart';
 import '../l10n.dart';
 import '../theme.dart';
@@ -10,6 +11,7 @@ import '../widgets/ai_consent.dart';
 import '../widgets/logo.dart';
 import 'browse_screen.dart';
 import 'result_screen.dart';
+import 'shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -185,7 +187,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  tr('© 2026 محمد عمر اليعقوبي. جميع الحقوق محفوظة.', '© 2026 Mohammed Omar Alyaquobi. All rights reserved.'),
+                  tr(
+                    '© 2026 محمد عمر اليعقوبي. جميع الحقوق محفوظة.',
+                    '© 2026 Mohammed Omar Alyaquobi. All rights reserved.',
+                  ),
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
@@ -288,7 +293,6 @@ class _Menu extends StatelessWidget {
   static const _privacy = 'https://hawat.id/privacy.html';
   static const _email = 'info@hawat.id';
   static const _whatsapp = 'https://wa.me/966595233393';
-  static const _shop = 'https://hawat.id/shop/';
 
   @override
   Widget build(BuildContext context) => SafeArea(
@@ -309,16 +313,16 @@ class _Menu extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          // Apple's rule 3.1.1 bars unlocking paid features outside in-app purchase, so iOS has no code field.
-          if (Theme.of(context).platform != TargetPlatform.iOS)
-            ListTile(
-              leading: const Icon(Icons.redeem_outlined),
-              title: Text(tr('عندك رمز؟', 'Have a code?')),
-              onTap: () {
-                Navigator.of(context).pop();
-                showDialog<void>(context: context, builder: (_) => const _CodeDialog());
-              },
-            ),
+          // Apple's rule 3.1.1 bars unlocking paid features outside in-app purchase, so iOS has no gift codes,
+          // only the shop code that joins a staff phone to its shop's plan.
+          ListTile(
+            leading: const Icon(Icons.redeem_outlined),
+            title: Text(Billing.isIOS ? tr('عندك رمز محل؟', 'Have a shop code?') : tr('عندك رمز؟', 'Have a code?')),
+            onTap: () {
+              Navigator.of(context).pop();
+              showDialog<void>(context: context, builder: (_) => const _CodeDialog());
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.badge_outlined),
             title: Text(tr('رقم حسابك', 'Your account ID')),
@@ -350,14 +354,16 @@ class _Menu extends StatelessWidget {
             onTap: () =>
                 launchUrl(Uri.parse(L10n.en ? '$_privacy#en' : _privacy), mode: LaunchMode.externalApplication),
           ),
-          // باقة المحلات تنباع من الموقع بس، فالرابط على أندرويد. آيفون ما فيه رابط شراء خارج المتجر (قواعد Apple 3.1.1).
-          if (Theme.of(context).platform != TargetPlatform.iOS)
-            ListTile(
-              leading: const Icon(Icons.storefront_outlined),
-              title: Text(tr('للمحلات والمطاعم', 'For shops and restaurants')),
-              subtitle: Text(tr('اشترك محلك وأضف جوالات موظفينك', 'Subscribe your shop and add staff phones')),
-              onTap: () => launchUrl(Uri.parse(_shop), mode: LaunchMode.externalApplication),
-            ),
+          // باقة المحلات من المتجر داخل التطبيق، ورمز المحل لصاحبه.
+          ListTile(
+            leading: const Icon(Icons.storefront_outlined),
+            title: Text(tr('للمحلات والمطاعم', 'For shops and restaurants')),
+            subtitle: Text(tr('اشترك محلك وأضف جوالات موظفينك', 'Subscribe your shop and add staff phones')),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ShopScreen()));
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.chat_outlined),
             title: Text(tr('كلّمنا واتساب', 'WhatsApp us')),
@@ -421,13 +427,13 @@ class _CodeDialogState extends State<_CodeDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text(tr('رمز الهدية أو المحل', 'Gift or shop code')),
+    title: Text(Billing.isIOS ? tr('رمز المحل', 'Shop code') : tr('رمز الهدية أو المحل', 'Gift or shop code')),
     content: TextField(
       controller: _code,
       autofocus: true,
       textDirection: TextDirection.ltr,
       textCapitalization: TextCapitalization.characters,
-      decoration: InputDecoration(hintText: 'FISH-XXXXXXXX', errorText: _error),
+      decoration: InputDecoration(hintText: Billing.isIOS ? 'SHOP-XXXXXX' : 'FISH-XXXXXXXX', errorText: _error),
       onSubmitted: (_) => _redeem(),
     ),
     actions: [

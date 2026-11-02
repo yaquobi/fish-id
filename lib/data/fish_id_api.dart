@@ -31,6 +31,9 @@ abstract final class FishIdApi {
   /// الفحوصات المتبقية للحساب كما يقولها الخادم (null قبل أول رد).
   static final remaining = ValueNotifier<int?>(null);
 
+  /// لصاحب باقة المحلات: رمز المحل وعدد الجوالات والرصيد المشترك ({code, devices, maxDevices, used, cap})، وإلا null.
+  static final shop = ValueNotifier<Map<String, dynamic>?>(null);
+
   /// رقم حساب عشوائي ينحفظ في الجوال أول مرة، بدون اسم أو جوال أو إيميل. الخادم يحسب عليه الفحوصات.
   static Future<String> userId() async {
     final prefs = await SharedPreferences.getInstance();
@@ -62,8 +65,11 @@ abstract final class FishIdApi {
       final res = await http
           .get(Uri.parse('${base}fishId/me'), headers: await _headers())
           .timeout(const Duration(seconds: 15));
-      final n = (jsonDecode(res.body) as Map)['remaining'];
+      final body = jsonDecode(res.body) as Map;
+      final n = body['remaining'];
       if (res.statusCode == 200 && n is int) remaining.value = n;
+      if (res.statusCode == 200)
+        shop.value = body['shop'] is Map ? (body['shop'] as Map).cast<String, dynamic>() : null;
     } on Object {
       return;
     }

@@ -64,7 +64,9 @@ class AccountStore {
   Future<void> Function()? savePool;
 
   // لو اشترى صاحب الجهاز اشتراك من المتجر بنفسه، اشتراكه هو اللي يمشي.
-  Map<String, dynamic>? _pool(Map<String, dynamic> a) => a['pool'] is String && a['source'] == 'shop' ? pool?.call(a['pool'] as String) : null;
+  // صاحب محل اشترى باقة المحلات من المتجر (source store، باقة shop) هو كمان على رصيد محله.
+  Map<String, dynamic>? _pool(Map<String, dynamic> a) =>
+      a['pool'] is String && (a['source'] == 'shop' || (a['source'] == 'store' && a['plan'] == 'shop')) ? pool?.call(a['pool'] as String) : null;
 
   /// تاريخ انتهاء الباقة: للجهاز المربوط بمحل من المحل نفسه، فيتجدد مع دفعة المحل بدون ما نلمس كل جهاز.
   String? _until(Map<String, dynamic> a) => (_pool(a)?['until'] ?? a['until']) as String?;
