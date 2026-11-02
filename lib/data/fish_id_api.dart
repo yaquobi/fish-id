@@ -68,8 +68,9 @@ abstract final class FishIdApi {
       final body = jsonDecode(res.body) as Map;
       final n = body['remaining'];
       if (res.statusCode == 200 && n is int) remaining.value = n;
-      if (res.statusCode == 200)
+      if (res.statusCode == 200) {
         shop.value = body['shop'] is Map ? (body['shop'] as Map).cast<String, dynamic>() : null;
+      }
     } on Object {
       return;
     }
