@@ -758,7 +758,7 @@ const views = {
         ${platforms.map(p => {
           const r = b.ads.rows[p], l = linked[p] || {};
           if (!r && !l.linked && p === 'tiktok') return '';
-          const how = r ? (r.src === 'api' || r.src === 'push' ? `<span class="pill ok">${T('مربوط', 'Live')}</span> ${when(r.at)}` : `<span class="pill">${T('يدوي', 'Manual')}</span> ${when(r.at)}`)
+          const how = r ? (r.src === 'api' || r.src === 'push' ? `<span class="pill ok">${T('مربوط', 'Live')}</span> ${when(r.at)}` : r.src === 'promote' ? `<span class="pill">${T('ترويج (المدفوع ÷ الأيام)', 'Promote (paid ÷ days)')}</span>` : `<span class="pill">${T('يدوي', 'Manual')}</span> ${when(r.at)}`)
             : l.linked ? `<span class="pill ok">${T('مربوط', 'Live')}</span>` : `<span class="pill no">${T('غير مربوط', 'Not linked')}</span>`;
           return `<tr><td>${pName(p)}${l.ok === false ? `<div class="k err">${esc(l.error || '')}</div>` : ''}</td>
             <td class="num">${r ? money(r.spendSar) : '-'}${r && r.currency === 'USD' ? `<div class="k mono">$${money(r.spend)}</div>` : ''}</td>
@@ -767,6 +767,14 @@ const views = {
         }).join('')}
         <tfoot><tr><td>${T('المجموع', 'Total')}</td><td class="num">${money(b.ads.spendSar)}</td><td class="num">${num(b.ads.impressions)}</td><td class="num">${num(b.ads.clicks)}</td><td class="num">${b.ads.cpcSar != null ? money(b.ads.cpcSar) : '-'}</td><td></td></tr></tfoot>
       </table></div></div>
+      ${b.tiktok ? `<div class="card" style="margin-top:14px"><h3>${T('حساب تيك توك', 'TikTok account')} · @${esc(keys?.tiktok?.handle || 'ksafish_sa')}</h3>
+        <div class="grid">
+          ${kpi(T('المتابعين', 'Followers'), num(b.tiktok.followers), b.tiktok.gained != null ? `${b.tiktok.gained >= 0 ? '+' : ''}${num(b.tiktok.gained)} ${T('اليوم', 'today')}` : '', 'hero')}
+          ${kpi(T('باقي على الهدف', 'To goal'), num(Math.max(0, b.tiktok.goal - b.tiktok.followers)), `${T('الهدف', 'Goal')} ${num(b.tiktok.goal)} ${T('(رابط الموقع في البايو)', '(website link in bio)')}`)}
+          ${kpi(T('اللايكات', 'Likes'), num(b.tiktok.likes), `${num(b.tiktok.videos)} ${T('منشور', 'posts')}`)}
+        </div>
+        <div class="meter" style="margin-top:10px"><i style="width:${Math.min(100, b.tiktok.followers / b.tiktok.goal * 100)}%"></i></div>
+        <div class="note">${T('آخر قراءة', 'Last read')} ${when(b.tiktok.at)}${b.tiktok.day !== b.day ? ` (${b.tiktok.day})` : ''}</div></div>` : ''}
       <div class="cols" style="margin-top:14px">
         <div class="card"><h3>${T('زيارات الموقع بالساعة', 'Website visits by hour')} · ${b.day}</h3>${hoursChart(b.site.hours || {}, 6, 21)}</div>
         <div class="card"><h3>${T('وقت الذروة آخر 7 أيام', 'Peak hours, last 7 days')}</h3>${hoursChart(b.weekHours || {}, 6, 21)}</div>
@@ -788,11 +796,20 @@ const views = {
         </table></div>
       </div>
       ${keys ? `<div class="card noprint" style="margin-top:14px"><h3>${T('ربط منصات الإعلانات', 'Ad platform connections')}</h3>
-        <div class="note">${T('السيرفر يسحب أرقام ميتا وسناب وإكس كل ساعة بمفاتيحها، وقوقل يرسلها سكربت داخل حساب Google Ads. المفاتيح تنحفظ في السيرفر بس وما تنعرض مرة ثانية.', 'The server pulls Meta, Snapchat and X every hour with their keys; Google is pushed by a script inside Google Ads. Keys stay on the server and are never shown again.')}</div>
+        <div class="note">${T('السيرفر يسحب أرقام ميتا وسناب وإكس كل ساعة بمفاتيحها، وقوقل يرسلها سكربت داخل حساب Google Ads، وتيك توك يقرأ متابعين الحساب من صفحته العامة. المفاتيح تنحفظ في السيرفر بس وما تنعرض مرة ثانية.', 'The server pulls Meta, Snapchat and X every hour with their keys; Google is pushed by a script inside Google Ads. Keys stay on the server and are never shown again.')}</div>
         ${me.role === 'owner' ? `<div class="form" style="margin-top:12px">
-          <label>${T('المنصة', 'Platform')}<select id="lk-p"><option value="meta">${pName('meta')}</option><option value="snapchat">${pName('snapchat')}</option><option value="x">${pName('x')}</option></select></label>
+          <label>${T('المنصة', 'Platform')}<select id="lk-p"><option value="meta">${pName('meta')}</option><option value="snapchat">${pName('snapchat')}</option><option value="x">${pName('x')}</option><option value="tiktok">${pName('tiktok')}</option></select></label>
           <span id="lk-fields" style="display:contents"></span>
           <div><button class="act gold" id="lk-save" style="width:100%">${T('ربط', 'Link')}</button></div></div><div id="lk-msg" class="err" style="margin-top:6px"></div>
+          <h3 style="margin-top:18px">${T('ترويج تيك توك', 'TikTok Promote')}</h3>
+          <div class="note">${T('ترويج تيك توك ما له ربط برمجي: اكتب المبلغ المدفوع كامل (مع الضريبة) وعدد الأيام، وينزل كل يوم المبلغ ÷ الأيام في البريف والمحاسبة.', 'TikTok Promote has no API: enter the full amount paid (incl. VAT) and the days; each day gets amount ÷ days in the brief and accounting.')}</div>
+          <table style="margin-top:8px">${(keys.tiktok?.promos || []).map((p, i) => `<tr><td>${esc(p.start)}</td><td class="num">${num(p.days)} ${T('أيام', 'days')}</td><td class="num">${money(p.totalSar)}</td><td class="num">${money(p.totalSar / p.days)} / ${T('يوم', 'day')}</td><td><button class="act ghost" data-unpromo="${i}">${T('حذف', 'Delete')}</button></td></tr>`).join('') || `<tr><td class="msg">${T('ما فيه ترويج', 'No promotions')}</td></tr>`}</table>
+          <div class="form" style="margin-top:8px">
+            <label>${T('أول يوم', 'Start day')}<input id="pr-s" type="date" value="${b.day}"></label>
+            <label>${T('الأيام', 'Days')}<input id="pr-d" type="number" min="1" max="60" value="5" dir="ltr"></label>
+            <label>${T('المبلغ المدفوع (ريال)', 'Amount paid (SAR)')}<input id="pr-t" type="number" min="0" step="0.01" dir="ltr"></label>
+            <div><button class="act gold" id="pr-save" style="width:100%">${T('حفظ', 'Save')}</button></div>
+          </div><div id="pr-msg" class="err" style="margin-top:6px"></div>
           <h3 style="margin-top:18px">${T('سكربت قوقل', 'Google script')}</h3>
           <div class="note">${T('في Google Ads: الأدوات ← السكربتات ← سكربت جديد، الصق هذا، وخلّه يشتغل كل ساعة.', 'In Google Ads: Tools → Scripts → new script, paste this and schedule it hourly.')}</div>
           <textarea class="code" id="gscript" readonly></textarea>` : ''}
@@ -821,12 +838,18 @@ const views = {
       meta: [['account', T('رقم حساب الإعلانات', 'Ad account ID')], ['token', T('توكن مستخدم النظام', 'System user token')]],
       snapchat: [['account', T('رقم حساب الإعلانات', 'Ad account ID')], ['client', 'Client ID'], ['secret', 'Client secret']],
       x: [['account', T('رقم حساب الإعلانات', 'Ads account ID')], ['consumerKey', 'API key'], ['consumerSecret', 'API secret'], ['token', 'Access token'], ['tokenSecret', 'Access token secret']],
+      tiktok: [['handle', T('اسم الحساب (بدون @)', 'Username (no @)')]],
     };
     const drawFields = () => {
       const p = $('#lk-p').value;
       $('#lk-msg').textContent = p === 'snapchat' ? T('الخانة الفاضية تبقي القيمة المحفوظة، فما تحتاج تعيد لصق المفاتيح.', 'Empty fields keep the saved value, so you do not need to paste keys again.') : '';
-      $('#lk-fields').innerHTML = fields[p].map(([k, l]) => `<label>${l}<input data-lk="${k}" type="${k === 'account' ? 'text' : 'password'}" autocomplete="off" dir="ltr"></label>`).join('');
+      $('#lk-fields').innerHTML = fields[p].map(([k, l]) => `<label>${l}<input data-lk="${k}" type="${k === 'account' || k === 'handle' ? 'text' : 'password'}" autocomplete="off" dir="ltr"${k === 'handle' ? ` value="${esc(keys.tiktok?.handle || 'ksafish_sa')}"` : ''}></label>`).join('');
     };
+    $('#pr-save').onclick = async () => {
+      try { await post('ads', {promo: {start: $('#pr-s').value, days: parseInt($('#pr-d').value || 0), totalSar: parseFloat($('#pr-t').value || 0)}}); show('brief', day); }
+      catch (e) { $('#pr-msg').textContent = e.message; }
+    };
+    document.querySelectorAll('[data-unpromo]').forEach(x => x.onclick = async () => { await post('ads', {unpromo: parseInt(x.dataset.unpromo)}); show('brief', day); });
     $('#lk-p').onchange = drawFields;
     drawFields();
     $('#lk-save').onclick = async () => {
