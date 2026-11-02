@@ -369,7 +369,7 @@ class _SubscribeState extends State<_Subscribe> {
                     style: const TextStyle(color: AppColors.gold),
                   ),
                 ),
-                if (Billing.isIOS) const _Terms(),
+                if (Billing.isIOS) const SubscriptionTerms(),
               ] else ...[
                 _Plan(title: tr('شهري', 'Monthly'), price: tr('25 ريال', 'SAR 25'), note: tr('بالشهر', 'per month')),
                 const SizedBox(height: 8),
@@ -399,8 +399,8 @@ class _SubscribeState extends State<_Subscribe> {
 }
 
 /// شروط الاشتراك المتجدد وروابطها، تطلبها أبل في صفحة الاشتراك (القاعدة 3.1.2).
-class _Terms extends StatelessWidget {
-  const _Terms();
+class SubscriptionTerms extends StatelessWidget {
+  const SubscriptionTerms({super.key});
 
   static const _eula = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
   static const _privacy = 'https://hawat.id/privacy.html';

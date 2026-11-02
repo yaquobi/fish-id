@@ -24,6 +24,8 @@ void main() {
   // عمليات ميسر المزيفة: رقم العملية ← العملية.
   final payments = <String, Map<String, dynamic>>{};
   final charges = <Map<String, dynamic>>[];
+  // اشتراكات المتجر المزيفة من RevenueCat: الحساب ← الصلاحيات.
+  final store = <String, Map<String, dynamic>>{};
   Map<String, dynamic>? chargeReply;
 
   FishIdApp build({bool gateway = true}) => FishIdApp(
@@ -45,6 +47,7 @@ void main() {
           )
         : null,
     adminToken: 'secret',
+    revenueCat: (id) async => {'subscriber': {'entitlements': store[id] ?? {}}},
     notify: sent.add,
     clock: () => now,
   );
@@ -59,6 +62,7 @@ void main() {
     payments.clear();
     charges.clear();
     chargeReply = null;
+    store.clear();
     app = build();
   });
   tearDown(() => dir.deleteSync(recursive: true));
@@ -208,6 +212,51 @@ void main() {
     expect(line['grossSar'], 350);
     expect(line['feeSar'], 4.5);
     expect(line['netSar'], 345.5);
+  });
+
+  test('shop plan bought in the app: owner gets a code, staff join it, the store renews', () async {
+    const owner = 'owner-phone-000000001';
+    store[owner] = {
+      'fish_id_pro': {'product_identifier': 'fishid_shop', 'expires_date': '2026-12-02T09:00:00Z'},
+    };
+    final (s, _, _) = await call('POST', 'fishId/sync', headers: {'x-fishid-user': owner});
+    expect(s, 200);
+    var (_, me, _) = await call('GET', 'fishId/me', headers: {'x-fishid-user': owner});
+    expect(me['plan'], 'shop');
+    expect(me['remaining'], 300);
+    final code = me['shop']['code'] as String;
+    expect(ShopStore.joinPattern.hasMatch(code), isTrue);
+    expect(me['shop']['devices'], 1);
+
+    // موظف يكتب الرمز، ويسحبون من نفس الرصيد.
+    final (rs, _, _) = await call('POST', 'fishId/redeem', body: {'code': code}, headers: {'x-fishid-user': dev1});
+    expect(rs, 200);
+    await call('POST', 'fishId/identify', body: {'image': jpeg, 'mediaType': 'image/jpeg'}, headers: {'x-fishid-user': dev1});
+    (_, me, _) = await call('GET', 'fishId/me', headers: {'x-fishid-user': owner});
+    expect(me['remaining'], 299);
+    expect(me['shop']['devices'], 2);
+    final (_, staff, _) = await call('GET', 'fishId/me', headers: {'x-fishid-user': dev1});
+    expect(staff['shop'], isNull, reason: 'only the owner sees the code');
+    expect(accounts.paying(now)['shop'], 1);
+
+    // المتجر جدّد: الموظف يمشي مع التاريخ الجديد. والتجديد التلقائي حقنا ما يلمسه.
+    store[owner] = {
+      'fish_id_pro': {'product_identifier': 'fishid_shop', 'expires_date': '2027-01-02T09:00:00Z'},
+    };
+    await call('POST', 'fishId/sync', headers: {'x-fishid-user': owner});
+    expect(accounts.view(dev1, now)['until'], startsWith('2027-01-02'));
+    expect(shops.list(), hasLength(1));
+    now = DateTime.utc(2027, 1, 1, 12);
+    await app.renewShops(now);
+    expect(charges, isEmpty);
+    expect(sent.where((t) => t.contains('⏰')), isEmpty);
+
+    // انتهى من المتجر: كلهم يرجعون مجاني.
+    now = DateTime.utc(2027, 1, 3);
+    store.remove(owner);
+    await call('POST', 'fishId/sync', headers: {'x-fishid-user': owner});
+    expect(accounts.view(owner, now)['active'], false);
+    expect(accounts.view(dev1, now)['active'], false);
   });
 
   test('device limit', () async {

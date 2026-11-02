@@ -201,10 +201,15 @@ class FishIdApp {
         final store = accounts;
         if (user == null || store == null) return _json(200, {'plan': 'free', 'remaining': null});
         final v = store.view(user, _clock());
+        final sid = shops?.shopOf(user);
+        final shop = sid == null ? null : shops!.byId(sid);
         return _json(200, {
           'plan': v['from'] == 'owner' ? 'owner' : (v['active'] == true ? v['plan'] : 'free'),
           'until': v['until'],
           'remaining': v['remaining'],
+          // صاحب المحل يشوف رمز محله في التطبيق عشان يعطيه موظفينه.
+          if (shop != null && shop['owner'] == user)
+            'shop': {'code': shop['join'], 'devices': (shop['devices'] as List).length, 'maxDevices': _shopDevices, 'used': ShopStore.used(shop, _clock()), 'cap': _shopCap},
         });
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
@@ -578,7 +583,7 @@ class FishIdApp {
           if (parts.length == 2 && store.find(id) == null) continue;
           // باقة يدوية من الأدمن تفك الجهاز من محله.
           if (b['plan'] != null || extend != null) {
-            if (shops?.shopOf(id) case final sid?) await _unlink(sid, id);
+            if (shops?.shopOf(id) case final sid? when shops!.byId(sid)?['owner'] != id) await _unlink(sid, id);
           }
           DateTime? until = days == null ? null : now.add(Duration(days: days));
           String? plan = b['plan'] as String?;
@@ -963,7 +968,14 @@ class FishIdApp {
     }
     if (until != null) {
       final plan = product.contains('shop') ? 'shop' : (product.contains('year') || product.contains('annual') ? 'yearly' : 'monthly');
-      await store.update(user, now, plan: plan, until: until, source: 'store');
+      // باقة المحلات من المتجر: سجل محل برمز للموظفين، وكل أجهزته على رصيد واحد.
+      String? pool;
+      if (plan == 'shop' && shops != null) {
+        final other = shops!.shopOf(user);
+        if (other != null && shops!.byId(other)?['owner'] != user) await _unlink(other, user);
+        pool = await shops!.fromStore(user, until, now);
+      }
+      await store.update(user, now, plan: plan, until: until, source: 'store', pool: pool);
     } else if (store.find(user)?['source'] == 'store') {
       await store.update(user, now, plan: 'free');
     }
@@ -1200,6 +1212,9 @@ class FishIdApp {
   Future<void> _unlink(String id, String account) async {
     final shop = shops!.byId(id);
     if (shop == null) return;
+    if (shop['owner'] == account && accounts?.find(account)?['source'] == 'store') {
+      throw const FishIdError('bad_request', 'هذا جوال صاحب الاشتراك، ما ينشال');
+    }
     shop['devices'] = [...(shop['devices'] as List).where((d) => d != account)];
     await shops!.save();
     final a = accounts?.find(account);
@@ -1381,7 +1396,8 @@ class FishIdApp {
     for (final e in store.entries.toList()) {
       final (id, s) = (e.key, e.value);
       final until = DateTime.tryParse('${s['until']}');
-      if (until == null || s['stopped'] == true) continue;
+      // اشتراكات المتجر يجددها المتجر نفسه.
+      if (until == null || s['stopped'] == true || s['store'] == true) continue;
       final left = until.difference(now);
       // بعد 3 أيام من الانتهاء نوقف المحاولة.
       if (left < const Duration(days: -3) || left > const Duration(days: 3)) continue;
