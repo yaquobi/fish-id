@@ -447,7 +447,15 @@ class FishIdApp {
         } else if (b['unlink'] is String && role == 'owner') {
           await ads!.keys.remove(b['unlink'] as String);
         } else if (b['pull'] == true) {
-          await pullAds(now);
+          final d = '${b['day'] ?? ''}';
+          final today = SiteStats.dayOf(now);
+          // يوم قديم (من الأيام اللي قبل الربط): يسحب أرقام ذاك اليوم بس، لين 90 يوم ورا.
+          if (AdStore.dayPattern.hasMatch(d) && d.compareTo(today) < 0 &&
+              d.compareTo(SiteStats.dayOf(now.subtract(const Duration(days: 90)))) >= 0) {
+            await ads!.pull(d, usdToSar: _usdToSar, now: now);
+          } else {
+            await pullAds(now);
+          }
         } else {
           throw const FishIdError('bad_request', 'الطلب غير صالح');
         }
