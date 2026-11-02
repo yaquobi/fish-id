@@ -283,7 +283,9 @@ class _Menu extends StatelessWidget {
   const _Menu();
 
   static const _privacy = 'https://hawat.id/privacy.html';
-  static const _email = 'yaquobi@hawat.sa';
+  static const _email = 'info@hawat.id';
+  static const _whatsapp = 'https://wa.me/966595233393';
+  static const _shop = 'https://hawat.id/shop/';
 
   @override
   Widget build(BuildContext context) => SafeArea(
@@ -317,7 +319,12 @@ class _Menu extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.badge_outlined),
             title: Text(tr('رقم حسابك', 'Your account ID')),
-            subtitle: Text(tr('انسخه وأرسله لنا لو تبي نحذف بياناتك', 'Copy it and email us to delete your data')),
+            subtitle: Text(
+              tr(
+                'انسخه لصاحب المحل إذا محلك مشترك، أو أرسله لنا لو تبي نحذف بياناتك',
+                'Copy it for your shop owner if your shop is subscribed, or send it to us to delete your data',
+              ),
+            ),
             onTap: () async {
               final messenger = ScaffoldMessenger.of(context);
               final id = await FishIdApi.userId();
@@ -331,9 +338,23 @@ class _Menu extends StatelessWidget {
             onTap: () =>
                 launchUrl(Uri.parse(L10n.en ? '$_privacy#en' : _privacy), mode: LaunchMode.externalApplication),
           ),
+          // باقة المحلات تنباع من الموقع بس، فالرابط على أندرويد. آيفون ما فيه رابط شراء خارج المتجر (قواعد Apple 3.1.1).
+          if (Theme.of(context).platform != TargetPlatform.iOS)
+            ListTile(
+              leading: const Icon(Icons.storefront_outlined),
+              title: Text(tr('للمحلات والمطاعم', 'For shops and restaurants')),
+              subtitle: Text(tr('اشترك محلك وأضف جوالات موظفينك', 'Subscribe your shop and add staff phones')),
+              onTap: () => launchUrl(Uri.parse(_shop), mode: LaunchMode.externalApplication),
+            ),
+          ListTile(
+            leading: const Icon(Icons.chat_outlined),
+            title: Text(tr('كلّمنا واتساب', 'WhatsApp us')),
+            subtitle: const Text('+966 59 523 3393', textDirection: TextDirection.ltr),
+            onTap: () => launchUrl(Uri.parse(_whatsapp), mode: LaunchMode.externalApplication),
+          ),
           ListTile(
             leading: const Icon(Icons.mail_outline),
-            title: Text(tr('تواصل معنا', 'Contact us')),
+            title: Text(tr('راسلنا', 'Email us')),
             subtitle: const Text(_email, textDirection: TextDirection.ltr),
             onTap: () => launchUrl(Uri.parse('mailto:$_email?subject=FISH%20ID')),
           ),
@@ -388,7 +409,7 @@ class _CodeDialogState extends State<_CodeDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text(tr('رمز الهدية', 'Gift code')),
+    title: Text(tr('رمز الهدية أو المحل', 'Gift or shop code')),
     content: TextField(
       controller: _code,
       autofocus: true,

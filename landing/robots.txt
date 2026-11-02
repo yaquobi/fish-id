@@ -1,6 +1,7 @@
 # FISH ID (hawat.id). Search engines and AI assistants are welcome to read and cite this site.
 User-agent: *
 Allow: /
+Allow: /api/shop$
 Disallow: /api/
 
 # AI search and assistants

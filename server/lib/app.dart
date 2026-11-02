@@ -14,6 +14,8 @@ import 'collect_page.dart';
 import 'collectors.dart';
 import 'contrib.dart';
 import 'ledger.dart';
+import 'shop_page.dart';
+import 'shops.dart';
 import 'site.dart';
 import 'staff.dart';
 import 'waitlist.dart';
@@ -39,6 +41,7 @@ typedef Notify = void Function(String text);
 /// POST track من صفحة hawat.id: زيارة أو ضغطة ([site])، وتطلع في الملخص اليومي.
 /// POST waitlist من نفس الصفحة: {"contact", "consent": true} إيميل أو جوال لقائمة «بلّغني بالإطلاق» ([waitlist]).
 /// collect?k=... صفحة المصوّرين، و collect/me و collect/join و collect/upload بمفتاح المصوّر في `x-collector` ([collectors]).
+/// shop صفحة اشتراك المحلات ولوحة المحل (بمفتاحه في `x-shop`)، و shop/paid رجوع ميسر بعد الدفع، و moyasar أحداث ميسر ([shops]، [gateway]).
 /// admin/... لوحة الأدمن ([adminToken])، و revenuecat يستقبل أحداث الاشتراك. الحدث مجرد تنبيه: الخادم ما يصدّق
 /// محتواه، ويسأل RevenueCat ([revenueCat]) عن الاشتراك الحقيقي، فما نحتاج سر مشترك.
 class FishIdApp {
@@ -58,10 +61,23 @@ class FishIdApp {
     this.site,
     this.waitlist,
     this.ads,
+    this.shops,
+    this.gateway,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
     ledger?.ads = ads;
+    final s = shops;
+    if (s != null && accounts != null) {
+      accounts!.pool = s.byId;
+      accounts!.savePool = s.save;
+    }
   }
+
+  /// المحلات المشتركة من الموقع، وأجهزتها تسحب من رصيد واحد.
+  final ShopStore? shops;
+
+  /// بوابة الدفع للمحلات. بدونها الصفحة تسجّل الطلب وتحوّل للواتساب والتحويل البنكي.
+  final Gateway? gateway;
 
   final Identify? identify;
   final ContribStore? contrib;
@@ -104,7 +120,7 @@ class FishIdApp {
   static const _cors = {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'POST, GET, OPTIONS',
-    'access-control-allow-headers': 'content-type, x-fishid-user, x-fishid-lang, x-collector',
+    'access-control-allow-headers': 'content-type, x-fishid-user, x-fishid-lang, x-collector, x-shop',
     'access-control-expose-headers': 'x-fishid-remaining',
   };
 
@@ -206,6 +222,10 @@ class FishIdApp {
         } on Object {
           throw const FishIdError('bad_request', 'الطلب غير صالح');
         }
+        if (shops?.byJoin(code) case (final id, final shop)) {
+          await _link(id, shop, user);
+          return _json(200, {'remaining': store.remaining(user, _clock()), 'shop': shop['name']}, headers: _remaining(user));
+        }
         final v = await store.redeem(user, code, _clock());
         return _json(200, {'remaining': v['remaining']}, headers: _remaining(user));
       } on FishIdError catch (e) {
@@ -261,12 +281,28 @@ class FishIdApp {
         stderr.writeln('snap connect: $e');
         msg = 'تعذّر الربط، حاول مرة ثانية';
       }
-      return Response.ok('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;padding:40px;text-align:center" dir="rtl"><h2>${const HtmlEscape().convert(msg)}</h2><a href="/api/admin#brief">لوحة الإدارة</a>',
-          headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'});
+      return Response.ok(
+        '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;padding:40px;text-align:center" dir="rtl"><h2>${const HtmlEscape().convert(msg)}</h2><a href="/api/admin#brief">لوحة الإدارة</a>',
+        headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'},
+      );
     }
     if (path == 'admin' || path.startsWith('admin/')) {
       try {
         return await _admin(req, path);
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (path == 'shop' || path.startsWith('shop/')) {
+      try {
+        return await _shop(req, path);
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (req.method == 'POST' && path == 'moyasar') {
+      try {
+        return await _moyasarHook(req);
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
@@ -459,8 +495,7 @@ class FishIdApp {
           final d = '${b['day'] ?? ''}';
           final today = SiteStats.dayOf(now);
           // يوم قديم (من الأيام اللي قبل الربط): يسحب أرقام ذاك اليوم بس، لين 90 يوم ورا.
-          if (AdStore.dayPattern.hasMatch(d) && d.compareTo(today) < 0 &&
-              d.compareTo(SiteStats.dayOf(now.subtract(const Duration(days: 90)))) >= 0) {
+          if (AdStore.dayPattern.hasMatch(d) && d.compareTo(today) < 0 && d.compareTo(SiteStats.dayOf(now.subtract(const Duration(days: 90)))) >= 0) {
             await ads!.pull(d, usdToSar: _usdToSar, now: now);
           } else {
             await pullAds(now);
@@ -541,6 +576,10 @@ class FishIdApp {
         final out = <Map<String, dynamic>>[];
         for (final id in ids) {
           if (parts.length == 2 && store.find(id) == null) continue;
+          // باقة يدوية من الأدمن تفك الجهاز من محله.
+          if (b['plan'] != null || extend != null) {
+            if (shops?.shopOf(id) case final sid?) await _unlink(sid, id);
+          }
           DateTime? until = days == null ? null : now.add(Duration(days: days));
           String? plan = b['plan'] as String?;
           // التمديد يضيف أيام على تاريخ الانتهاء الحالي (أو من اليوم إذا انتهى) بنفس الباقة.
@@ -587,6 +626,42 @@ class FishIdApp {
         final f = book!.file(parts[2], parts[3]);
         if (f == null) break;
         return Response.ok(await f.readAsBytes(), headers: {'content-type': 'image/jpeg', 'cache-control': 'private, max-age=86400'});
+      case ('GET', 'shops') when shops != null:
+        return _json(200, {
+          'ready': gateway != null,
+          'test': gateway?.test ?? false,
+          'items': [for (final s in shops!.list()) _shopView(s['id'] as String, s, now, admin: true)],
+        });
+      case ('POST', 'shops') when shops != null:
+        final b = await body();
+        final id = '${b['id'] ?? ''}';
+        final shop = shops!.byId(id);
+        if (shop == null) throw const FishIdError('not_found', 'المحل غير موجود', status: 404);
+        final by = '${who['name'] ?? ''}'.isEmpty ? '${who['role']}' : '${who['name']}';
+        if (b['transfer'] is num) {
+          // تحويل بنكي: يمد شهر ويسجّل الدخل في المحاسبة كقيد يدوي.
+          final sar = (b['transfer'] as num).toDouble();
+          if (sar <= 0 || sar > 100000) throw const FishIdError('bad_request', 'اكتب المبلغ اللي وصل');
+          final pid = 'transfer_${now.microsecondsSinceEpoch.toRadixString(36)}';
+          final until = await shops!.paid(id, {'id': pid, 'at': now.toUtc().toIso8601String(), 'sar': sar, 'method': 'transfer', 'by': by}, now);
+          await ledger?.add({
+            'kind': 'income',
+            'provider': 'تحويل بنكي',
+            'label': 'باقة محل: ${shop['name']}',
+            'amount': sar,
+            'date': now.toUtc().toIso8601String().substring(0, 10),
+            'note': 'حتى ${until.toIso8601String().substring(0, 10)}',
+          }, now);
+        } else if (b['stopped'] is bool) {
+          shop['stopped'] = b['stopped'];
+          await shops!.save();
+        } else if (b['autoRenew'] is bool) {
+          shop['autoRenew'] = b['autoRenew'];
+          await shops!.save();
+        } else {
+          throw const FishIdError('bad_request', 'الطلب غير صالح');
+        }
+        return _json(200, _shopView(id, shop, now, admin: true));
       case ('GET', 'collectors') when collectors != null:
         return _json(200, [
           for (final c in collectors!.list()) {...c, 'today': collectors!.today(c, now)},
@@ -803,7 +878,9 @@ class FishIdApp {
       final g = tt['gained'] as int?;
       lines
         ..add('')
-        ..add('🎵 تيك توك: ${n(tt['followers'])} متابع${g == null ? '' : ' (${g >= 0 ? '+' : ''}$g اليوم)'} · باقي ${n(((tt['goal'] as int) - (tt['followers'] as int)).clamp(0, 1 << 30))} على ${n(tt['goal'])} · ${n(tt['likes'])} لايك');
+        ..add(
+          '🎵 تيك توك: ${n(tt['followers'])} متابع${g == null ? '' : ' (${g >= 0 ? '+' : ''}$g اليوم)'} · باقي ${n(((tt['goal'] as int) - (tt['followers'] as int)).clamp(0, 1 << 30))} على ${n(tt['goal'])} · ${n(tt['likes'])} لايك',
+        );
     }
     final web = b['site'] as Map;
     final src = ((web['src'] as Map).cast<String, int>().entries.toList()..sort((a, b) => b.value.compareTo(a.value))).take(5);
@@ -1056,6 +1133,299 @@ class FishIdApp {
         return _json(200, {'ok': true, 'id': id, 'fish': c['fish'], 'today': store.today(c, now)});
     }
     throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+  }
+
+  // ───────────── المحلات ─────────────
+
+  int get _shopPrice => (accounts?.settings['priceShop'] as num?)?.round() ?? 350;
+  int get _shopCap => (accounts?.settings['shopCap'] as num?)?.round() ?? 300;
+  int get _shopDevices => (accounts?.settings['shopDevices'] as num?)?.round() ?? 5;
+
+  /// بيانات المحل للوحته (وللأدمن مع المفتاح والجوال).
+  Map<String, dynamic> _shopView(String id, Map<String, dynamic> s, DateTime now, {bool admin = false}) {
+    final store = accounts;
+    return {
+      'id': id,
+      'name': s['name'],
+      'kind': s['kind'],
+      'city': s['city'],
+      'phone': s['phone'],
+      'email': s['email'],
+      'cr': s['cr'],
+      'join': s['join'],
+      'created': s['created'],
+      'until': s['until'],
+      'active': ShopStore.active(s, now),
+      'stopped': s['stopped'] == true,
+      'used': ShopStore.used(s, now),
+      'cap': _shopCap,
+      'maxDevices': _shopDevices,
+      'price': _shopPrice,
+      'autoRenew': s['autoRenew'] == true,
+      'card': s['card'],
+      'canRenew': s['token'] != null,
+      'renewError': s['renewError'],
+      'devices': [
+        for (final d in (s['devices'] as List).cast<String>()) {'id': d, 'lastScan': store?.find(d)?['lastScan'], 'scans': store?.find(d)?['scans'] ?? 0},
+      ],
+      'payments': [
+        for (final p in (s['payments'] as List).reversed)
+          {
+            for (final k in const ['id', 'at', 'sar', 'method', 'card', 'until', 'kind']) k: (p as Map)[k],
+          },
+      ],
+      if (admin) 'key': s['key'],
+    };
+  }
+
+  /// يربط جهاز (رقم حساب التطبيق) بالمحل، فيصير على باقة المحل ويسحب من رصيده.
+  Future<void> _link(String id, Map<String, dynamic> shop, String account) async {
+    final store = accounts;
+    if (store == null) throw const FishIdError('unavailable', 'الخدمة مو متاحة الحين', status: 503);
+    if (!AccountStore.idPattern.hasMatch(account)) throw const FishIdError('bad_request', 'رقم الحساب غير صحيح. انسخه من قائمة التطبيق «رقم حسابك»');
+    final devices = (shop['devices'] as List).cast<String>();
+    if (devices.contains(account)) return;
+    final other = shops!.shopOf(account);
+    if (other != null) throw const FishIdError('shop_taken', 'هذا الجوال مربوط بمحل ثاني. يفكّه صاحب المحل الأول من لوحته');
+    if (devices.length >= _shopDevices) throw FishIdError('shop_full', 'وصلت الحد ($_shopDevices جوالات). شيل جهاز قديم وأضف الجديد');
+    final now = _clock();
+    final a = store.find(account);
+    if (a != null && a['owner'] == true) throw const FishIdError('bad_request', 'هذا حساب المالك');
+    shop['devices'] = [...devices, account];
+    await shops!.save();
+    await store.update(account, now, plan: 'shop', source: 'shop', pool: id, by: 'shop:${shop['name']}');
+    _tell('shopdev:$id', '📱 المحل «${shop['name']}» ربط جهاز. الأجهزة: ${(shop['devices'] as List).length}', every: const Duration(minutes: 30));
+  }
+
+  Future<void> _unlink(String id, String account) async {
+    final shop = shops!.byId(id);
+    if (shop == null) return;
+    shop['devices'] = [...(shop['devices'] as List).where((d) => d != account)];
+    await shops!.save();
+    final a = accounts?.find(account);
+    if (a != null && a['pool'] == id) await accounts!.update(account, _clock(), plan: 'free', pool: '', by: 'shop:${shop['name']}');
+  }
+
+  /// يتأكد من عملية الدفع عند ميسر نفسه ويفعّل المحل. يرجّع ok أو dup أو سبب الرفض.
+  /// ما نصدّق أي شيء من المتصفح أو من الحدث: نجيب العملية بالمفتاح السري ونتأكد إنها مدفوعة بالمبلغ والعملة ورقم المحل.
+  Future<String> _applyPayment(String paymentId, {String? expectShop}) async {
+    final g = gateway, store = shops;
+    if (g == null || store == null) return 'off';
+    if (!RegExp(r'^[0-9a-fA-F-]{20,64}$').hasMatch(paymentId)) return 'bad_id';
+    final p = await g.fetch(paymentId);
+    if (p == null) return 'unreachable';
+    final meta = p['metadata'] is Map ? p['metadata'] as Map : const {};
+    final id = '${meta['shop'] ?? ''}';
+    final shop = store.byId(id);
+    if (shop == null || (expectShop != null && expectShop != id)) return 'wrong_shop';
+    if (p['status'] != 'paid') {
+      return 'not_paid:${(p['source'] is Map ? (p['source'] as Map)['message'] : null) ?? p['status']}';
+    }
+    if (p['currency'] != 'SAR' || p['amount'] != _shopPrice * 100) return 'wrong_amount';
+    if (ShopStore.hasPayment(shop, paymentId)) return 'dup';
+    final now = _clock();
+    final src = p['source'] is Map ? (p['source'] as Map).cast<String, dynamic>() : <String, dynamic>{};
+    final type = '${src['type'] ?? ''}';
+    final number = '${src['number'] ?? ''}';
+    final card = type == 'creditcard' ? '${src['company'] ?? 'بطاقة'} •••• ${number.length >= 4 ? number.substring(number.length - 4) : ''}' : type;
+    final token = '${src['token'] ?? ''}';
+    final renewal = (shop['payments'] as List).isNotEmpty;
+    final until = await store.paid(
+      id,
+      {
+        'id': paymentId,
+        'at': now.toUtc().toIso8601String(),
+        'sar': (p['amount'] as num) / 100,
+        'method': type,
+        'card': card,
+        'kind': meta['renew'] == 'yes' ? 'auto' : (renewal ? 'renew' : 'first'),
+      },
+      now,
+      token: token.startsWith('token_') ? token : null,
+      card: token.startsWith('token_') ? card : null,
+    );
+    await ledger?.recordShop(p, shop: id, test: g.test, renewal: renewal, now: now);
+    final test = g.test ? ' (تجربة)' : '';
+    _tell(
+      'shoppay:$paymentId',
+      '${renewal ? '🔁 تجديد باقة محل' : '🏪 محل جديد اشترك أونلاين'}$test: ${shop['name']} (${shop['city']}) · $_shopPrice ر.س\n'
+          'الجوال: ${shop['phone']} · ينتهي ${until.toIso8601String().substring(0, 10)}',
+    );
+    return 'ok';
+  }
+
+  int _shopFails = 0;
+  int _shopMinute = 0;
+
+  /// صفحة المحلات ولوحة كل محل.
+  Future<Response> _shop(Request req, String path) async {
+    final store = shops;
+    if (store == null || accounts == null) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+    const html = {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer'};
+    if (req.method == 'GET' && path == 'shop') return Response.ok(shopPage, headers: html);
+    final now = _clock();
+    final q = req.url.queryParameters;
+    if (req.method == 'GET' && path == 'shop/config') {
+      return _json(200, {
+        'price': _shopPrice,
+        'cap': _shopCap,
+        'devices': _shopDevices,
+        'pay': gateway == null ? null : {'key': gateway!.publishableKey, 'methods': gateway!.methods, 'test': gateway!.test},
+      });
+    }
+    // ميسر يرجّع المتصفح هنا بعد الدفع (أو بعد 3D Secure) ومعه رقم العملية.
+    if (req.method == 'GET' && path == 'shop/paid') {
+      final key = q['k'] ?? '';
+      final found = store.byKey(key);
+      var result = 'bad';
+      if (found != null) {
+        try {
+          result = await _applyPayment(q['id'] ?? '', expectShop: found.$1);
+        } on Object catch (e) {
+          stderr.writeln('shop paid: $e');
+          result = 'unreachable';
+        }
+      }
+      final ok = result == 'ok' || result == 'dup';
+      final msg = result.startsWith('not_paid:') ? result.substring(9) : (ok ? '' : result);
+      final to =
+          '/api/shop?k=${Uri.encodeQueryComponent(key)}&r=${ok ? 'ok' : 'fail'}${msg.isEmpty ? '' : '&m=${Uri.encodeQueryComponent(msg.length > 120 ? msg.substring(0, 120) : msg)}'}';
+      return Response(303, headers: {'location': to, 'cache-control': 'no-store', 'referrer-policy': 'no-referrer'});
+    }
+    final minute = now.millisecondsSinceEpoch ~/ 60000;
+    if (minute != _shopMinute) {
+      _shopMinute = minute;
+      _shopFails = 0;
+    }
+    if (_shopFails >= 20) throw const FishIdError('busy', 'محاولات كثيرة، حاول بعد دقيقة', status: 429);
+    Future<Map> body() async {
+      try {
+        final text = await req.readAsString();
+        if (text.length > 4000) throw const FormatException();
+        return jsonDecode(text) as Map;
+      } on Object {
+        throw const FishIdError('bad_request', 'الطلب غير صالح');
+      }
+    }
+
+    if (req.method == 'POST' && path == 'shop/start') {
+      // كل تسجيل يحسب من حد الدقيقة، عشان ما أحد يغرق القائمة.
+      _shopFails++;
+      final b = await body();
+      if (b['consent'] != true) throw const FishIdError('contrib_consent', 'لازم توافق على الشروط');
+      final shop = await store.create(b, now);
+      _tell(
+        'shopnew:${shop['id']}',
+        '📝 محل سجّل في باقة المحلات${gateway == null ? ' (الدفع الإلكتروني مو مفعّل، كلّمه للتحويل)' : ' وراح يدفع'}: ${shop['name']} · ${ShopStore.kindNames[shop['kind']]} · ${shop['city']}\n'
+            'الجوال: ${shop['phone']}',
+      );
+      return _json(200, {'key': shop['key']});
+    }
+    final found = store.byKey(req.headers['x-shop'] ?? '');
+    if (found == null) {
+      _shopFails++;
+      throw const FishIdError('shop_key', 'رابط لوحة المحل غير صالح. كلّمنا واتساب ونرسل لك الرابط', status: 401);
+    }
+    final (id, shop) = found;
+    switch ((req.method, path)) {
+      case ('GET', 'shop/me'):
+        return _json(200, _shopView(id, shop, now));
+      case ('POST', 'shop/devices'):
+        final b = await body();
+        if (b['add'] is String) await _link(id, shop, (b['add'] as String).trim());
+        if (b['remove'] is String) await _unlink(id, b['remove'] as String);
+        return _json(200, _shopView(id, shop, now));
+      case ('POST', 'shop/settings'):
+        final b = await body();
+        if (b['autoRenew'] is bool) shop['autoRenew'] = b['autoRenew'];
+        if (b['forgetCard'] == true) {
+          shop.remove('token');
+          shop.remove('card');
+        }
+        await store.save();
+        return _json(200, _shopView(id, shop, now));
+      case ('POST', 'shop/check'):
+        // الصفحة تبلّغ عن عملية بعد الدفع مباشرة (Apple Pay ما يرجع على رابط)، ونتأكد منها عند ميسر.
+        final b = await body();
+        final r = await _applyPayment('${b['id'] ?? ''}', expectShop: id);
+        return _json(200, {'result': r, ..._shopView(id, shop, now)});
+    }
+    throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+  }
+
+  /// أحداث ميسر (payment_paid وغيرها). نتأكد من الرمز السري إذا مضبوط، وبعدها نجيب العملية من ميسر نفسه.
+  Future<Response> _moyasarHook(Request req) async {
+    final g = gateway;
+    if (g == null) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+    final Map b;
+    try {
+      b = jsonDecode(await req.readAsString()) as Map;
+    } on Object {
+      throw const FishIdError('bad_request', 'الطلب غير صالح');
+    }
+    if (g.webhookSecret.isNotEmpty && !_same('${b['secret_token'] ?? ''}', g.webhookSecret)) {
+      throw const FishIdError('unauthorized', 'الرمز غير صحيح', status: 401);
+    }
+    final data = b['data'] is Map ? b['data'] as Map : const {};
+    if ('${b['type']}' == 'payment_paid' && data['id'] is String) {
+      final r = await _applyPayment(data['id'] as String);
+      if (r != 'ok' && r != 'dup') stderr.writeln('moyasar hook ${data['id']}: $r');
+    }
+    return _json(200, {'ok': true});
+  }
+
+  /// يمر على المحلات كل ساعة: يجدد بالبطاقة المحفوظة قبل الانتهاء بيوم، ويذكّر المالك بالمحلات اللي بتنتهي بدون تجديد.
+  Future<void> renewShops(DateTime now) async {
+    final store = shops, g = gateway;
+    if (store == null) return;
+    for (final e in store.entries.toList()) {
+      final (id, s) = (e.key, e.value);
+      final until = DateTime.tryParse('${s['until']}');
+      if (until == null || s['stopped'] == true) continue;
+      final left = until.difference(now);
+      // بعد 3 أيام من الانتهاء نوقف المحاولة.
+      if (left < const Duration(days: -3) || left > const Duration(days: 3)) continue;
+      final canCharge = g != null && s['autoRenew'] == true && s['token'] is String;
+      if (canCharge && left < const Duration(hours: 24)) {
+        final last = DateTime.tryParse('${s['renewAt']}');
+        final tries = s['renewTries'] as int? ?? 0;
+        if (tries >= 4 || (last != null && now.difference(last) < const Duration(hours: 6))) continue;
+        s['renewAt'] = now.toUtc().toIso8601String();
+        s['renewTries'] = tries + 1;
+        await store.save();
+        Map<String, dynamic>? p;
+        try {
+          p = await g.charge({
+            'amount': _shopPrice * 100,
+            'currency': 'SAR',
+            'description': 'FISH ID - باقة المحلات - ${s['name']}',
+            'callback_url': 'https://hawat.id/api/shop/paid?k=${s['key']}',
+            'source': {'type': 'token', 'token': s['token']},
+            'metadata': {'shop': id, 'renew': 'yes'},
+          });
+        } on Object catch (err) {
+          stderr.writeln('shop renew $id: $err');
+        }
+        final pid = p?['id'];
+        final r = p?['status'] == 'paid' && pid is String ? await _applyPayment(pid) : 'failed';
+        if (r == 'ok' || r == 'dup') continue;
+        final why = '${(p?['source'] is Map ? (p!['source'] as Map)['message'] : null) ?? p?['message'] ?? p?['status'] ?? 'ما رد ميسر'}';
+        s['renewError'] = why;
+        await store.save();
+        _tell(
+          'shoprenew:$id:${s['renewTries']}',
+          '⚠️ ما قدرنا نجدد باقة المحل «${s['name']}» تلقائيًا (محاولة ${s['renewTries']} من 4): $why\n'
+              'كلّمه يجدد من لوحته: ${s['phone']}',
+        );
+        continue;
+      }
+      // بدون تجديد تلقائي: تذكير للمالك مرة وحدة قبل الانتهاء بـ 3 أيام، عشان يكلّمه.
+      if (!canCharge && s['reminded'] != s['until'] && left > Duration.zero) {
+        s['reminded'] = s['until'];
+        await store.save();
+        _tell('shopremind:$id', '⏰ باقة المحل «${s['name']}» تنتهي ${'${s['until']}'.substring(0, 10)} وما عنده تجديد تلقائي. كلّمه: ${s['phone']}');
+      }
+    }
   }
 
   void _limit() {
