@@ -19,7 +19,7 @@ class ShopScreen extends StatefulWidget {
 }
 
 class _ShopScreenState extends State<ShopScreen> {
-  late final Future<Package?> _package = Billing.shopPackage();
+  Future<Package?> _package = Billing.shopPackage();
   bool _busy = false;
 
   @override
@@ -129,12 +129,20 @@ class _ShopScreenState extends State<ShopScreen> {
                   ),
                 ),
                 if (Billing.isIOS) const SubscriptionTerms(),
-              ] else
+              ] else ...[
                 Text(
-                  tr('الاشتراك من المتجر يتفعّل قريب.', 'Store subscription is coming soon.'),
+                  tr(
+                    'ما قدرنا نوصل للمتجر الحين. تأكد من الإنترنت وحاول مرة ثانية.',
+                    'Could not reach the store right now. Check your connection and try again.',
+                  ),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.onNavyMuted),
+                  style: const TextStyle(color: AppColors.onNavyMuted, height: 1.5),
                 ),
+                TextButton(
+                  onPressed: () => setState(() => _package = Billing.shopPackage()),
+                  child: Text(tr('حاول مرة ثانية', 'Try again'), style: const TextStyle(color: AppColors.gold)),
+                ),
+              ],
             ],
           );
         },
