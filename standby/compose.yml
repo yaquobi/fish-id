@@ -1,0 +1,47 @@
+# الموسوعة على سيرفر جوجل (نسخة احتياطية). تنشغل من go-live.sh أو test.sh بس.
+services:
+  ksfish-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ksfish
+      POSTGRES_USER: ksfish
+      POSTGRES_PASSWORD: ${KSFISH_DB_PASSWORD:?}
+    volumes:
+      - ksfish_db:/var/lib/postgresql/data
+      - /opt/standby/ksfish/db:/dump:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ksfish -d ksfish"]
+      interval: 3s
+      retries: 30
+  ksfish-web:
+    image: serversideup/php:8.4-fpm-nginx
+    restart: unless-stopped
+    environment:
+      DB_HOST: ksfish-db
+      DB_PORT: "5432"
+      DB_USERNAME: ksfish
+      DB_PASSWORD: ${KSFISH_DB_PASSWORD:?}
+      PHP_OPCACHE_ENABLE: "1"
+      PHP_MEMORY_LIMIT: 512M
+    volumes:
+      - /opt/standby/ksfish/app:/var/www/html
+    ports:
+      - "127.0.0.1:18500:8080"
+    depends_on:
+      ksfish-db:
+        condition: service_healthy
+  front:
+    image: caddy:2
+    restart: unless-stopped
+    profiles: [live]
+    network_mode: host
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/fish-id/landing:/srv/landing:ro
+      - front_data:/data
+      - front_config:/config
+volumes:
+  ksfish_db:
+  front_data:
+  front_config:
