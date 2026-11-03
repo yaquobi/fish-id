@@ -439,13 +439,18 @@ class _Photos extends StatelessWidget {
               ],
             ),
           if (onAdd != null)
-            InkWell(
-              onTap: onAdd,
-              child: Container(
-                width: 84,
-                height: 84,
-                decoration: BoxDecoration(border: Border.all(color: AppColors.line)),
-                child: const Icon(Icons.add_a_photo_outlined, color: AppColors.navy),
+            Semantics(
+              button: true,
+              label: tr('أضف صورة', 'Add photo'),
+              excludeSemantics: true,
+              child: InkWell(
+                onTap: onAdd,
+                child: Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(border: Border.all(color: AppColors.line)),
+                  child: const Icon(Icons.add_a_photo_outlined, color: AppColors.navy),
+                ),
               ),
             ),
         ],

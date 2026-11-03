@@ -22,8 +22,8 @@ abstract final class Reports {
   static pw.ThemeData? _cached;
 
   static Future<pw.ThemeData> _theme() async => _cached ??= pw.ThemeData.withFont(
-    base: pw.Font.ttf(await rootBundle.load('assets/fonts/Tajawal-Regular.ttf')),
-    bold: pw.Font.ttf(await rootBundle.load('assets/fonts/Tajawal-Bold.ttf')),
+    base: pw.Font.ttf(await rootBundle.load('assets/pdf/Tajawal-Regular-pdf.ttf')),
+    bold: pw.Font.ttf(await rootBundle.load('assets/pdf/Tajawal-Bold-pdf.ttf')),
   );
 
   static pw.TextDirection get _dir => L10n.en ? pw.TextDirection.ltr : pw.TextDirection.rtl;
@@ -283,11 +283,21 @@ abstract final class Reports {
     final doc = pw.Document(theme: theme, title: tr('كشف حراج', 'Auction sheet'), author: 'FISH ID');
     final t = at ?? DateTime.now();
     final number = 'H-${when(t).replaceAll(RegExp(r'[^0-9]'), '').substring(2, 12)}';
+    List<T> cols<T>(List<T> l) => L10n.en ? l : l.reversed.toList();
+    const widths = <pw.TableColumnWidth>[
+      pw.FixedColumnWidth(22),
+      pw.FlexColumnWidth(3),
+      pw.FlexColumnWidth(1.4),
+      pw.FlexColumnWidth(1.6),
+      pw.FlexColumnWidth(1.2),
+      pw.FlexColumnWidth(1.4),
+    ];
     pw.Widget cell(String s, {bool head = false, bool num = false}) => pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       child: pw.Text(
         s,
         textDirection: num ? pw.TextDirection.ltr : null,
+        textAlign: L10n.en ? pw.TextAlign.left : pw.TextAlign.right,
         style: pw.TextStyle(
           fontSize: head ? 9 : 10.5,
           fontWeight: head ? pw.FontWeight.bold : null,
@@ -311,39 +321,33 @@ abstract final class Reports {
           _section(tr('الأنواع', 'Species')),
           pw.Table(
             border: const pw.TableBorder(horizontalInside: pw.BorderSide(color: _line)),
-            columnWidths: const {
-              0: pw.FixedColumnWidth(22),
-              1: pw.FlexColumnWidth(3),
-              2: pw.FlexColumnWidth(1.4),
-              3: pw.FlexColumnWidth(1.6),
-              4: pw.FlexColumnWidth(1.2),
-              5: pw.FlexColumnWidth(1.4),
-            },
+            // pw.Table ما يقلب الأعمدة مع اتجاه الصفحة، فنقلبها بنفسنا للعربي.
+            columnWidths: {for (final (k, w) in cols(widths).indexed) k: w},
             children: [
               pw.TableRow(
                 decoration: const pw.BoxDecoration(
                   color: _head,
                   border: pw.Border(bottom: pw.BorderSide(color: _navy, width: 1.5)),
                 ),
-                children: [
+                children: cols([
                   cell('#', head: true),
                   cell(tr('النوع', 'Species'), head: true),
                   cell(tr('العدد', 'Count'), head: true),
                   cell(tr('المدى', 'Range'), head: true),
                   cell(tr('الحجم', 'Size'), head: true),
                   cell(tr('الطزاجة', 'Freshness'), head: true),
-                ],
+                ]),
               ),
               for (final (k, i) in r.items.indexed)
                 pw.TableRow(
-                  children: [
+                  children: cols([
                     cell('${k + 1}', num: true),
                     cell(i.name),
                     cell('${i.count}', num: true),
                     cell(i.rangeLabel, num: true),
                     cell(i.sizeLabel),
                     cell(i.freshness >= 0 ? '${i.freshness}/100' : '—', num: true),
-                  ],
+                  ]),
                 ),
             ],
           ),

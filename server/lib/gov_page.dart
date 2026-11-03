@@ -50,7 +50,7 @@ tr:last-child td{border-bottom:0}
 td.num,th.num{text-align:left;direction:ltr;font-variant-numeric:tabular-nums;white-space:nowrap}
 tbody tr.click{cursor:pointer}tbody tr.click:hover td{background:var(--hover)}
 .wrap{overflow-x:auto}
-.mono{font-family:ui-monospace,monospace;direction:ltr;font-size:12px;unicode-bidi:isolate}
+.mono{font-family:ui-monospace,monospace;direction:ltr;font-size:12px;unicode-bidi:isolate;white-space:nowrap}
 .k{color:var(--muted);font-size:12px}
 .pill{display:inline-block;padding:1px 9px;background:var(--chip);font-size:12px;font-weight:400;white-space:nowrap}
 .pill.ok{background:var(--good-soft);color:var(--good)}.pill.no{background:var(--bad-soft);color:var(--bad)}.pill.auto{background:var(--info-soft);color:var(--info)}.pill.pay{background:var(--gold-soft);color:var(--gold-ink)}
