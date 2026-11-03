@@ -12,7 +12,10 @@ chmod 700 $ST/ksfish
 exec 9>$ST/sync.lock; flock -n 9 || { echo "مزامنة ثانية شغّالة"; exit 0; }
 
 # 1. الكود من GitHub.
-git -C /opt/fish-id pull -q --ff-only || git -C /opt/fish-id fetch -q
+# على main إذا فيه هذي السكربتات (قبل الدمج نبقى على الفرع اللي فيه).
+G=(git -C /opt/fish-id)
+"${G[@]}" fetch -q origin
+if "${G[@]}" cat-file -e origin/main:standby/sync.sh 2>/dev/null; then "${G[@]}" checkout -q -B main origin/main; else "${G[@]}" pull -q --ff-only || true; fi
 # 2. FISH ID: الإعدادات (فيها المفتاح، تبقى root فقط) والبيانات. ذاكرة النماذج (data/hf) ما نحتاجها.
 "${RS[@]}" $PRIMARY:/opt/fish-id/server/.env /opt/fish-id/server/.env
 chmod 600 /opt/fish-id/server/.env
