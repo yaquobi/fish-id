@@ -1,7 +1,7 @@
 # الموسوعة على سيرفر جوجل (نسخة احتياطية). تنشغل من go-live.sh أو test.sh بس.
 services:
   ksfish-db:
-    image: postgres:17
+    image: postgis/postgis:17-3.5
     restart: unless-stopped
     environment:
       POSTGRES_DB: ksfish
