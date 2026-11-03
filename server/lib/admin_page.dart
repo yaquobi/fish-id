@@ -418,24 +418,25 @@ const icons = {
   launch: '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>',
   collectors: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   shops: '<path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6"/>',
+  gov: '<path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-6 10 6z"/>',
   book: '<path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/>',
   brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h5"/>',
   staff: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/><path d="M17 3l1.5 1.5L21 2"/>',
 };
 const tabName = k => ({home: T('الرئيسية', 'Overview'), brief: T('البريف اليومي', 'Daily brief'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
-  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), shops: T('المحلات', 'Shops'), book: T('صور الأسماك', 'Fish photos')})[k];
+  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), shops: T('المحلات', 'Shops'), gov: T('الجهات الرسمية', 'Government'), book: T('صور الأسماك', 'Fish photos')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
-  owner: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes', 'staff'],
-  admin: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes'],
+  owner: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes', 'staff'],
+  admin: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes'],
   accountant: ['home', 'brief', 'report', 'money', 'alerts'],
   investor: ['report'],
 };
 // مجموعات القائمة الجانبية. أي تبويب جديد ينضاف لمجموعته هنا.
 const navGroups = () => [
   [T('نظرة عامة', 'Overview'), ['home', 'brief', 'report', 'alerts']],
-  [T('العملاء', 'Customers'), ['users', 'shops', 'scans', 'contrib', 'collectors', 'book', 'launch']],
+  [T('العملاء', 'Customers'), ['users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'launch']],
   [T('المال', 'Money'), ['money', 'settings', 'codes']],
   [T('الموقع والفريق', 'Site & team'), ['site', 'staff']],
 ];
@@ -1480,6 +1481,60 @@ function main() {
     $('#tr-save').onclick = async () => {
       try { await post('shops', {id: trId, transfer: Number($('#tr-sar').value)}); show('shops'); }
       catch (e) { $('#tr-msg').textContent = e.message; }
+    };
+  },
+
+  // الجهات الرسمية (الوزارة): عقد بعدد رخص وتاريخ، ومفتشين برموز GOV-XXXXXX يفحصون بلا حد، ولوحة للجهة برابط خاص.
+  async gov(added = null) {
+    const list = await api('gov');
+    const link = k => location.origin + location.pathname.replace(/admin$/, 'gov') + '?k=' + k;
+    const today = new Date().toISOString().slice(0, 10);
+    const yearOn = new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10);
+    $('#app').innerHTML = heading(T('الجهات الرسمية', 'Government'), T('المفتشين يفحصون بلا حد ويرفعون زيارات تفتيشية، والجهة تشوفها في لوحتها', 'Inspectors scan without limit and file inspection visits; the agency sees them on its dashboard')) + `
+      ${added ? `<div class="card" style="margin-bottom:14px"><h3>${added.code ? T('رمز المفتش', 'Inspector code') + ' · ' + esc(added.name) : T('رابط لوحة', 'Dashboard link for') + ' ' + esc(added.name)}</h3>
+        <div class="k">${added.code ? T('أرسله للمفتش: من قائمة التطبيق «دخول المفتشين» ويكتب الرمز.', 'Send it to the inspector: app menu, Inspector sign-in, enter the code.') : T('أرسله لمسؤول الجهة بشكل خاص. فيه يشوف الزيارات والمخالفات ويضيف مفتشينه.', 'Send it privately to the agency lead. They see visits and violations and add their inspectors.')}</div>
+        <div class="secret"><code>${esc(added.code || link(added.key))}</code><button class="act gold sm" data-copytext="${esc(added.code || link(added.key))}">${T('نسخ', 'Copy')}</button></div></div>` : ''}
+      ${list.map(a => `<div class="card" style="margin-bottom:14px${a.stopped ? ';opacity:.6' : ''}">
+        <h3><span>${esc(a.name)} ${a.pilot ? `<span class="pill pay">${T('تجربة', 'Pilot')}</span>` : ''} ${a.active ? `<span class="pill ok">${T('ساري حتى', 'Active until')} <span class="mono">${a.until.slice(0, 10)}</span></span>` : `<span class="pill no">${a.stopped ? T('موقوف', 'Stopped') : T('منتهي', 'Expired')}</span>`}</span>
+          <span class="row noprint"><button class="act ghost sm" data-copytext="${esc(link(a.key))}">${T('رابط لوحتهم', 'Dashboard link')}</button>
+          <button class="act ghost sm" data-ext="${esc(a.id)}">${T('تمديد سنة', 'Extend a year')}</button>
+          <button class="act ghost sm" data-astop="${esc(a.id)}" data-on="${a.stopped ? 1 : ''}">${a.stopped ? T('تفعيل', 'Enable') : T('إيقاف', 'Stop')}</button></span></h3>
+        <div class="grid" style="margin-bottom:12px">${kpi(T('الرخص', 'Seats'), `${num(a.seatsUsed)} / ${num(a.seats)}`)}${kpi(T('زيارات الشهر', 'Visits this month'), num(a.visitsMonth))}${kpi(T('مخالفات الشهر', 'Violations this month'), num(a.violationsMonth))}</div>
+        <div class="wrap"><table><tr><th>${T('المفتش', 'Inspector')}</th><th>${T('الفرع', 'Branch')}</th><th>${T('الرمز', 'Code')}</th><th class="num">${T('الأجهزة', 'Devices')}</th><th>${T('آخر نشاط', 'Last seen')}</th><th class="num">${T('زيارات الشهر', 'Visits')}</th><th class="noprint"></th></tr>
+        ${a.inspectors.map(i => `<tr${i.stopped ? ' style="opacity:.5"' : ''}><td>${esc(i.name)}${i.phone ? `<div class="k mono">${esc(i.phone)}</div>` : ''}</td><td>${esc(i.branch || '—')}</td><td class="mono">${esc(i.code)}</td><td class="num">${num(i.devices)} / 2</td>
+          <td class="mono">${i.lastSeen ? when(i.lastSeen) : '—'}</td><td class="num">${num(i.visitsMonth)}</td>
+          <td class="noprint"><button class="act ghost sm" data-copytext="${esc(i.code)}">${T('نسخ', 'Copy')}</button> <button class="act ghost sm" data-istop="${esc(i.id)}" data-on="${i.stopped ? 1 : ''}">${i.stopped ? T('تفعيل', 'Enable') : T('إيقاف', 'Stop')}</button></td></tr>`).join('') || `<tr><td colspan="7" class="msg">${T('ما فيه مفتشين للحين.', 'No inspectors yet.')}</td></tr>`}
+        </table></div>
+        <form class="form noprint" data-addin="${esc(a.id)}" style="margin-top:12px"><label>${T('اسم المفتش', 'Inspector name')}<input name="name" required minlength="3"></label><label>${T('الجوال', 'Phone')}<input name="phone" dir="ltr" placeholder="05xxxxxxxx"></label><label>${T('الفرع', 'Branch')}<input name="branch"></label><label>&nbsp;<button class="act" type="submit">${T('إضافة مفتش', 'Add inspector')}</button></label></form>
+        <div class="err" data-err="${esc(a.id)}"></div></div>`).join('') || `<div class="card" style="margin-bottom:14px"><div class="msg">${T('ما فيه جهات للحين. أضف الوزارة من تحت (تقدر تبدأ بتجربة).', 'No agencies yet. Add one below (you can start with a pilot).')}</div></div>`}
+      <div class="card noprint"><h3>${T('إضافة جهة', 'Add agency')}</h3>
+        <form class="form" id="ag-add"><label>${T('اسم الجهة', 'Agency name')}<input id="ag-name" required minlength="3" value="${T('وزارة البيئة والمياه والزراعة', 'Ministry of Environment, Water and Agriculture')}"></label>
+          <label>${T('عدد الرخص (المفتشين)', 'Seats (inspectors)')}<input id="ag-seats" type="number" min="1" value="5"></label>
+          <label>${T('نهاية العقد', 'Contract end')}<input id="ag-until" type="date" min="${today}" value="${yearOn}"></label>
+          <label>${T('مسؤول التواصل', 'Contact')}<input id="ag-contact"></label>
+          <label style="flex-direction:row;align-items:center;gap:6px"><input id="ag-pilot" type="checkbox" checked> ${T('مرحلة تجريبية', 'Pilot')}</label>
+          <label>&nbsp;<button class="act gold" type="submit">${T('إضافة', 'Add')}</button></label></form><div id="ag-err" class="err"></div>
+        <div class="note">${T('المفتش يكتب رمزه في التطبيق فيصير حسابه «رسمي»: فحص بلا حد، وزيارة تفتيشية تقارن المكتوب على لوحة المحل بالصنف، وتقرير PDF. الفحوصات ما تنحسب عليه، وتكلفتها تطلع في المحاسبة مثل باقي الفحوصات.', 'An inspector enters their code and the account becomes official: unlimited scans, inspection visits comparing the shop label with the species, and a PDF report.')}</div></div>`;
+    const app = $('#app');
+    app.querySelectorAll('[data-copytext]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copytext); b.textContent = T('تم النسخ', 'Copied'); } catch (e) {} });
+    const sure = (b, run) => b.onclick = async () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = T('متأكد؟', 'Sure?'); return; } try { await run(); show('gov'); } catch (e) { b.textContent = e.message; } };
+    app.querySelectorAll('[data-astop]').forEach(b => sure(b, () => post('gov', {agency: b.dataset.astop, update: {stopped: !b.dataset.on}})));
+    app.querySelectorAll('[data-istop]').forEach(b => sure(b, () => post('gov', {inspectorId: b.dataset.istop, update: {stopped: !b.dataset.on}})));
+    app.querySelectorAll('[data-ext]').forEach(b => sure(b, () => {
+      const a = list.find(x => x.id === b.dataset.ext);
+      const from = new Date(Math.max(Date.now(), Date.parse(a.until)));
+      from.setUTCFullYear(from.getUTCFullYear() + 1);
+      return post('gov', {agency: a.id, update: {until: from.toISOString().slice(0, 10)}});
+    }));
+    app.querySelectorAll('[data-addin]').forEach(f => f.onsubmit = async e => {
+      e.preventDefault();
+      try { const r = await post('gov', {agency: f.dataset.addin, inspector: {name: f.elements.name.value, phone: f.elements.phone.value, branch: f.elements.branch.value}}); show('gov', r); }
+      catch (err) { app.querySelector(`[data-err="${f.dataset.addin}"]`).textContent = err.message; }
+    });
+    $('#ag-add').onsubmit = async e => {
+      e.preventDefault();
+      try { const r = await post('gov', {add: {name: $('#ag-name').value, seats: Number($('#ag-seats').value), until: $('#ag-until').value, contact: $('#ag-contact').value, pilot: $('#ag-pilot').checked}}); show('gov', r); }
+      catch (err) { $('#ag-err').textContent = err.message; }
     };
   },
 

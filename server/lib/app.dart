@@ -13,6 +13,8 @@ import 'claude.dart';
 import 'collect_page.dart';
 import 'collectors.dart';
 import 'contrib.dart';
+import 'gov.dart';
+import 'gov_page.dart';
 import 'ledger.dart';
 import 'shop_page.dart';
 import 'shops.dart';
@@ -47,6 +49,8 @@ typedef Notify = void Function(String text);
 class FishIdApp {
   FishIdApp({
     required this.identify,
+    this.box,
+    this.gov,
     this.contrib,
     this.collectors,
     this.book,
@@ -71,7 +75,14 @@ class FishIdApp {
       accounts!.pool = s.byId;
       accounts!.savePool = s.save;
     }
+    if (gov != null) accounts?.unlimited = gov!.unlimited;
   }
+
+  /// صورة الصندوق للدلّال: الأنواع والعدد التقريبي والطزاجة من صورة صندوق أو حمولة ([FishIdAi.box]).
+  final Identify? box;
+
+  /// الجهات الرسمية ومفتشينها وزياراتهم ([GovStore]).
+  final GovStore? gov;
 
   /// المحلات المشتركة من الموقع، وأجهزتها تسحب من رصيد واحد.
   final ShopStore? shops;
@@ -120,7 +131,7 @@ class FishIdApp {
   static const _cors = {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'POST, GET, OPTIONS',
-    'access-control-allow-headers': 'content-type, x-fishid-user, x-fishid-lang, x-collector, x-shop',
+    'access-control-allow-headers': 'content-type, x-fishid-user, x-fishid-lang, x-collector, x-shop, x-gov',
     'access-control-expose-headers': 'x-fishid-remaining',
   };
 
@@ -189,7 +200,7 @@ class FishIdApp {
     if (req.method == 'POST' && path == 'fishId/identify') {
       try {
         final user = _user(req);
-        final result = await _identify(req, user);
+        final result = await _identify(req, user, identify);
         return _json(200, result, headers: _remaining(user));
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
@@ -201,16 +212,35 @@ class FishIdApp {
         final store = accounts;
         if (user == null || store == null) return _json(200, {'plan': 'free', 'remaining': null});
         final v = store.view(user, _clock());
+        final inspector = gov?.profile(user, _clock());
         final sid = shops?.shopOf(user);
         final shop = sid == null ? null : shops!.byId(sid);
         return _json(200, {
-          'plan': v['from'] == 'owner' ? 'owner' : (v['active'] == true ? v['plan'] : 'free'),
+          'plan': v['from'] == 'owner' ? 'owner' : (inspector?['active'] == true ? 'gov' : (v['active'] == true ? v['plan'] : 'free')),
           'until': v['until'],
           'remaining': v['remaining'],
           // صاحب المحل يشوف رمز محله في التطبيق عشان يعطيه موظفينه.
           if (shop != null && shop['owner'] == user)
             'shop': {'code': shop['join'], 'devices': (shop['devices'] as List).length, 'maxDevices': _shopDevices, 'used': ShopStore.used(shop, _clock()), 'cap': _shopCap},
+          // المفتش يشوف بياناته وجهته وزياراته في الوضع الرسمي.
+          'gov': ?inspector,
         });
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (req.method == 'POST' && path == 'fishId/box') {
+      try {
+        final user = _user(req);
+        final result = await _identify(req, user, box);
+        return _json(200, result, headers: _remaining(user));
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
+    if (path.startsWith('fishId/gov/')) {
+      try {
+        return await _govApp(req, path.substring(11));
       } on FishIdError catch (e) {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
@@ -298,6 +328,13 @@ class FishIdApp {
         return _json(e.status, {'code': e.code, 'message': e.message});
       }
     }
+    if (path == 'gov' || path.startsWith('gov/')) {
+      try {
+        return await _govPanel(req, path);
+      } on FishIdError catch (e) {
+        return _json(e.status, {'code': e.code, 'message': e.message});
+      }
+    }
     if (path == 'shop' || path.startsWith('shop/')) {
       try {
         return await _shop(req, path);
@@ -370,8 +407,7 @@ class FishIdApp {
     return {'x-fishid-remaining': '${store.remaining(user, _clock())}'};
   }
 
-  Future<String> _identify(Request req, String? user) async {
-    final run = identify;
+  Future<String> _identify(Request req, String? user, Identify? run) async {
     if (run == null) throw const FishIdError('fishid_off', 'خدمة التعرف على الأسماك غير مفعّلة حاليًا', status: 503);
     final (photos, _) = await _readPhotos(req);
     final store = accounts;
@@ -667,6 +703,15 @@ class FishIdApp {
           throw const FishIdError('bad_request', 'الطلب غير صالح');
         }
         return _json(200, _shopView(id, shop, now, admin: true));
+      case ('GET', 'gov') when gov != null:
+        return _json(200, gov!.list(now));
+      case ('POST', 'gov') when gov != null:
+        final b = await body();
+        if (b['add'] is Map) return _json(200, await gov!.addAgency(b['add'] as Map, now));
+        if (b['agency'] is String && b['inspector'] is Map) return _json(200, await gov!.addInspector(b['agency'] as String, b['inspector'] as Map, now));
+        if (b['agency'] is String && b['update'] is Map) return _json(200, await gov!.updateAgency(b['agency'] as String, b['update'] as Map));
+        if (b['inspectorId'] is String && b['update'] is Map) return _json(200, await gov!.updateInspector(b['inspectorId'] as String, b['update'] as Map));
+        throw const FishIdError('bad_request', 'الطلب غير صالح');
       case ('GET', 'collectors') when collectors != null:
         return _json(200, [
           for (final c in collectors!.list()) {...c, 'today': collectors!.today(c, now)},
@@ -695,6 +740,110 @@ class FishIdApp {
     }
     throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
   }
+
+  /// طلبات تطبيق المفتش: join و leave و visits و visit (الحساب في x-fishid-user).
+  Future<Response> _govApp(Request req, String sub) async {
+    final store = gov;
+    final user = _user(req);
+    if (store == null) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+    if (user == null) throw const FishIdError('update_app', 'حدّث التطبيق من المتجر', status: 426);
+    final now = _clock();
+    switch ((req.method, sub)) {
+      case ('POST', 'join'):
+        _limit();
+        final String code;
+        try {
+          code = '${(jsonDecode(await req.readAsString()) as Map)['code']}';
+        } on Object {
+          throw const FishIdError('bad_request', 'الطلب غير صالح');
+        }
+        final p = await store.join(code, user, now);
+        _tell('gov:${p['id']}', '🏛️ مفتش دخل التطبيق: ${p['name']} · ${p['agency']}', every: const Duration(days: 1));
+        return _json(200, p, headers: _remaining(user));
+      case ('POST', 'leave'):
+        await store.leave(user);
+        return _json(200, {'ok': true}, headers: _remaining(user));
+      case ('GET', 'visits'):
+        return _json(200, {'profile': store.profile(user, now), 'visits': store.visitsOf(user)});
+      case ('POST', 'visit'):
+        _limit();
+        final (photos, body) = await _readVisit(req);
+        final v = await store.addVisit(user, body, photos, now);
+        if (v['decision'] == 'violation') {
+          _tell('govv:${v['ref']}', '🏛️ مخالفة جديدة ${v['ref']}: ${v['shop']} · ${v['market']} (${v['inspectorName']})', every: const Duration(minutes: 30));
+        }
+        return _json(200, v);
+    }
+    throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+  }
+
+  /// جسم الزيارة: الحقول مع صور اختيارية في images (حتى 3).
+  Future<(List<Photo>, Map<String, dynamic>)> _readVisit(Request req) async {
+    final Map<String, dynamic> body;
+    try {
+      final raw = await req.read().fold<BytesBuilder>(BytesBuilder(copy: false), (b, chunk) {
+        if (b.length + chunk.length > maxBytes * maxPhotos * 1.4) throw const FishIdError('fishid_size', 'الصور كبيرة، صغّرها وحاول مرة ثانية', status: 413);
+        return b..add(chunk);
+      });
+      body = jsonDecode(utf8.decode(raw.takeBytes())) as Map<String, dynamic>;
+    } on FishIdError {
+      rethrow;
+    } on Object {
+      throw const FishIdError('bad_request', 'الطلب غير صالح');
+    }
+    final list = body.remove('images');
+    final photos = list is List ? [for (final item in list.take(maxPhotos)) _photo(item)] : <Photo>[];
+    return (photos, body);
+  }
+
+  /// لوحة الجهة الرسمية: الصفحة على gov، والبيانات بمفتاح الجهة في x-gov.
+  Future<Response> _govPanel(Request req, String path) async {
+    final store = gov;
+    if (store == null) throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+    if (req.method == 'GET' && path == 'gov') {
+      return Response.ok(govPage, headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer'});
+    }
+    final now = _clock();
+    final minute = now.millisecondsSinceEpoch ~/ 60000;
+    if (minute != _govMinute) {
+      _govMinute = minute;
+      _govFails = 0;
+    }
+    if (_govFails >= 20) throw const FishIdError('busy', 'محاولات كثيرة، حاول بعد دقيقة', status: 429);
+    final found = store.byKey(req.headers['x-gov'] ?? req.url.queryParameters['k'] ?? '');
+    if (found == null) {
+      _govFails++;
+      throw const FishIdError('unauthorized', 'رابط اللوحة غير صحيح أو موقوف', status: 401);
+    }
+    final (id, _) = found;
+    final parts = path.split('/');
+    switch ((req.method, parts.length > 1 ? parts[1] : '')) {
+      case ('GET', 'data'):
+        final m = req.url.queryParameters['month'] ?? '';
+        return _json(200, store.dashboard(id, RegExp(r'^[0-9]{4}-[0-9]{2}$').hasMatch(m) ? m : now.toUtc().toIso8601String().substring(0, 7), now));
+      case ('POST', 'inspectors'):
+        final Map b;
+        try {
+          b = jsonDecode(await req.readAsString()) as Map;
+        } on Object {
+          throw const FishIdError('bad_request', 'الطلب غير صالح');
+        }
+        if (b['add'] is Map) return _json(200, await store.addInspector(id, b['add'] as Map, now));
+        if (b['id'] is String && b['update'] is Map) {
+          final u = b['update'] as Map;
+          return _json(200, await store.updateInspector(b['id'] as String, {'stopped': ?u['stopped'], 'newCode': ?u['newCode']}, agency: id));
+        }
+        throw const FishIdError('bad_request', 'الطلب غير صالح');
+      case ('GET', 'photo') when parts.length == 4:
+        final f = store.photo(id, parts[2], int.tryParse(parts[3]) ?? -1);
+        if (f == null) break;
+        return Response.ok(await f.readAsBytes(), headers: {'content-type': f.path.endsWith('png') ? 'image/png' : 'image/jpeg', 'cache-control': 'private, max-age=3600'});
+    }
+    throw const FishIdError('not_found', 'المسار غير موجود', status: 404);
+  }
+
+  int _govMinute = 0;
+  int _govFails = 0;
 
   /// أحداث RevenueCat (اشتراك جديد، تجديد، إلغاء، استرجاع). نقرأ منها أرقام الحسابات بس، ونتأكد من كل حساب عند RevenueCat.
   Future<Response> _revenueCat(Request req) async {
