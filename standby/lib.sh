@@ -6,7 +6,7 @@ if [[ ! -f .env ]]; then umask 077; echo "KSFISH_DB_PASSWORD=$(openssl rand -hex
 ksfish_up() {
   rm -f $ST/ksfish/app/bootstrap/cache/config.php
   chmod -R a+rwX $ST/ksfish/app/storage $ST/ksfish/app/bootstrap/cache
-  docker compose up -d ksfish-db
+  docker compose up -d --wait ksfish-db
   docker compose exec -T ksfish-db sh -c 'dropdb -U ksfish --if-exists -f ksfish_new; createdb -U ksfish ksfish_new && pg_restore -U ksfish -d ksfish_new --no-owner --no-acl /dump/ksfish.dump' || true
   docker compose exec -T ksfish-db sh -c 'dropdb -U ksfish --if-exists -f ksfish && psql -U ksfish -d postgres -qc "alter database ksfish_new rename to ksfish"'
   docker compose up -d ksfish-web
