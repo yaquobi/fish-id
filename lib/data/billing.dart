@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -14,6 +16,9 @@ abstract final class Billing {
 
   static Future<bool>? _ready;
 
+  /// متجر Google Play أحيانًا ما يرد (مثلًا بعد مسح بيانات المتجر)، فما ننتظره للأبد.
+  static const _wait = Duration(seconds: 15);
+
   /// المتجر متاح في أندرويد والآيفون، وما يشتغل في الويب أو وضع التجربة.
   static bool get supported =>
       !kIsWeb &&
@@ -27,7 +32,7 @@ abstract final class Billing {
     try {
       await Purchases.configure(
         PurchasesConfiguration(isIOS ? _iosKey : _androidKey)..appUserID = await FishIdApi.userId(),
-      );
+      ).timeout(_wait);
       return true;
     } on Object {
       _ready = null;
@@ -39,9 +44,11 @@ abstract final class Billing {
   static Future<List<Package>> packages() async {
     if (!supported || !await _configure()) return const [];
     try {
-      final offerings = await Purchases.getOfferings();
+      final offerings = await Purchases.getOfferings().timeout(_wait);
       return offerings.current?.availablePackages ?? const [];
     } on PlatformException {
+      return const [];
+    } on TimeoutException {
       return const [];
     }
   }
@@ -50,10 +57,12 @@ abstract final class Billing {
   static Future<Package?> shopPackage() async {
     if (!supported || !await _configure()) return null;
     try {
-      final offerings = await Purchases.getOfferings();
+      final offerings = await Purchases.getOfferings().timeout(_wait);
       final list = offerings.all['shops']?.availablePackages ?? const <Package>[];
       return list.isEmpty ? null : list.first;
     } on PlatformException {
+      return null;
+    } on TimeoutException {
       return null;
     }
   }
