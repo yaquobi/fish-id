@@ -7,6 +7,7 @@ ST=/opt/standby
 SSH=(ssh -i $KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
 RS=(rsync -a --delete -e "${SSH[*]}")
 mkdir -p $ST/ksfish/app $ST/ksfish/db
+chmod 700 $ST/ksfish
 [[ -f $ST/LIVE ]] && { echo "النسخة شغّالة كأساسية (LIVE)، المزامنة موقوفة."; exit 0; }
 exec 9>$ST/sync.lock; flock -n 9 || { echo "مزامنة ثانية شغّالة"; exit 0; }
 
@@ -20,7 +21,7 @@ for d in accounts contrib book refs; do
   "${RS[@]}" $PRIMARY:/opt/fish-id/data/$d/ /opt/fish-id/data/$d/
 done
 # 3. الموسوعة: الإصدار الحالي كامل (الكود، vendor، .env، storage) وقاعدة البيانات.
-"${RS[@]}" --exclude 'storage/logs/*' --exclude 'storage/framework/cache/*' --exclude 'storage/framework/sessions/*' --exclude 'storage/framework/views/*' \
+"${RS[@]}" --chown=33:33 --chmod=D755,F644 --exclude 'storage/logs/*' --exclude 'storage/framework/cache/*' --exclude 'storage/framework/sessions/*' --exclude 'storage/framework/views/*' \
   $PRIMARY:/var/www/ksfish/current/ $ST/ksfish/app/
 "${SSH[@]}" $PRIMARY "sudo -u postgres pg_dump -Fc ksfish" > $ST/ksfish/db/ksfish.dump.tmp
 mv $ST/ksfish/db/ksfish.dump.tmp $ST/ksfish/db/ksfish.dump
