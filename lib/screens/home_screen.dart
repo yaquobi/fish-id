@@ -9,7 +9,9 @@ import '../l10n.dart';
 import '../theme.dart';
 import '../widgets/ai_consent.dart';
 import '../widgets/logo.dart';
+import 'box_screen.dart';
 import 'browse_screen.dart';
+import 'inspector_screen.dart';
 import 'result_screen.dart';
 import 'shop_screen.dart';
 
@@ -127,6 +129,33 @@ class _HomeScreenState extends State<HomeScreen> {
                           'وضع التجربة: النتيجة مثال ثابت ولا تُرسل الصورة لأي خادم. Demo mode: a fixed sample result.',
                     ),
                   ),
+                // المفتش الرسمي: اختصار لجولة التفتيش فوق أزرار التصوير.
+                ValueListenableBuilder(
+                  valueListenable: FishIdApi.gov,
+                  builder: (context, g, _) => g == null
+                      ? const SizedBox.shrink()
+                      : Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Card(
+                            color: AppColors.navy,
+                            child: ListTile(
+                              leading: const Icon(Icons.verified_outlined, color: AppColors.gold),
+                              title: Text(
+                                tr('الوضع الرسمي', 'Official mode'),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                              ),
+                              subtitle: Text(
+                                '${g['name']} · ${g['agency']}',
+                                style: const TextStyle(color: AppColors.onNavyMuted),
+                              ),
+                              trailing: Icon(L10n.en ? Icons.chevron_right : Icons.chevron_left, color: Colors.white),
+                              onTap: () => Navigator.of(
+                                context,
+                              ).push(MaterialPageRoute<void>(builder: (_) => const InspectorScreen())),
+                            ),
+                          ),
+                        ),
+                ),
                 FilledButton.icon(
                   onPressed: _busy ? null : () => _pick(ImageSource.camera),
                   icon: const Icon(Icons.photo_camera_outlined),
@@ -171,6 +200,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     trailing: Icon(L10n.en ? Icons.chevron_right : Icons.chevron_left),
                     onTap: () =>
                         Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BrowseScreen())),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.inventory_2_outlined, color: AppColors.navy),
+                    title: Text(
+                      tr('صورة الصندوق (للدلّالين)', 'Box photo (for auctioneers)'),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(tr('الأنواع وعددها التقريبي وكشف حراج', 'Species, approximate counts and an auction sheet')),
+                    trailing: Icon(L10n.en ? Icons.chevron_right : Icons.chevron_left),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BoxScreen())),
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -362,6 +404,15 @@ class _Menu extends StatelessWidget {
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ShopScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.verified_outlined),
+            title: Text(tr('دخول المفتشين', 'Inspector sign-in')),
+            subtitle: Text(tr('للجهات الحكومية المشتركة', 'For subscribed government agencies')),
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const InspectorScreen()));
             },
           ),
           ListTile(

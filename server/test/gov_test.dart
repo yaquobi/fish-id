@@ -63,13 +63,28 @@ void main() {
   Future<(int, dynamic)> as(String user, String method, String path, {Object? body}) => call(method, path, body: body, headers: {'x-fishid-user': user});
 
   Future<Map<String, dynamic>> agency({int seats = 2}) async {
-    final (s, a) = await call('POST', 'admin/gov', body: {'add': {'name': 'وزارة البيئة والمياه والزراعة', 'seats': seats, 'until': '2027-11-03', 'pilot': true}}, headers: {'authorization': admin});
+    final (s, a) = await call(
+      'POST',
+      'admin/gov',
+      body: {
+        'add': {'name': 'وزارة البيئة والمياه والزراعة', 'seats': seats, 'until': '2027-11-03', 'pilot': true},
+      },
+      headers: {'authorization': admin},
+    );
     expect(s, 200);
     return a as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> inspector(String agencyId, String name) async {
-    final (s, i) = await call('POST', 'admin/gov', body: {'agency': agencyId, 'inspector': {'name': name, 'phone': '0555555555', 'branch': 'مكة'}}, headers: {'authorization': admin});
+    final (s, i) = await call(
+      'POST',
+      'admin/gov',
+      body: {
+        'agency': agencyId,
+        'inspector': {'name': name, 'phone': '0555555555', 'branch': 'مكة'},
+      },
+      headers: {'authorization': admin},
+    );
     expect(s, 200, reason: '$i');
     return i as Map<String, dynamic>;
   }
@@ -135,7 +150,15 @@ void main() {
     expect(s3, 409);
     expect(e3['code'], 'gov_devices');
 
-    final (_, fresh) = await call('POST', 'admin/gov', body: {'inspectorId': i['id'], 'update': {'newCode': true}}, headers: {'authorization': admin});
+    final (_, fresh) = await call(
+      'POST',
+      'admin/gov',
+      body: {
+        'inspectorId': i['id'],
+        'update': {'newCode': true},
+      },
+      headers: {'authorization': admin},
+    );
     expect(fresh['code'], isNot(i['code']));
     expect((await as(dev3, 'POST', 'fishId/gov/join', body: {'code': i['code']})).$1, 400);
     expect((await as(dev3, 'POST', 'fishId/gov/join', body: {'code': fresh['code']})).$1, 200);
@@ -145,17 +168,49 @@ void main() {
   test('stopped inspector or agency cannot join', () async {
     final a = await agency();
     final i = await inspector(a['id'] as String, 'ناصر عسيري');
-    await call('POST', 'admin/gov', body: {'inspectorId': i['id'], 'update': {'stopped': true}}, headers: {'authorization': admin});
+    await call(
+      'POST',
+      'admin/gov',
+      body: {
+        'inspectorId': i['id'],
+        'update': {'stopped': true},
+      },
+      headers: {'authorization': admin},
+    );
     expect((await as(dev1, 'POST', 'fishId/gov/join', body: {'code': i['code']})).$2['code'], 'gov_stopped');
-    await call('POST', 'admin/gov', body: {'inspectorId': i['id'], 'update': {'stopped': false}}, headers: {'authorization': admin});
-    await call('POST', 'admin/gov', body: {'agency': a['id'], 'update': {'stopped': true}}, headers: {'authorization': admin});
+    await call(
+      'POST',
+      'admin/gov',
+      body: {
+        'inspectorId': i['id'],
+        'update': {'stopped': false},
+      },
+      headers: {'authorization': admin},
+    );
+    await call(
+      'POST',
+      'admin/gov',
+      body: {
+        'agency': a['id'],
+        'update': {'stopped': true},
+      },
+      headers: {'authorization': admin},
+    );
     expect((await as(dev1, 'POST', 'fishId/gov/join', body: {'code': i['code']})).$2['code'], 'gov_expired');
   });
 
   test('seats limit the number of active inspectors', () async {
     final a = await agency(seats: 1);
     await inspector(a['id'] as String, 'الأول');
-    final (s, e) = await call('POST', 'admin/gov', body: {'agency': a['id'], 'inspector': {'name': 'الثاني'}}, headers: {'authorization': admin});
+    final (s, e) = await call(
+      'POST',
+      'admin/gov',
+      body: {
+        'agency': a['id'],
+        'inspector': {'name': 'الثاني'},
+      },
+      headers: {'authorization': admin},
+    );
     expect(s, 409);
     expect(e['code'], 'seats');
   });
@@ -208,10 +263,25 @@ void main() {
     expect(res2.statusCode, 404);
 
     // الجهة تضيف مفتشها من لوحتها، وتقدر توقفه.
-    final (sa, added) = await call('POST', 'gov/inspectors', body: {'add': {'name': 'مفتش جديد', 'branch': 'جدة'}}, headers: {'x-gov': key});
+    final (sa, added) = await call(
+      'POST',
+      'gov/inspectors',
+      body: {
+        'add': {'name': 'مفتش جديد', 'branch': 'جدة'},
+      },
+      headers: {'x-gov': key},
+    );
     expect(sa, 200);
     expect(added['code'], matches(GovStore.codePattern));
-    final (ss, _) = await call('POST', 'gov/inspectors', body: {'id': i['id'], 'update': {'stopped': true}}, headers: {'x-gov': other['key'] as String});
+    final (ss, _) = await call(
+      'POST',
+      'gov/inspectors',
+      body: {
+        'id': i['id'],
+        'update': {'stopped': true},
+      },
+      headers: {'x-gov': other['key'] as String},
+    );
     expect(ss, 404);
 
     // يبقى محفوظ بعد إعادة التشغيل.

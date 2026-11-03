@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../l10n.dart';
+import 'box.dart';
 import 'result.dart';
 
 /// عنوان خادم حوات. يتغير وقت البناء: --dart-define=API_URL=http://localhost:8080/
@@ -33,6 +34,9 @@ abstract final class FishIdApi {
 
   /// لصاحب باقة المحلات: رمز المحل وعدد الجوالات والرصيد المشترك ({code, devices, maxDevices, used, cap})، وإلا null.
   static final shop = ValueNotifier<Map<String, dynamic>?>(null);
+
+  /// للمفتش الرسمي: اسمه وجهته ورمزه وعدد زياراته ({name, agency, code, active, today, month...})، وإلا null.
+  static final gov = ValueNotifier<Map<String, dynamic>?>(null);
 
   /// رقم حساب عشوائي ينحفظ في الجوال أول مرة، بدون اسم أو جوال أو إيميل. الخادم يحسب عليه الفحوصات.
   static Future<String> userId() async {
@@ -70,6 +74,7 @@ abstract final class FishIdApi {
       if (res.statusCode == 200 && n is int) remaining.value = n;
       if (res.statusCode == 200) {
         shop.value = body['shop'] is Map ? (body['shop'] as Map).cast<String, dynamic>() : null;
+        gov.value = body['gov'] is Map ? (body['gov'] as Map).cast<String, dynamic>() : null;
       }
     } on Object {
       return;
@@ -140,6 +145,120 @@ abstract final class FishIdApi {
       throw FishIdException(
         tr('وصل رد غير متوقع من الخادم، حاول مرة ثانية.', 'The server sent an unexpected reply. Please try again.'),
       );
+    }
+  }
+
+  /// صورة الصندوق للدلّال: الأنواع وعددها التقريبي وطزاجتها. تنحسب فحص واحد.
+  static Future<BoxResult> box(List<Uint8List> images) async {
+    if (isDemo) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      return BoxResult.demo;
+    }
+    final res = await _post('fishId/box', {
+      'images': [
+        for (final image in images) {'image': base64Encode(image), 'mediaType': mediaTypeOf(image)},
+      ],
+    }, timeout: 120);
+    if (res.statusCode == 402) {
+      remaining.value = 0;
+      throw FishIdQuotaException(
+        _serverMessage(utf8.decode(res.bodyBytes)) ??
+            tr('خلصت فحوصاتك. اشترك عشان تكمل.', 'You have used your scans. Subscribe to keep scanning.'),
+      );
+    }
+    final body = _body(res, tr('تعذّر تحليل الصورة، حاول مرة ثانية.', 'Could not analyze the photo. Please try again.'));
+    try {
+      return BoxResult.fromJson(jsonDecode(body as String) as Map<String, dynamic>);
+    } on Object {
+      throw FishIdException(
+        tr('وصل رد غير متوقع من الخادم، حاول مرة ثانية.', 'The server sent an unexpected reply. Please try again.'),
+      );
+    }
+  }
+
+  /// دخول المفتش برمز الجهة (GOV-XXXXXX). يرجّع بياناته ويحدّث [gov].
+  static Future<Map<String, dynamic>> govJoin(String code) async {
+    if (isDemo) {
+      gov.value = demoInspector;
+      remaining.value = 9999;
+      return demoInspector;
+    }
+    final res = await _post('fishId/gov/join', {'code': code.trim()});
+    final p = (_body(res, tr('رمز المفتش غير صحيح', 'This inspector code is not valid')) as Map).cast<String, dynamic>();
+    gov.value = p;
+    return p;
+  }
+
+  /// خروج المفتش من الوضع الرسمي على هذا الجوال.
+  static Future<void> govLeave() async {
+    if (!isDemo) _body(await _post('fishId/gov/leave', const {}), tr('تعذّر الخروج، حاول مرة ثانية', 'Could not sign out. Try again.'));
+    gov.value = null;
+    await refreshRemaining();
+  }
+
+  /// آخر زيارات المفتش.
+  static Future<List<Map<String, dynamic>>> govVisits() async {
+    if (isDemo) return const [];
+    final http.Response res;
+    try {
+      res = await http.get(Uri.parse('${_base}fishId/gov/visits'), headers: await _headers()).timeout(const Duration(seconds: 20));
+    } on Exception {
+      throw FishIdException(_offline);
+    }
+    final b = (_body(res, tr('تعذّر جلب الزيارات', 'Could not load visits')) as Map).cast<String, dynamic>();
+    if (b['profile'] is Map) gov.value = (b['profile'] as Map).cast<String, dynamic>();
+    return [for (final v in (b['visits'] as List? ?? const [])) (v as Map).cast<String, dynamic>()];
+  }
+
+  /// يحفظ الزيارة التفتيشية على الخادم مع صورها، ويرجّعها برقمها المرجعي.
+  static Future<Map<String, dynamic>> govVisit(Map<String, dynamic> visit, List<Uint8List> images) async {
+    if (isDemo) {
+      await Future<void>.delayed(const Duration(seconds: 1));
+      return {...visit, 'ref': 'INS-2026-00001', 'at': DateTime.now().toUtc().toIso8601String(), 'inspectorName': gov.value?['name'] ?? ''};
+    }
+    final res = await _post('fishId/gov/visit', {
+      ...visit,
+      'images': [
+        for (final image in images.take(3)) {'image': base64Encode(image), 'mediaType': mediaTypeOf(image)},
+      ],
+    }, timeout: 90);
+    return (_body(res, tr('تعذّر حفظ الزيارة، حاول مرة ثانية', 'Could not save the visit. Try again.')) as Map).cast<String, dynamic>();
+  }
+
+  static const demoInspector = <String, dynamic>{
+    'id': 'in_demo',
+    'name': 'مفتش تجريبي',
+    'branch': 'جدة',
+    'code': 'GOV-DEMO00',
+    'agency': 'وزارة البيئة والمياه والزراعة',
+    'until': '2027-12-31T23:59:00.000Z',
+    'active': true,
+    'month': 0,
+    'today': 0,
+  };
+
+  static String get _base => apiUrl.endsWith('/') ? apiUrl : '$apiUrl/';
+
+  static Future<http.Response> _post(String path, Object body, {int timeout = 20}) async {
+    try {
+      final res = await http
+          .post(Uri.parse('$_base$path'), headers: await _headers(), body: jsonEncode(body))
+          .timeout(Duration(seconds: timeout));
+      _readRemaining(res);
+      return res;
+    } on Exception {
+      throw FishIdException(_offline);
+    }
+  }
+
+  /// جسم الرد إذا نجح، وإلا يرمي رسالة الخادم أو [fallback].
+  static Object? _body(http.Response res, String fallback) {
+    final text = utf8.decode(res.bodyBytes);
+    if (res.statusCode != 200) throw FishIdException(_serverMessage(text) ?? fallback);
+    try {
+      return jsonDecode(text);
+    } on FormatException {
+      throw FishIdException(fallback);
     }
   }
 
@@ -232,6 +351,10 @@ abstract final class FishIdApi {
     'code_full': 'This code has run out.',
     'shop_taken': 'This phone is already linked to another shop.',
     'shop_full': 'This shop has reached its phone limit.',
+    'gov_stopped': 'This inspector code is stopped. Ask your supervisor.',
+    'gov_expired': 'The agency subscription has ended or is stopped.',
+    'gov_devices': 'This code is already used on two phones. Ask your supervisor for a new code.',
+    'gov_none': 'Sign in as an inspector first.',
   };
 
   /// رسالة الخطأ من رد الخادم بلغة التطبيق، إن وجدت.

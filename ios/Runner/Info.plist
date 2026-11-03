@@ -4,6 +4,8 @@
 <dict>
 	<key>NSCameraUsageDescription</key>
 	<string>نحتاج الكاميرا لتصوير السمكة والتعرف على نوعها وطزاجتها.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>للمفتشين فقط: نسجّل موقع الزيارة التفتيشية في تقريرها الرسمي.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>نحتاج الصور لاختيار صورة سمكة وتحليلها.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
