@@ -63,6 +63,9 @@ class AccountStore {
   /// يحفظ عداد المحل بعد كل فحص.
   Future<void> Function()? savePool;
 
+  /// حساب يفحص بلا حد وما ينحسب عليه شي: مفتش في جهة رسمية عقدها ساري ([GovStore]).
+  bool Function(String id, DateTime now)? unlimited;
+
   // لو اشترى صاحب الجهاز اشتراك من المتجر بنفسه، اشتراكه هو اللي يمشي.
   // صاحب محل اشترى باقة المحلات من المتجر (source store، باقة shop) هو كمان على رصيد محله.
   Map<String, dynamic>? _pool(Map<String, dynamic> a) =>
@@ -115,6 +118,7 @@ class AccountStore {
 
   int remaining(String id, DateTime now) {
     final a = account(id, now);
+    if (unlimited?.call(id, now) == true && !_owner(a)) return ownerRemaining + (a['bonus'] as int? ?? 0);
     final base = _base(a, now);
     return (base > 0 ? base : 0) + (a['bonus'] as int? ?? 0);
   }
@@ -136,8 +140,8 @@ class AccountStore {
   Future<void> record(String? id, DateTime now, {required String result, required double usd, required int ms, required int photos}) async {
     if (id != null) {
       final a = account(id, now);
-      if (_owner(a)) {
-        // المالك ما ينحسب عليه شي.
+      if (_owner(a) || unlimited?.call(id, now) == true) {
+        // المالك والمفتش الرسمي ما ينحسب عليهم شي.
       } else if (_base(a, now) > 0) {
         if (_active(a, now)) {
           final c = _pool(a) ?? a;

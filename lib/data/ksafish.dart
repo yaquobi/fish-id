@@ -103,6 +103,18 @@ class Ksafish {
         .toList();
   }
 
+  /// المكتوب على لوحة المحل يطابق اسم من أسماء النوع (المحلية أو الإنجليزي أو العلمي)؟ null إذا ما فيه مكتوب.
+  static bool? labelMatches(String label, Species s) {
+    final t = _norm(label).replaceAll(RegExp(r'^ال'), '');
+    if (t.length < 2) return null;
+    for (final n in [...s.redSea, ...s.gulf, s.english, s.sci]) {
+      final m = _norm(n).replaceAll(RegExp(r'^ال'), '');
+      if (m.isEmpty) continue;
+      if (m == t || (m.length >= 3 && t.length >= 3 && (m.contains(t) || t.contains(m)))) return true;
+    }
+    return false;
+  }
+
   static String _norm(String s) => s
       .toLowerCase()
       .replaceAll(RegExp('[أإآ]'), 'ا')

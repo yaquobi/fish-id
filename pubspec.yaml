@@ -18,6 +18,9 @@ dependencies:
   purchases_flutter: ^11.0.0
   firebase_core: ^5.1.0
   firebase_crashlytics: ^6.0.1
+  pdf: ^3.13.1
+  printing: ^5.15.1
+  geolocator: ^14.1.2
 
 dev_dependencies:
   flutter_test:
@@ -30,6 +33,7 @@ flutter:
   assets:
     - assets/data/
     - assets/brand/
+    - assets/pdf/
   fonts:
     - family: Tajawal
       fonts:

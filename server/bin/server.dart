@@ -8,6 +8,7 @@ import 'package:fish_id_server/claude.dart';
 import 'package:fish_id_server/book.dart';
 import 'package:fish_id_server/collectors.dart';
 import 'package:fish_id_server/contrib.dart';
+import 'package:fish_id_server/gov.dart';
 import 'package:fish_id_server/ledger.dart';
 import 'package:fish_id_server/refs.dart';
 import 'package:fish_id_server/ads.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
   final accounts = AccountStore.open(env['FISHID_ACCOUNTS'] ?? 'accounts');
   final app = FishIdApp(
     identify: ai?.identify,
+    box: ai?.box,
     // مجلد مساهمات المستخدمين (مربوط بـ data/contrib على السيرفر في docker-compose).
     contrib: ContribStore.open(env['FISHID_CONTRIB'] ?? 'contrib'),
     collectors: accounts == null ? null : CollectorStore.open(accounts.dir),
@@ -61,6 +63,7 @@ Future<void> main() async {
     waitlist: accounts == null ? null : Waitlist.open(accounts.dir),
     ads: accounts == null ? null : AdStore.open(accounts.dir),
     shops: accounts == null ? null : ShopStore.open(accounts.dir),
+    gov: accounts == null ? null : GovStore.open(accounts.dir),
     gateway: _moyasar(env),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
