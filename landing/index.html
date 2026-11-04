@@ -217,6 +217,7 @@ snaptr('track','PAGE_VIEW');
 </script>
 <link rel="icon" href="/img/favicon.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<meta name="apple-itunes-app" content="app-id=6828146440">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Tajawal:wght@400;500;700;800&display=swap">
@@ -486,6 +487,8 @@ footer a{color:var(--on-navy)}
 /* v2 layout (2026-10-30): shorter page, signup in the first screen */
 section{padding-block:64px}
 .hero .notify{margin:0;max-width:560px}
+.store-row{margin:0 0 18px}
+.store-row .btn{font-size:17px}
 .hero .stats{margin-top:26px}
 .tight{padding-block:28px;background:var(--surface);border-bottom:1px solid var(--line)}
 ol.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;counter-reset:s}
@@ -581,9 +584,12 @@ details.more[open]{padding-bottom:24px}
         <h1>صوّر السمكة،<br>واعرف <em>نوعها وطزاجتها</em> في ثواني.</h1>
         <p class="lead">تطبيق سعودي يعرف 448 نوعًا من أسماك البحر الأحمر والخليج من صورة، ويعطيك اسمها المحلي ودرجة طزاجتها من 100.</p>
 
+        <div class="store-row">
+          <a class="btn gold" href="https://apps.apple.com/sa/app/fish-id-species-freshness/id6828146440" target="_blank" rel="noopener" data-track="appstore">حمّله على آيفون من App Store</a>
+        </div>
         <form class="notify" id="notify" novalidate>
-          <h3>قريبًا على أندرويد وآيفون 🔔</h3>
-          <p>سجّل إيميلك أو جوالك، ونرسل لك رسالة وحدة يوم الإطلاق بس.</p>
+          <h3>أندرويد قريبًا 🔔</h3>
+          <p>سجّل إيميلك أو جوالك، ونرسل لك رسالة وحدة يوم ينزل على قوقل بلاي بس.</p>
           <div class="row">
             <input type="text" name="contact" inputmode="email" autocomplete="email" placeholder="إيميلك أو جوالك 05xxxxxxxx" aria-label="إيميلك أو رقم جوالك" required maxlength="120">
             <button class="btn gold" type="submit">بلّغني</button>
@@ -591,12 +597,10 @@ details.more[open]{padding-bottom:24px}
           <div class="msg" role="status" aria-live="polite"></div>
           <p class="fine">بالتسجيل توافق إننا نراسلك يوم الإطلاق بس، ونحذف بياناتك إذا طلبت. <a href="/privacy.html">سياسة الخصوصية</a></p>
           <div class="beta" id="beta">
-            <h4>تبغى تجربه الحين؟ مجانًا وبدون تسجيل</h4>
+            <h4>عندك أندرويد وتبغى تجربه الحين؟ مجانًا</h4>
             <div class="beta-btns">
-              <a class="btn ghost" href="https://testflight.apple.com/join/AN1tyFfZ" target="_blank" rel="noopener" data-track="beta_ios">آيفون</a>
               <button class="btn ghost" type="button" data-track="beta_android_open" aria-expanded="false" aria-controls="beta-android">أندرويد</button>
             </div>
-            <small class="hint" id="beta-ios-hint">آيفون: افتح الرابط من جوالك، ثبّت TestFlight من آب ستور، وبعدها اضغط «تثبيت».</small>
             <ol class="beta-steps" id="beta-android" hidden>
               <li><a href="https://groups.google.com/g/fishid-testers" target="_blank" rel="noopener" data-track="beta_android_group">ادخل قروب المختبرين</a> واضغط <b>Join group</b> (بحساب قوقل اللي على جوالك).</li>
               <li><a href="https://play.google.com/apps/testing/sa.hawat.fish_id" target="_blank" rel="noopener" data-track="beta_android_optin">افتح صفحة التجربة</a> واضغط <b>Become a tester</b>.</li>
