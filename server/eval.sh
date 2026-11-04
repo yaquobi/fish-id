@@ -6,7 +6,7 @@
 #   bash server/eval.sh species --photos /out/species-….jsonl --refs /data/refs --refs-below 101
 #                                       # نفس صور تجربة سابقة، مع المقارنة بالصور المرجعية
 #   bash server/eval.sh bioclip --photos /out/species-….jsonl
-#                                       # BioCLIP 2 على المعالج على نفس الصور (بدون Claude، بدون تكلفة)
+#                                       # بصمة (BioCLIP) على المعالج على نفس الصور (بدون Claude، بدون تكلفة)، من /opt/basma
 # النتائج تنحفظ في eval-results/ وتنطبع على الشاشة.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -33,8 +33,10 @@ case "$mode" in
     ;;
   bioclip)
     mkdir -p data/hf
-    docker build -q -f bench/bioclip/Dockerfile -t fishid-bioclip . >/dev/null
-    docker run --rm -v "$PWD/eval-results:/out" -v "$PWD/data/refs:/data/refs:ro" -v "$PWD/data/hf:/hf" fishid-bioclip "$@"
+    # كود بصمة في المستودع الخاص yaquobi/basma (/opt/basma على السيرفر).
+    [ -f ../basma/Dockerfile ] || { echo "مستودع بصمة مو موجود في $(cd .. && pwd)/basma"; exit 1; }
+    docker build -q -t basma ../basma >/dev/null
+    docker run --rm --entrypoint python -v "$PWD/eval-results:/out" -v "$PWD/data/refs:/data/refs:ro" -v "$PWD/data/hf:/hf" basma /app/run.py "$@"
     ;;
   *) echo "الاستخدام: bash server/eval.sh species|fresh|refs|bioclip"; exit 2 ;;
 esac
