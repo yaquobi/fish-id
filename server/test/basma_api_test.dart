@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:fish_id_server/basma_api.dart';
+import 'package:fish_id_server/mailer.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -137,5 +138,68 @@ void main() {
     await clients.update(id, {'active': false, 'invoiced': '2026-11'}, now);
     expect((await call('usage', key: k2, method: 'GET')).$1, 401);
     expect(BasmaClients.open(dir.path).list(now).single['bill']['invoiced'], isTrue);
+  });
+
+  test('self signup emails a trial key once per email', () async {
+    final sent = <(String, String)>[];
+    var fail = false;
+    final withMail = BasmaApi(
+      clients,
+      (_) async => {'top': [], 'ms': 1},
+      const {},
+      notify: notes.add,
+      mail: ({required to, required subject, required html, required text}) async {
+        if (fail) throw const SocketException('smtp down');
+        sent.add((to, text));
+      },
+    );
+    Future<(int, Map<String, dynamic>)> signup(Map b, {String ip = '1.1.1.1'}) async {
+      final res = await withMail.handle(Request('POST', Uri.parse('http://x/api/basma/v1/signup'), body: jsonEncode(b), headers: {'x-forwarded-for': ip}), 'signup', now);
+      return (res.statusCode, jsonDecode(await res.readAsString()) as Map<String, dynamic>);
+    }
+
+    final form = {'name': 'Sara', 'company': 'Red Sea Lab', 'email': 'Sara@Lab.com ', 'country': 'مصر', 'plan': 'developer', 'consent': true};
+    var (s, j) = await signup({...form, 'consent': false});
+    expect(s, 400);
+    (s, j) = await signup(form);
+    expect(s, 200);
+    expect(j['sent'], isTrue);
+    expect(j.containsKey('key'), isFalse);
+    expect(sent.single.$1, 'sara@lab.com');
+    final key = RegExp(r'bsk_[0-9a-f]{40}').firstMatch(sent.single.$2)![0]!;
+    expect(sent.single.$2, contains('مطوّر'));
+    final c = clients.list(now).single;
+    expect(c['plan'], 'trial');
+    expect(c['wants'], 'developer');
+    expect(c['contact'], 'sara@lab.com');
+    expect(notes.last, contains('يبغى باقة'));
+    expect(clients.find(key), isNotNull);
+
+    (s, j) = await signup(form);
+    expect(s, 409);
+
+    fail = true;
+    (s, j) = await signup({...form, 'email': 'other@lab.com'});
+    expect(s, 503);
+    expect(clients.list(now), hasLength(1));
+
+    // كل IP له 5 محاولات باليوم.
+    (s, j) = await signup({...form, 'email': 'x@lab.com'});
+    (s, j) = await signup({...form, 'email': 'y@lab.com'});
+    expect(s, 429);
+  });
+
+  test('without a mailer the key comes back on the page', () async {
+    final res = await api.handle(Request('POST', Uri.parse('http://x/api/basma/v1/signup'), body: jsonEncode({'name': 'A', 'email': 'a@b.co', 'consent': true})), 'signup', now);
+    final j = jsonDecode(await res.readAsString()) as Map;
+    expect(j['key'], matches(BasmaClients.keyPattern));
+  });
+
+  test('mail message is MIME with encoded Arabic subject', () {
+    final m = Mailer(host: 'h', from: 'info@hawat.id', fromName: 'بصمة').message(to: 'a@b.co', subject: 'مفتاحك', html: '<b>هلا</b>', text: 'هلا', boundary: 'B');
+    expect(m, contains('Subject: =?UTF-8?B?${base64.encode(utf8.encode('مفتاحك'))}?='));
+    expect(m, contains('From: =?UTF-8?B?'));
+    expect(m, contains(base64.encode(utf8.encode('<b>هلا</b>'))));
+    expect(m, contains('--B--'));
   });
 }

@@ -22,6 +22,11 @@ if ! grep -q '^FISHID_ADMIN_TOKEN=' .env; then
 fi
 mkdir -p ../data/accounts
 
+# إيميلات الخادم (مفاتيح بصمة) عن طريق Google Workspace: SMTP relay مسموح لعنوان هذا السيرفر بس (لوحة Google Admin > Gmail > Routing).
+if ! grep -q '^FISHID_SMTP_HOST=' .env; then
+  printf 'FISHID_SMTP_HOST=smtp-relay.gmail.com\nFISHID_SMTP_FROM=info@hawat.id\n' >> .env
+fi
+
 # بصمة (المستودع الخاص yaquobi/basma في /opt/basma): إذا موجود نشغّل خدمتها في الظل مع الخادم.
 # COMPOSE_FILE في .env يخلي أي docker compose داخل server/ يشمل ملفها (حتى telegram.sh و ntfy.sh).
 sed -i '/^COMPOSE_FILE=/d' .env
