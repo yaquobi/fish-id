@@ -179,42 +179,48 @@ setInterval(() => cfg.accounts.forEach((a) => refresh(a, { notify: true }).catch
 
 // أوامر منفصلة (قراءة رسالة، نقل، حذف) باتصال قصير عشان ما نوقف المراقبة.
 // اتصال ثاني دائم لكل حساب للأوامر (فتح رسالة، نقل…) عشان ما ننتظر تسجيل دخول جديد كل مرة.
-const workers = new Map(); // id -> Promise<ImapFlow>
-async function worker(a) {
-  let p = workers.get(a.id);
-  if (p) { const c = await p.catch(() => null); if (c?.usable) return c; workers.delete(a.id); }
+// اتصالين لكل حساب: "fg" لطلبات المستخدم، و"bg" للتجهيز المسبق، عشان ضغطتك ما تنتظر خلف التجهيز.
+const workers = new Map(); // "id:kind" -> Promise<ImapFlow>
+async function worker(a, kind = 'fg') {
+  const k = `${a.id}:${kind}`;
+  let p = workers.get(k);
+  if (p) { const c = await p.catch(() => null); if (c?.usable) return c; workers.delete(k); }
   p = (async () => {
     const c = new ImapFlow(await imapOpts(a));
-    c.on('error', () => {}); c.on('close', () => { if (workers.get(a.id) === p) workers.delete(a.id); });
+    c.on('error', () => {}); c.on('close', () => { if (workers.get(k) === p) workers.delete(k); });
     await c.connect();
     return c;
   })();
-  workers.set(a.id, p);
-  p.catch(() => workers.delete(a.id));
+  workers.set(k, p);
+  p.catch(() => workers.delete(k));
   return p;
 }
-async function withImap(a, fn) {
-  try { return await fn(await worker(a)); }
+async function withImap(a, fn, kind = 'fg') {
+  try { return await fn(await worker(a, kind)); }
   catch (e) {
     // انقطع الاتصال؟ نجرب مرة ثانية باتصال جديد
     if (!/closed|ECONN|EPIPE|timeout|Connection not available/i.test(String(e.message || e))) throw e;
-    workers.delete(a.id);
-    return fn(await worker(a));
+    workers.delete(`${a.id}:${kind}`);
+    return fn(await worker(a, kind));
   }
 }
 
 // ذاكرة مؤقتة للرسائل المفتوحة، ونجهّز أحدث رسائل الوارد مسبقًا عشان تفتح على طول.
+const inflight = new Map(); // رسائل يجري جلبها الحين
 const msgCache = new Map(); // "acc/f/uid" -> شكل الرسالة الجاهز
 const fmtAddr = (x) => (x?.value || []).map((v) => ({ name: v.name, address: v.address }));
-async function getMessage(a, f, uid, { markSeen = true } = {}) {
+async function getMessage(a, f, uid, { markSeen = true, kind = 'fg' } = {}) {
   const key = `${a.id}/${f}/${uid}`;
   let out = msgCache.get(key);
+  if (!out && inflight.has(key)) out = await inflight.get(key).catch(() => null);
   if (!out) {
+    let done; inflight.set(key, new Promise((ok) => (done = ok)));
+    try {
     const parsed = await withImap(a, async (c) => {
       const lock = await c.getMailboxLock(await folderPath(c, a, f));
       try { const msg = await c.fetchOne(String(uid), { source: true }, { uid: true }); return msg ? simpleParser(msg.source) : null; }
       finally { lock.release(); }
-    });
+    }, kind);
     if (!parsed) return null;
     out = {
       acc: a.id, f, uid: Number(uid), subject: parsed.subject || '(بدون عنوان)', date: parsed.date,
@@ -225,7 +231,8 @@ async function getMessage(a, f, uid, { markSeen = true } = {}) {
         .map((x) => ({ i: parsed.attachments.indexOf(x), name: x.filename || 'مرفق', size: x.size, type: x.contentType })),
     };
     msgCache.set(key, out);
-    while (msgCache.size > 120) msgCache.delete(msgCache.keys().next().value);
+    while (msgCache.size > 300) msgCache.delete(msgCache.keys().next().value);
+    } finally { done(out || null); inflight.delete(key); }
   }
   if (markSeen) {
     withImap(a, async (c) => {
@@ -235,9 +242,9 @@ async function getMessage(a, f, uid, { markSeen = true } = {}) {
   }
   return out;
 }
-async function prefetch(a) {
-  const rows = (live.get(a.id)?.list || []).slice(-12).reverse();
-  for (const r of rows) if (!msgCache.has(`${a.id}/inbox/${r.uid}`)) await getMessage(a, 'inbox', r.uid, { markSeen: false }).catch(() => {});
+async function prefetch(a, f = 'inbox', uids = null) {
+  const list = uids || (live.get(a.id)?.list || []).slice(-25).reverse().map((r) => r.uid);
+  for (const uid of list) if (!msgCache.has(`${a.id}/${f}/${uid}`)) await getMessage(a, f, uid, { markSeen: false, kind: 'bg' }).catch(() => {});
 }
 
 // تحديث لحظي للتطبيق المفتوح (Server-Sent Events)
@@ -388,6 +395,7 @@ async function api(req, res, url) {
     if (f === 'inbox') rows = accs.flatMap((a) => (live.get(a.id)?.list || []).map((x) => ({ ...x, f })));
     else rows = (await Promise.all(accs.map((a) => listFolder(a, f).catch(() => [])))).flat();
     rows.sort((x, y) => y.date.localeCompare(x.date));
+    if (f !== 'inbox') for (const a of accs) prefetch(a, f, rows.filter((x) => x.acc === a.id).slice(0, 10).map((x) => x.uid)).catch(() => {});
     return send(res, 200, { rows });
   }
   if (p === '/counts') {
@@ -403,9 +411,10 @@ async function api(req, res, url) {
   let r;
   if ((r = /^\/msg\/(\w+)\/(\w+)\/(\d+)$/.exec(p)) && m === 'GET') {
     const a = accOf(r[1]); if (!a || !FOLDERS[r[2]]) return send(res, 404, { error: 'غير موجود' });
-    const out = await getMessage(a, r[2], r[3]);
+    const peek = url.searchParams.has('peek'); // تجهيز مسبق من التطبيق: لا نعلّمها مقروءة
+    const out = await getMessage(a, r[2], r[3], { markSeen: !peek });
     if (!out) return send(res, 404, { error: 'الرسالة غير موجودة' });
-    if (r[2] === 'inbox') { const row = live.get(a.id)?.list?.find((x) => x.uid === Number(r[3])); if (row) row.seen = true; }
+    if (r[2] === 'inbox' && !peek) { const row = live.get(a.id)?.list?.find((x) => x.uid === Number(r[3])); if (row) row.seen = true; }
     return send(res, 200, out);
   }
   if ((r = /^\/att\/(\w+)\/(\w+)\/(\d+)\/(\d+)$/.exec(p))) {
