@@ -64,9 +64,10 @@ function envelopeRow(a, m) {
     acc: a.id, uid: m.uid, date: (m.internalDate || m.envelope?.date || new Date()).toISOString(),
     from: f.name || f.address || '', fromAddr: f.address || '',
     to: (m.envelope?.to || []).map((x) => x.address).join(', '),
+    toName: (m.envelope?.to || []).map((x) => x.name || x.address).join('، '),
     subject: m.envelope?.subject || '(بدون عنوان)',
     seen: m.flags?.has('\\Seen') || false, starred: m.flags?.has('\\Flagged') || false,
-    att: !!m.bodyStructure?.childNodes?.some((n) => n.disposition === 'attachment'),
+    att: hasAtt(m.bodyStructure),
   };
 }
 
@@ -93,7 +94,7 @@ async function notifyNew(a, rows) {
   const payload = JSON.stringify({
     title: n === 1 ? (r.from || r.fromAddr) : `${n} رسائل جديدة`,
     body: n === 1 ? `${r.subject}\n${a.email}` : `${a.email}`,
-    url: `${BASE}/#/m/${a.id}/${r.uid}`, tag: `${a.id}-${r.uid}`,
+    url: `${BASE}/#/inbox/m/${a.id}/inbox/${r.uid}`, tag: `${a.id}-${r.uid}`,
   });
   const dead = [];
   await Promise.all(cfg.subs.map((s) => webpush.sendNotification(s, payload, { TTL: 3600 }).catch((e) => {
@@ -152,6 +153,48 @@ async function withImap(a, fn) {
 async function specialPath(c, use) {
   const list = await c.list();
   return list.find((f) => f.specialUse === use)?.path;
+}
+
+// المجلدات (زي أوتلوك). Gmail يسمّيها حسب لغة الحساب، فنعرفها من specialUse.
+const FOLDERS = { inbox: 'INBOX', sent: '\\Sent', archive: '\\All', starred: '\\Flagged', trash: '\\Trash', att: '\\All', drafts: '\\Drafts', spam: '\\Junk' };
+const pathCache = new Map(); // id -> { key: path }
+async function folderPath(c, a, key) {
+  if (key === 'inbox') return 'INBOX';
+  let m = pathCache.get(a.id);
+  if (!m) {
+    m = {};
+    for (const f of await c.list()) if (f.specialUse) m[f.specialUse] = f.path;
+    pathCache.set(a.id, m);
+  }
+  const fallback = { '\\Sent': '[Gmail]/Sent Mail', '\\All': '[Gmail]/All Mail', '\\Flagged': '[Gmail]/Starred', '\\Trash': '[Gmail]/Trash', '\\Drafts': '[Gmail]/Drafts', '\\Junk': '[Gmail]/Spam' };
+  return m[FOLDERS[key]] || fallback[FOLDERS[key]];
+}
+async function listFolder(a, key) {
+  return withImap(a, async (c) => {
+    const lock = await c.getMailboxLock(await folderPath(c, a, key));
+    try {
+      let range;
+      if (key === 'att') {
+        const uids = (await c.search({ gmraw: 'has:attachment' }, { uid: true })) || [];
+        if (!uids.length) return [];
+        range = uids.slice(-PER_ACCOUNT).join(',');
+      } else {
+        const total = c.mailbox.exists;
+        if (!total) return [];
+        range = `${Math.max(1, total - PER_ACCOUNT + 1)}:*`;
+      }
+      const rows = [];
+      for await (const m of c.fetch(range, { uid: true, envelope: true, flags: true, internalDate: true, bodyStructure: true }, { uid: key === 'att' })) {
+        rows.push({ ...envelopeRow(a, m), f: key, att: key === 'att' || hasAtt(m.bodyStructure) });
+      }
+      return rows;
+    } finally { lock.release(); }
+  });
+}
+function hasAtt(n) {
+  if (!n) return false;
+  if (n.disposition === 'attachment' || (n.dispositionParameters?.filename && n.disposition !== 'inline')) return true;
+  return (n.childNodes || []).some(hasAtt);
 }
 
 // ---------- HTTP ----------
@@ -218,11 +261,21 @@ async function api(req, res, url) {
     return send(res, 200, { vapid: cfg.vapid.publicKey, accounts: cfg.accounts.map((a) => ({ ...pub(a),
       status: live.get(a.id)?.status || 'off', error: live.get(a.id)?.error || null })) });
   }
-  if (p === '/inbox') {
+  if (p === '/list') {
     const only = url.searchParams.get('acc');
-    const rows = cfg.accounts.filter((a) => !only || a.id === only).flatMap((a) => live.get(a.id)?.list || []);
+    const f = url.searchParams.get('f') || 'inbox';
+    if (!FOLDERS[f]) return send(res, 400, { error: 'مجلد غير معروف' });
+    const accs = cfg.accounts.filter((a) => !only || a.id === only);
+    let rows;
+    if (f === 'inbox') rows = accs.flatMap((a) => (live.get(a.id)?.list || []).map((x) => ({ ...x, f })));
+    else rows = (await Promise.all(accs.map((a) => listFolder(a, f).catch(() => [])))).flat();
     rows.sort((x, y) => y.date.localeCompare(x.date));
     return send(res, 200, { rows });
+  }
+  if (p === '/counts') {
+    const unread = {};
+    for (const a of cfg.accounts) unread[a.id] = (live.get(a.id)?.list || []).filter((x) => !x.seen).length;
+    return send(res, 200, { unread });
   }
   if (p === '/refresh' && m === 'POST') {
     await Promise.all(cfg.accounts.map((a) => (live.get(a.id)?.status === 'ok' ? refresh(a) : connect(a)).catch(() => {})));
@@ -230,55 +283,61 @@ async function api(req, res, url) {
   }
 
   let r;
-  if ((r = /^\/msg\/(\w+)\/(\d+)$/.exec(p)) && m === 'GET') {
-    const a = accOf(r[1]); if (!a) return send(res, 404, { error: 'حساب غير موجود' });
+  if ((r = /^\/msg\/(\w+)\/(\w+)\/(\d+)$/.exec(p)) && m === 'GET') {
+    const a = accOf(r[1]); if (!a || !FOLDERS[r[2]]) return send(res, 404, { error: 'غير موجود' });
     const out = await withImap(a, async (c) => {
-      const lock = await c.getMailboxLock('INBOX');
+      const lock = await c.getMailboxLock(await folderPath(c, a, r[2]));
       try {
-        const msg = await c.fetchOne(r[2], { source: true }, { uid: true });
+        const msg = await c.fetchOne(r[3], { source: true }, { uid: true });
         if (!msg) return null;
-        await c.messageFlagsAdd(r[2], ['\\Seen'], { uid: true });
+        await c.messageFlagsAdd(r[3], ['\\Seen'], { uid: true });
         return await simpleParser(msg.source);
       } finally { lock.release(); }
     });
     if (!out) return send(res, 404, { error: 'الرسالة غير موجودة' });
-    const row = live.get(a.id)?.list?.find((x) => x.uid === Number(r[2])); if (row) row.seen = true;
+    if (r[2] === 'inbox') { const row = live.get(a.id)?.list?.find((x) => x.uid === Number(r[3])); if (row) row.seen = true; }
     const fmt = (x) => (x?.value || []).map((v) => ({ name: v.name, address: v.address }));
     return send(res, 200, {
-      acc: a.id, uid: Number(r[2]), subject: out.subject || '(بدون عنوان)', date: out.date,
+      acc: a.id, f: r[2], uid: Number(r[3]), subject: out.subject || '(بدون عنوان)', date: out.date,
       from: fmt(out.from), to: fmt(out.to), cc: fmt(out.cc), replyTo: fmt(out.replyTo),
       messageId: out.messageId || '', references: [].concat(out.references || []),
       html: out.html || null, text: out.text || '',
-      attachments: (out.attachments || []).map((x, i) => ({ i, name: x.filename || `مرفق-${i + 1}`, size: x.size, type: x.contentType })),
+      attachments: (out.attachments || []).filter((x) => x.contentDisposition !== 'inline' || x.filename)
+        .map((x) => ({ i: out.attachments.indexOf(x), name: x.filename || 'مرفق', size: x.size, type: x.contentType })),
     });
   }
-  if ((r = /^\/att\/(\w+)\/(\d+)\/(\d+)$/.exec(p))) {
-    const a = accOf(r[1]); if (!a) return send(res, 404, 'not found');
+  if ((r = /^\/att\/(\w+)\/(\w+)\/(\d+)\/(\d+)$/.exec(p))) {
+    const a = accOf(r[1]); if (!a || !FOLDERS[r[2]]) return send(res, 404, 'not found');
     const out = await withImap(a, async (c) => {
-      const lock = await c.getMailboxLock('INBOX');
-      try { const msg = await c.fetchOne(r[2], { source: true }, { uid: true }); return msg && simpleParser(msg.source); }
+      const lock = await c.getMailboxLock(await folderPath(c, a, r[2]));
+      try { const msg = await c.fetchOne(r[3], { source: true }, { uid: true }); return msg && simpleParser(msg.source); }
       finally { lock.release(); }
     });
-    const at = out?.attachments?.[Number(r[3])];
+    const at = out?.attachments?.[Number(r[4])];
     if (!at) return send(res, 404, 'not found');
-    return send(res, 200, at.content, { 'content-type': 'application/octet-stream',
-      'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(at.filename || 'file')}` });
+    const view = url.searchParams.has('view') && /^(image\/|application\/pdf)/.test(at.contentType || '');
+    return send(res, 200, at.content, { 'content-type': view ? at.contentType : 'application/octet-stream',
+      'content-disposition': `${view ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(at.filename || 'file')}` });
   }
-  if ((r = /^\/msg\/(\w+)\/(\d+)\/(archive|trash|unread|star|unstar)$/.exec(p)) && m === 'POST') {
-    const a = accOf(r[1]); if (!a) return send(res, 404, { error: 'حساب غير موجود' });
+  if ((r = /^\/msg\/(\w+)\/(\w+)\/(\d+)\/(archive|trash|unread|star|unstar|inbox)$/.exec(p)) && m === 'POST') {
+    const a = accOf(r[1]); if (!a || !FOLDERS[r[2]]) return send(res, 404, { error: 'غير موجود' });
+    const [, , f, uid, act] = r;
     await withImap(a, async (c) => {
-      const trash = r[3] === 'trash' ? await specialPath(c, '\\Trash') : null;
-      const lock = await c.getMailboxLock('INBOX');
+      const trash = await folderPath(c, a, 'trash');
+      const lock = await c.getMailboxLock(await folderPath(c, a, f));
       try {
-        if (r[3] === 'archive') await c.messageDelete(r[2], { uid: true }); // في Gmail: يشيله من الوارد ويبقى في كل البريد
-        else if (r[3] === 'trash') await c.messageMove(r[2], trash || '[Gmail]/Trash', { uid: true });
-        else if (r[3] === 'unread') await c.messageFlagsRemove(r[2], ['\\Seen'], { uid: true });
-        else if (r[3] === 'star') await c.messageFlagsAdd(r[2], ['\\Flagged'], { uid: true });
-        else await c.messageFlagsRemove(r[2], ['\\Flagged'], { uid: true });
+        if (act === 'archive') {
+          if (f === 'inbox') await c.messageDelete(uid, { uid: true }); // في Gmail: يشيله من الوارد ويبقى في كل البريد
+          else await c.messageFlagsRemove(uid, ['\\Inbox'], { uid: true, useLabels: true });
+        } else if (act === 'inbox') await c.messageFlagsAdd(uid, ['\\Inbox'], { uid: true, useLabels: true });
+        else if (act === 'trash') await c.messageMove(uid, trash, { uid: true });
+        else if (act === 'unread') await c.messageFlagsRemove(uid, ['\\Seen'], { uid: true });
+        else if (act === 'star') await c.messageFlagsAdd(uid, ['\\Flagged'], { uid: true });
+        else await c.messageFlagsRemove(uid, ['\\Flagged'], { uid: true });
       } finally { lock.release(); }
     });
     const st = live.get(a.id);
-    if (st && (r[3] === 'archive' || r[3] === 'trash')) st.list = st.list.filter((x) => x.uid !== Number(r[2]));
+    if (st && f === 'inbox' && (act === 'archive' || act === 'trash')) st.list = st.list.filter((x) => x.uid !== Number(uid));
     refresh(a).catch(() => {});
     return send(res, 200, { ok: true });
   }
@@ -288,6 +347,18 @@ async function api(req, res, url) {
     const from = [a.email, ...(a.aliases || [])].includes(b.from) ? b.from : a.email;
     const to = addrList(b.to), cc = addrList(b.cc);
     if (!to.length) return send(res, 400, { error: 'اكتب إيميل المرسل إليه' });
+    // التحويل: نرفق مرفقات الرسالة الأصلية
+    let fwdAtts = [];
+    const fo = b.forwardOf;
+    if (fo && accOf(fo.acc) && FOLDERS[fo.f] && /^\d+$/.test(String(fo.uid))) {
+      const oa = accOf(fo.acc);
+      const orig = await withImap(oa, async (c) => {
+        const lock = await c.getMailboxLock(await folderPath(c, oa, fo.f));
+        try { const msg = await c.fetchOne(String(fo.uid), { source: true }, { uid: true }); return msg && simpleParser(msg.source); }
+        finally { lock.release(); }
+      }).catch(() => null);
+      fwdAtts = (orig?.attachments || []).map((x) => ({ filename: x.filename || 'file', content: x.content, contentType: x.contentType }));
+    }
     const t = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: a.email, pass: a.pass } });
     const fromName = (a.fromNames || {})[from] || a.name || '';
     await t.sendMail({
@@ -295,7 +366,7 @@ async function api(req, res, url) {
       subject: String(b.subject || ''), text: String(b.text || ''),
       html: `<div dir="auto" style="font-family:Tahoma,Arial,sans-serif;font-size:15px;line-height:1.7;white-space:pre-wrap">${String(b.text || '').replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]))}</div>`,
       inReplyTo: b.inReplyTo || undefined, references: b.references?.length ? b.references : undefined,
-      attachments: (b.attachments || []).slice(0, 10).map((x) => ({ filename: String(x.name), content: Buffer.from(String(x.data), 'base64') })),
+      attachments: [...fwdAtts, ...(b.attachments || []).slice(0, 10).map((x) => ({ filename: String(x.name), content: Buffer.from(String(x.data), 'base64') }))],
     });
     return send(res, 200, { ok: true });
   }
