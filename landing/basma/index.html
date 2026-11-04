@@ -106,8 +106,14 @@ pre{margin:0;background:var(--navy-deep);color:#DCE6EF;padding:22px;overflow-x:a
 pre .c{color:#7F95AA}
 pre .g{color:var(--gold)}
 .api{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line)}
-.api>div{min-width:0}
+.api>div{min-width:0;background:var(--navy-deep)}
 .api .lbl{background:var(--navy);color:var(--on-navy);font:400 13px var(--lat);padding:8px 22px;letter-spacing:.1em;direction:ltr;text-align:left}
+.ref{border:1px solid var(--line);border-top:0;background:var(--surface)}
+.ref>div{display:grid;grid-template-columns:minmax(0,300px) 1fr;gap:16px;padding:14px 22px;border-top:1px solid var(--line)}
+.ref>div:first-child{border-top:0}
+.ref b{font-weight:400;font-size:14px;text-align:start;unicode-bidi:isolate}
+.ref span{color:var(--muted);font-size:15px;min-width:0}
+@media(max-width:700px){.ref>div{grid-template-columns:1fr;gap:4px}}
 .soon{display:inline-block;background:var(--gold);color:var(--navy);font-size:12px;padding:0 8px;margin-inline-start:8px;vertical-align:middle;font-weight:500}
 .plans{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-right:1px solid var(--line)}
 .plan{border-left:1px solid var(--line);border-bottom:1px solid var(--line);padding:26px 22px;background:var(--surface);display:flex;flex-direction:column}
@@ -185,7 +191,7 @@ footer .copy{width:100%;font-size:13px;opacity:.8}
     </div>
     <div class="stats">
       <div><b>448</b><span>نوعًا من موسوعة KSAFish</span></div>
-      <div><b class="lat">&lt;1s</b><span>للتعرّف على السمكة</span></div>
+      <div><b class="lat" dir="ltr">&lt;1s</b><span>للتعرّف على السمكة</span></div>
       <div><b>2</b><span>البحر الأحمر والخليج</span></div>
       <div><b>AR · EN</b><span>بالأسماء السعودية والعلمية</span></div>
     </div>
@@ -283,16 +289,25 @@ curl https://hawat.id/api/basma/v1/identify \
   --data-binary @fish.jpg</pre></div>
       <div><div class="lbl">RESPONSE</div>
 <pre>{
-  "top": [
+  "model": "basma-0.1",
+  "results": [
     { "id": "HWT-FISH-0365",
-      "sci": "Epinephelus coioides",
-      "red_sea": <span class="g">"هامور"</span>,
-      "gulf": <span class="g">"هامور"</span>,
+      "scientific": "Epinephelus coioides",
+      "english": "Orange-spotted grouper",
+      "red_sea": <span class="g">"كشر برتقالي النقاط"</span>,
+      "gulf": <span class="g">"بألول"</span>,
+      "family": "SERRANIDAE",
       "score": 0.91 }
   ],
-  "model": "basma-1.0",
-  "ms": 640
+  "ms": 640,
+  "usage": { "used": 120, "remaining": 4880 }
 }</pre></div>
+    </div>
+    <div class="ref">
+      <div><b class="lat" dir="ltr">POST /api/basma/v1/identify?top=5</b><span>صورة JPEG أو PNG أو WebP حتى 5 ميجا، في الجسم مباشرة أو base64 داخل JSON. ويرجع لك حتى 5 أنواع.</span></div>
+      <div><b class="lat" dir="ltr">GET /api/basma/v1/usage</b><span>باقتك والمستخدم والمتبقي هذا الشهر.</span></div>
+      <div><b class="lat" dir="ltr">GET /api/basma/v1/species</b><span>قائمة الأنواع كاملة بأسمائها، وما تنحسب من رصيدك.</span></div>
+      <div><b class="lat" dir="ltr">401 · 402 · 429 · 503</b><span>مفتاح غير صحيح، انتهى الرصيد أو المدة، أكثر من 60 طلب بالدقيقة، الخدمة متوقفة مؤقتًا. الطلب الفاشل ما ينحسب.</span></div>
     </div>
   </div>
 </section>
@@ -307,10 +322,10 @@ curl https://hawat.id/api/basma/v1/identify \
         <ul><li>50 طلب لمدة شهر</li><li>كل الأنواع والأسماء المحلية</li><li>دعم بالإيميل</li></ul>
         <a class="btn dark" href="mailto:info@hawat.id?subject=Basma%20API%20-%20Free">ابدأ</a></div>
       <div class="plan"><h3>مطوّر</h3><div class="price"><b>1,499</b><span><svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg> / شهر</span></div><p class="muted">للتطبيقات الصغيرة</p>
-        <ul><li>5,000 طلب بالشهر</li><li>الطلب الزائد 0.40 <svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></li><li>لوحة استهلاك</li></ul>
+        <ul><li>5,000 طلب بالشهر</li><li>الطلب الزائد 0.40 <svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></li><li>متابعة الاستهلاك من الواجهة</li></ul>
         <a class="btn dark" href="mailto:info@hawat.id?subject=Basma%20API%20-%20Developer">اطلب</a></div>
       <div class="plan best"><h3>أعمال</h3><div class="price"><b>7,500</b><span><svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg> / شهر</span></div><p class="muted">للأسواق والمطاعم والموزعين</p>
-        <ul><li>50,000 طلب بالشهر</li><li>الطلب الزائد 0.20 <svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></li><li>أولوية في السرعة ودعم مباشر</li></ul>
+        <ul><li>50,000 طلب بالشهر</li><li>الطلب الزائد 0.20 <svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></li><li>دعم مباشر</li></ul>
         <a class="btn gold" href="mailto:info@hawat.id?subject=Basma%20API%20-%20Business">اطلب</a></div>
       <div class="plan"><h3>الجهات الحكومية والبحثية</h3><div class="price"><b style="font-size:24px;font-family:var(--ar);font-weight:500">عقد سنوي</b></div><p class="muted">في المملكة ودول الخليج والبحر الأحمر</p>
         <ul><li>حسب الاتفاق</li><li>تشغيل على خوادم الجهة داخل المملكة</li><li>تدريب على بيانات الجهة</li><li>تكامل مع أنظمة التفتيش</li></ul>
