@@ -39,7 +39,7 @@ const initials = (s) => (String(s || '?').replace(/[^\p{L}\p{N}]/gu, '')[0] || '
 function showLogin() {
   ['#menu', '#search', '#refresh', '#settingsBtn'].forEach((s) => $(s).classList.add('hide'));
   app.innerHTML = `<div class="login"><img src="icon-512.png" alt="">
-    <h1 class="lg"><picture><source srcset="huwat-white.png" media="(prefers-color-scheme: dark)"><img src="huwat-blue.png" alt="حوات"></picture><span>MAIL</span></h1>
+    <h1 class="lg"><img src="huwat-blue.png" alt="حوات"><span>MAIL</span></h1>
     <p>كل إيميلات حوات في مكان واحد.<br>نرسل لك رمز دخول على تلقرام.</p>
     <button class="btn gold wide" id="send">أرسل الرمز</button>
     <div id="step2" class="hide"><input id="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••">

@@ -221,7 +221,7 @@ function staticFile(res, p) {
   const ext = path.extname(f);
   const csp = "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com 'self'; frame-src 'self' blob: data:; connect-src 'self'; script-src 'self'";
   res.writeHead(200, { ...SEC, 'content-type': MIME[ext] || 'application/octet-stream',
-    'cache-control': ext === '.html' || p === 'sw.js' ? 'no-cache' : 'public, max-age=3600',
+    'cache-control': ['.html', '.js', '.css', '.webmanifest'].includes(ext) ? 'no-cache' : 'public, max-age=3600',
     ...(ext === '.html' ? { 'content-security-policy': csp } : {}),
     ...(p === 'sw.js' ? { 'service-worker-allowed': BASE + '/' } : {}) });
   fs.createReadStream(f).pipe(res);
