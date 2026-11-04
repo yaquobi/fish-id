@@ -20,6 +20,8 @@ class BasmaShadow {
     return BasmaShadow(File('$dir/basma-shadow.jsonl'), (photo) async {
       final req = await http.postUrl(url);
       req.headers.contentType = ContentType.parse(photo.mediaType);
+      // خدمة بصمة (Python) تقرا الطول من content-length، والإرسال المقطّع يوصلها فاضي.
+      req.contentLength = photo.bytes.length;
       req.add(photo.bytes);
       final res = await req.close().timeout(const Duration(seconds: 30));
       final body = await res.transform(utf8.decoder).join();

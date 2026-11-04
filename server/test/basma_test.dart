@@ -49,4 +49,22 @@ void main() {
     await settle();
     expect(b.summary()['scans'], 0);
   });
+
+  test('http client sends the photo with a content-length', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    int? length;
+    server.listen((req) async {
+      length = req.headers.contentLength;
+      await req.drain<void>();
+      req.response
+        ..headers.contentType = ContentType.json
+        ..write('{"top":[{"id":"0058","score":0.9}],"ms":5}');
+      await req.response.close();
+    });
+    final b = BasmaShadow.http(dir.path, Uri.parse('http://127.0.0.1:${server.port}/basma'));
+    final r = await b.rank(photo);
+    await server.close(force: true);
+    expect(length, 3);
+    expect((r['top'] as List).first['id'], '0058');
+  });
 }
