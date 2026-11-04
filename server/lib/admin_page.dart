@@ -420,23 +420,24 @@ const icons = {
   shops: '<path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6"/>',
   gov: '<path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-6 10 6z"/>',
   book: '<path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/>',
+  basma: '<path d="M12 4a8 8 0 0 0-8 8M12 4a8 8 0 0 1 8 8v2M8 12a4 4 0 0 1 8 0v3c0 2-1 4-2 5M12 12v4c0 2-1 3.5-2 4.5M6 16c0 1.5-.5 3-1.5 4M17.5 18.5l-.5 1.5"/>',
   brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h5"/>',
   staff: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/><path d="M17 3l1.5 1.5L21 2"/>',
 };
 const tabName = k => ({home: T('الرئيسية', 'Overview'), brief: T('البريف اليومي', 'Daily brief'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
-  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), shops: T('المحلات', 'Shops'), gov: T('الجهات الرسمية', 'Government'), book: T('صور الأسماك', 'Fish photos')})[k];
+  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), shops: T('المحلات', 'Shops'), gov: T('الجهات الرسمية', 'Government'), book: T('صور الأسماك', 'Fish photos'), basma: T('بصمة في الظل', 'Basma (shadow)')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
-  owner: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes', 'staff'],
-  admin: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'settings', 'codes'],
+  owner: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'basma', 'settings', 'codes', 'staff'],
+  admin: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'basma', 'settings', 'codes'],
   accountant: ['home', 'brief', 'report', 'money', 'alerts'],
   investor: ['report'],
 };
 // مجموعات القائمة الجانبية. أي تبويب جديد ينضاف لمجموعته هنا.
 const navGroups = () => [
   [T('نظرة عامة', 'Overview'), ['home', 'brief', 'report', 'alerts']],
-  [T('العملاء', 'Customers'), ['users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'launch']],
+  [T('العملاء', 'Customers'), ['users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'basma', 'launch']],
   [T('المال', 'Money'), ['money', 'settings', 'codes']],
   [T('الموقع والفريق', 'Site & team'), ['site', 'staff']],
 ];
@@ -1411,6 +1412,23 @@ function main() {
       catch (e) { $('#c-msg').textContent = e.message; }
     };
     $('#app').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { await post('codes', {code: b.dataset.del, max: 0}); show('codes'); });
+  },
+
+  // «بصمة» في الظل: نموذجنا يشتغل جنب Opus على كل فحص حقيقي بدون ما يأثر على الجواب، ونقارن.
+  async basma() {
+    const b = await api('basma');
+    const top = r => r.basma[0] === r.opus[0];
+    $('#app').innerHTML = heading(T('بصمة في الظل', 'Basma (shadow mode)'), T('نموذجنا يشتغل بصمت جنب Opus على كل فحص، والمستخدم يشوف جواب Opus بس', 'Our model runs silently beside Opus on every scan; users only see the Opus answer')) + `
+      <div class="grid">
+        ${kpi(T('فحوصات مقارنة', 'Compared scans'), num(b.scans), T('من بداية التجربة', 'since the trial started'), 'hero')}
+        ${kpi(T('نفس الجواب الأول', 'Same top answer'), b.same_top1 + '%', T('بصمة و Opus اختاروا نفس السمكة', 'Basma and Opus picked the same fish'))}
+        ${kpi(T('جواب بصمة ضمن مرشحي Opus', 'Basma pick in Opus candidates'), b.basma_top1_in_opus + '%')}
+        ${kpi(T('جواب Opus ضمن أول 3 من بصمة', 'Opus pick in Basma top 3'), b.opus_top1_in_basma_top3 + '%')}
+        ${kpi(T('سرعة بصمة', 'Basma speed'), ((b.avg_ms || 0) / 1000).toFixed(2) + ' ' + T('ثانية', 's'), T('Opus تقريبًا 12 ثانية', 'Opus is about 12 s'))}
+      </div>
+      <div class="card"><h3>${T('آخر الفحوصات', 'Latest scans')}</h3>
+        <table><tr><th>${T('الوقت', 'Time')}</th><th>Opus</th><th>${T('بصمة', 'Basma')}</th><th></th></tr>
+        ${b.last.map(r => `<tr><td>${when(r.t)}</td><td>${sp(r.opus[0])}</td><td>${sp(r.basma[0])}</td><td>${top(r) ? '✓' : r.opus.includes(r.basma[0]) ? '≈' : '✗'}</td></tr>`).join('') || `<tr><td class="msg" colspan="4">${T('ما فيه فحوصات للحين', 'No scans yet')}</td></tr>`}</table></div>`;
   },
 
   // الأسماك المتداولة واسمها المحلي مع صور المصوّرين المقبولة. صور الكتاب تبقى على السيرفر للتطبيق وما تنعرض هنا عشان اللوحة تبقى خفيفة.

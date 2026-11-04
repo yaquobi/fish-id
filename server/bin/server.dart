@@ -12,6 +12,7 @@ import 'package:fish_id_server/gov.dart';
 import 'package:fish_id_server/ledger.dart';
 import 'package:fish_id_server/refs.dart';
 import 'package:fish_id_server/ads.dart';
+import 'package:fish_id_server/basma.dart';
 import 'package:fish_id_server/shops.dart';
 import 'package:fish_id_server/site.dart';
 import 'package:fish_id_server/staff.dart';
@@ -65,6 +66,8 @@ Future<void> main() async {
     shops: accounts == null ? null : ShopStore.open(accounts.dir),
     gov: accounts == null ? null : GovStore.open(accounts.dir),
     gateway: _moyasar(env),
+    // بصمة في الظل (خدمة basma في docker-compose). بدون الرابط ما تشتغل.
+    basma: accounts == null || (env['FISHID_BASMA_URL'] ?? '').isEmpty ? null : BasmaShadow.http(accounts.dir, Uri.parse(env['FISHID_BASMA_URL']!)),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {
