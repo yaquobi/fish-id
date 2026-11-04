@@ -9,6 +9,10 @@ export MAIL_HOST_PORT=$PORT
 umask 077
 grep -E '^FISHID_TELEGRAM_(TOKEN|CHAT)=' ../server/.env > .env || { echo 'تلقرام غير مربوط: شغّل bash server/telegram.sh أول'; exit 1; }
 mkdir -p ../data/mail && chown 1000:1000 ../data/mail && chmod 700 ../data/mail
+# مفتاح حساب خدمة Google (الخاص يبقى هنا، والعام في sa-public.pem ينرفع لـ Google) + رمز للإضافة من السيرفر.
+[[ -f ../data/mail/sa-key.pem ]] || openssl req -x509 -nodes -newkey rsa:2048 -days 3650 -subj "/CN=hawat-mail" -keyout ../data/mail/sa-key.pem -out ../data/mail/sa-public.pem 2>/dev/null
+[[ -f ../data/mail/local-token ]] || openssl rand -hex 24 > ../data/mail/local-token
+chown 1000:1000 ../data/mail/* && chmod 600 ../data/mail/sa-key.pem ../data/mail/local-token
 
 docker compose up -d --build
 for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:$PORT/health >/dev/null 2>&1 && break; sleep 1; done

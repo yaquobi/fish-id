@@ -18,6 +18,8 @@ const TG_TOKEN = process.env.FISHID_TELEGRAM_TOKEN || '';
 const TG_CHAT = process.env.FISHID_TELEGRAM_CHAT || '';
 const BASE = '/mail';
 const CFG_FILE = path.join(DATA, 'config.json');
+let LOCAL_TOKEN = '';
+try { LOCAL_TOKEN = fs.readFileSync(path.join(DATA, 'local-token'), 'utf8').trim(); } catch {}
 const PER_ACCOUNT = 60; // آخر كم رسالة من كل صندوق وارد نعرضها
 
 // ---------- الإعدادات (ملف واحد على السيرفر، للمالك فقط) ----------
@@ -53,10 +55,30 @@ function cookieToken(req) {
 
 // ---------- IMAP: اتصال دائم لكل حساب يراقب الوارد ----------
 const live = new Map(); // id -> { client, list, status, error }
-const imapOpts = (a) => ({
-  host: 'imap.gmail.com', port: 993, secure: true,
-  auth: { user: a.email, pass: a.pass }, logger: false, emitLogs: false,
-});
+// ربط بدون كلمات مرور: حساب خدمة Google بتفويض على مستوى النطاق (Domain-wide delegation)،
+// المفتاح الخاص يتولّد على السيرفر نفسه (data/mail/sa-key.pem) وما يطلع منه، والمفتاح العام بس ينرفع لـ Google.
+const SA_FILE = path.join(DATA, 'sa.json'), SA_KEY = path.join(DATA, 'sa-key.pem');
+const saInfo = () => { try { return { ...JSON.parse(fs.readFileSync(SA_FILE, 'utf8')), key: fs.readFileSync(SA_KEY, 'utf8') }; } catch { return null; } };
+const tokens = new Map(); // email -> { token, exp }
+async function googleToken(email) {
+  const t = tokens.get(email);
+  if (t && t.exp > Date.now() + 120000) return t.token;
+  const sa = saInfo();
+  if (!sa?.client_email) throw new Error('حساب خدمة Google غير مجهّز');
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const now = Math.floor(Date.now() / 1000);
+  const head = b64({ alg: 'RS256', typ: 'JWT', ...(sa.key_id ? { kid: sa.key_id } : {}) });
+  const body = b64({ iss: sa.client_email, sub: email, scope: 'https://mail.google.com/', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 });
+  const sig = crypto.sign('RSA-SHA256', Buffer.from(`${head}.${body}`), sa.key).toString('base64url');
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${head}.${body}.${sig}` }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.access_token) throw new Error('Google رفض الربط: ' + (j.error_description || j.error || r.status) + ' (تأكد من التفويض في لوحة المدير)');
+  tokens.set(email, { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 });
+  return j.access_token;
+}
+const authOf = async (a) => (a.google ? { user: a.email, accessToken: await googleToken(a.email) } : { user: a.email, pass: a.pass });
+const imapOpts = async (a) => ({ host: 'imap.gmail.com', port: 993, secure: true, auth: await authOf(a), logger: false, emitLogs: false });
 
 function envelopeRow(a, m) {
   const f = m.envelope?.from?.[0] || {};
@@ -119,7 +141,13 @@ async function connect(a) {
   if (old?.timer) clearTimeout(old.timer);
   const st = { client: null, list: old?.list || [], status: 'connecting', error: null, ready: old?.ready || false };
   live.set(a.id, st);
-  const c = new ImapFlow(imapOpts(a));
+  let opts;
+  try { opts = await imapOpts(a); } catch (e) {
+    st.status = 'error'; st.error = String(e.message || e);
+    st.timer = setTimeout(() => connect(a).catch(() => {}), 60000);
+    return;
+  }
+  const c = new ImapFlow(opts);
   st.client = c;
   let debounce;
   c.on('exists', () => { clearTimeout(debounce); debounce = setTimeout(() => refresh(a, { notify: true }).catch(() => {}), 800); });
@@ -146,7 +174,7 @@ setInterval(() => cfg.accounts.forEach((a) => refresh(a, { notify: true }).catch
 
 // أوامر منفصلة (قراءة رسالة، نقل، حذف) باتصال قصير عشان ما نوقف المراقبة.
 async function withImap(a, fn) {
-  const c = new ImapFlow(imapOpts(a));
+  const c = new ImapFlow(await imapOpts(a));
   await c.connect();
   try { return await fn(c); } finally { await c.logout().catch(() => {}); }
 }
@@ -250,6 +278,24 @@ async function api(req, res, url) {
     save();
     telegram('تم الدخول على حوات ميل من جهاز جديد.').catch(() => {});
     return send(res, 200, { ok: true }, { 'set-cookie': `hm=${tok}; Path=${BASE}; HttpOnly; Secure; SameSite=Strict; Max-Age=31536000` });
+  }
+
+  // إضافة حساب من السيرفر نفسه (بدون كلمة مرور، عن طريق حساب الخدمة):
+  // curl -H "x-local: $(cat data/mail/local-token)" -H 'content-type: application/json' -d '{"email":"...","aliases":"..."}' 127.0.0.1:18495/api/local/google
+  if (p === '/local/google' && m === 'POST') {
+    if (!LOCAL_TOKEN || req.headers['x-local'] !== LOCAL_TOKEN || req.headers['x-real-ip'] || req.headers['x-forwarded-for']) return send(res, 403, { error: 'forbidden' });
+    const b = await readJson(req);
+    const email = String(b.email || '').trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+$/.test(email)) return send(res, 400, { error: 'email' });
+    try { tokens.delete(email); const c = new ImapFlow(await imapOpts({ email, google: true })); await c.connect(); await c.logout(); }
+    catch (e) { return send(res, 400, { error: String(e.message || e) }); }
+    const aliases = addrList(b.aliases).map((x) => x.toLowerCase()).filter((x) => x !== email);
+    const old = cfg.accounts.find((a) => a.email === email);
+    const a = old || { id: crypto.randomBytes(4).toString('hex'), email, color: COLORS[cfg.accounts.length % COLORS.length] };
+    Object.assign(a, { google: true, pass: undefined, name: String(b.name || '').trim() || a.name || email.split('@')[1], aliases });
+    if (!old) cfg.accounts.push(a);
+    save(); connect(a).catch(() => {});
+    return send(res, 200, { ok: true, account: pub(a) });
   }
 
   const tok = cookieToken(req);
@@ -359,7 +405,8 @@ async function api(req, res, url) {
       }).catch(() => null);
       fwdAtts = (orig?.attachments || []).map((x) => ({ filename: x.filename || 'file', content: x.content, contentType: x.contentType }));
     }
-    const t = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: a.email, pass: a.pass } });
+    const t = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true,
+      auth: a.google ? { type: 'OAuth2', user: a.email, accessToken: await googleToken(a.email) } : { user: a.email, pass: a.pass } });
     const fromName = (a.fromNames || {})[from] || a.name || '';
     await t.sendMail({
       from: fromName ? { name: fromName, address: from } : from, to, cc: cc.length ? cc : undefined,
@@ -375,7 +422,7 @@ async function api(req, res, url) {
     const email = String(b.email || '').trim().toLowerCase();
     const pass = String(b.pass || '').replace(/\s+/g, '');
     if (!/^[^@\s]+@[^@\s]+$/.test(email) || pass.length < 8) return send(res, 400, { error: 'اكتب الإيميل وكلمة مرور التطبيقات' });
-    const test = new ImapFlow(imapOpts({ email, pass }));
+    const test = new ImapFlow(await imapOpts({ email, pass }));
     try { await test.connect(); await test.logout(); } catch (e) {
       return send(res, 400, { error: e.authenticationFailed ? 'Google رفض الدخول: تأكد من كلمة مرور التطبيقات (16 حرف) وإن IMAP مفعّل' : 'تعذّر الاتصال: ' + (e.message || e) });
     }
