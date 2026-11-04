@@ -308,7 +308,7 @@ class _BoxScreenState extends State<BoxScreen> {
                 controller: _seller,
                 decoration: InputDecoration(
                   labelText: tr('البائع أو القارب (اختياري)', 'Seller or boat (optional)'),
-                  border: const OutlineInputBorder(),
+                  border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                 ),
               ),
               const SizedBox(height: 10),
@@ -316,7 +316,7 @@ class _BoxScreenState extends State<BoxScreen> {
                 controller: _market,
                 decoration: InputDecoration(
                   labelText: tr('السوق (اختياري)', 'Market (optional)'),
-                  border: const OutlineInputBorder(),
+                  border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                 ),
               ),
               const SizedBox(height: 12),

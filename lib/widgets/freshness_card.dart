@@ -160,7 +160,7 @@ class _Meter extends StatelessWidget {
             Container(
               height: 10,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.zero,
                 gradient: LinearGradient(
                   begin: AlignmentDirectional.centerStart,
                   end: AlignmentDirectional.centerEnd,
@@ -196,7 +196,7 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    decoration: BoxDecoration(color: color.withValues(alpha: .1), borderRadius: BorderRadius.circular(999)),
+    decoration: BoxDecoration(color: color.withValues(alpha: .1), borderRadius: BorderRadius.zero),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [

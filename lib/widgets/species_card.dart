@@ -144,7 +144,7 @@ class _Confidence extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(12)),
+    decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.zero),
     child: Column(
       children: [
         Text(

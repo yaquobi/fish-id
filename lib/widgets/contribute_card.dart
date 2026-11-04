@@ -243,9 +243,9 @@ class _ContributeCardState extends State<ContributeCard> {
     labelText: label,
     isDense: true,
     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+    border: OutlineInputBorder(borderRadius: BorderRadius.zero),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.zero,
       borderSide: const BorderSide(color: AppColors.line),
     ),
   );

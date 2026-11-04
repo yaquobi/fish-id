@@ -119,7 +119,7 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: color.withValues(alpha: .1), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: color.withValues(alpha: .1), borderRadius: BorderRadius.zero),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -198,11 +198,11 @@ class _ShelfLifeCardState extends State<ShelfLifeCard> {
     isDense: true,
     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.zero,
       borderSide: const BorderSide(color: AppColors.line),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.zero,
       borderSide: const BorderSide(color: AppColors.line),
     ),
   );

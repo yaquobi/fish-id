@@ -156,7 +156,7 @@ class _InspectorScreenState extends State<InspectorScreen> {
         textAlign: TextAlign.center,
         textCapitalization: TextCapitalization.characters,
         style: const TextStyle(fontFamily: 'ChakraPetch', fontSize: 20, letterSpacing: 2),
-        decoration: InputDecoration(hintText: 'GOV-XXXXXX', border: const OutlineInputBorder(), errorText: _error),
+        decoration: InputDecoration(hintText: 'GOV-XXXXXX', border: const OutlineInputBorder(borderRadius: BorderRadius.zero), errorText: _error),
         onSubmitted: (_) => _join(),
       ),
       const SizedBox(height: 12),
@@ -220,13 +220,13 @@ class _InspectorScreenState extends State<InspectorScreen> {
                     decoration: InputDecoration(
                       labelText: tr('السوق', 'Market'),
                       hintText: tr('مثل: سوق السمك المركزي (البنقلة)', 'e.g. Central fish market'),
-                      border: const OutlineInputBorder(),
+                      border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _city,
-                    decoration: InputDecoration(labelText: tr('المدينة', 'City'), border: const OutlineInputBorder()),
+                    decoration: InputDecoration(labelText: tr('المدينة', 'City'), border: const OutlineInputBorder(borderRadius: BorderRadius.zero)),
                   ),
                   if (_error != null)
                     Padding(

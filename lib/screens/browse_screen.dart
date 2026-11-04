@@ -38,11 +38,11 @@ class _BrowseScreenState extends State<BrowseScreen> {
                   filled: true,
                   fillColor: AppColors.surface,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.zero,
                     borderSide: const BorderSide(color: AppColors.line),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.zero,
                     borderSide: const BorderSide(color: AppColors.line),
                   ),
                 ),
