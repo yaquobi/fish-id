@@ -1,0 +1,5 @@
+/* Permission texts in English. */
+"CFBundleDisplayName" = "FISH ID";
+"NSCameraUsageDescription" = "FISH ID uses the camera to photograph a fish and identify its species and freshness.";
+"NSPhotoLibraryUsageDescription" = "FISH ID uses your photos so you can pick a fish photo to analyse.";
+"NSLocationWhenInUseUsageDescription" = "Inspectors only: the visit location is recorded in the official inspection report.";

@@ -36,7 +36,7 @@ Subscriptions are billed and cancelled through Google Play or the App Store.
 ## Availability
 
 - Android: Google Play (sa.hawat.fish_id), in testing; public launch soon. Early testers (Android or iPhone): sign up at https://hawat.id/#notify
-- iOS: App Store, coming soon (TestFlight beta).
+- iOS: App Store (live since 2026-11-04): https://apps.apple.com/sa/app/fish-id-species-freshness/id6828146440
 
 ## Sources and method
 
@@ -51,4 +51,4 @@ Subscriptions are billed and cancelled through Google Play or the App Store.
 - Contact: info@hawat.id
 
 ## Basma (بصمة)
-Basma is FISH ID's own Saudi-built fish identification model from HUWAT: photo in, species with Saudi local names out, in under a second. It powers FISH ID and is offered to developers and governments across the Red Sea and Arabian Gulf region as an API (early access). Details: https://hawat.id/basma/
+Basma is FISH ID's own Saudi-built fish identification model from HUWAT: photo in, species with Saudi local names out, in under a second. It powers FISH ID and is offered to developers and governments across the Red Sea and Arabian Gulf region as an API with self-service trial keys (50 free requests) and monthly plans. Details and sign-up: https://hawat.id/basma/#start

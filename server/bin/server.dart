@@ -14,6 +14,7 @@ import 'package:fish_id_server/refs.dart';
 import 'package:fish_id_server/ads.dart';
 import 'package:fish_id_server/basma.dart';
 import 'package:fish_id_server/basma_api.dart';
+import 'package:fish_id_server/mailer.dart';
 import 'package:fish_id_server/shops.dart';
 import 'package:fish_id_server/site.dart';
 import 'package:fish_id_server/staff.dart';
@@ -72,12 +73,11 @@ Future<void> main() async {
     gateway: _moyasar(env),
     basma: basma,
     // بصمة API للعملاء (hawat.id/api/basma/v1/identify) على نفس الخدمة.
-    basmaApi: basma == null ? null : BasmaApi(BasmaClients.open(accounts!.dir), basma.rank, BasmaApi.speciesFrom(data), notify: notify),
+    basmaApi: basma == null ? null : BasmaApi(BasmaClients.open(accounts!.dir), basma.rank, BasmaApi.speciesFrom(data), notify: notify, mail: _mailer(env)?.send),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {
-      for (final s in data['species'] as List)
-        (s['id'] as String).split('-').last: '${[s['red'], s['gulf'], s['sci']].firstWhere((n) => '${n ?? ''}'.isNotEmpty)}'.split('|').first.trim(),
+      for (final s in data['species'] as List) (s['id'] as String).split('-').last: '${[s['red'], s['gulf'], s['sci']].firstWhere((n) => '${n ?? ''}'.isNotEmpty)}'.split('|').first.trim(),
     },
     perMinute: int.tryParse(env['FISHID_PER_MINUTE'] ?? '') ?? 30,
     notify: notify,
@@ -228,5 +228,20 @@ Gateway? _moyasar(Map<String, String> env) {
     methods: methods.isEmpty ? const ['creditcard'] : methods,
     fetch: (id) => send('GET', '/v1/payments/${Uri.encodeComponent(id)}'),
     charge: (body) => send('POST', '/v1/payments', body),
+  );
+}
+
+/// إيميلات الخادم (مفاتيح بصمة). FISHID_SMTP_HOST مثل smtp-relay.gmail.com (Google Workspace يسمح لعنوان السيرفر بدون كلمة سر)،
+/// و FISHID_SMTP_FROM المرسل (info@hawat.id)، واختياري FISHID_SMTP_PORT و FISHID_SMTP_USER و FISHID_SMTP_PASS.
+Mailer? _mailer(Map<String, String> env) {
+  final host = env['FISHID_SMTP_HOST'] ?? '';
+  if (host.isEmpty) return null;
+  return Mailer(
+    host: host,
+    port: int.tryParse(env['FISHID_SMTP_PORT'] ?? '') ?? 465,
+    from: env['FISHID_SMTP_FROM'] ?? 'info@hawat.id',
+    fromName: 'بصمة · حوات',
+    user: env['FISHID_SMTP_USER'] ?? '',
+    pass: env['FISHID_SMTP_PASS'] ?? '',
   );
 }

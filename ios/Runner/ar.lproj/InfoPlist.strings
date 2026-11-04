@@ -1,0 +1,5 @@
+/* نصوص الأذونات بالعربي. وجود ar.lproj يخلي App Store يكتب العربية ضمن لغات التطبيق. */
+"CFBundleDisplayName" = "FISH ID";
+"NSCameraUsageDescription" = "نحتاج الكاميرا لتصوير السمكة والتعرف على نوعها وطزاجتها.";
+"NSPhotoLibraryUsageDescription" = "نحتاج الصور لاختيار صورة سمكة وتحليلها.";
+"NSLocationWhenInUseUsageDescription" = "للمفتشين فقط: نسجّل موقع الزيارة التفتيشية في تقريرها الرسمي.";

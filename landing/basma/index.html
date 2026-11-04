@@ -23,8 +23,9 @@ gtag('config', 'G-DXP9EDEF08', { allow_google_signals: false, allow_ad_personali
 <meta property="og:url" content="https://hawat.id/basma/">
 <meta property="og:image" content="https://hawat.id/img/og.png">
 <link rel="canonical" href="https://hawat.id/basma/">
-<link rel="icon" href="/img/favicon.png">
-<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="icon" href="/img/basma-favicon.png">
+<link rel="apple-touch-icon" href="/img/basma-apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="بصمة">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600&family=Tajawal:wght@300;400;500;700&display=swap">
@@ -114,6 +115,24 @@ pre .g{color:var(--gold)}
 .ref b{font-weight:400;font-size:14px;text-align:start;unicode-bidi:isolate}
 .ref span{color:var(--muted);font-size:15px;min-width:0}
 @media(max-width:700px){.ref>div{grid-template-columns:1fr;gap:4px}}
+.start{display:grid;grid-template-columns:1fr 1.3fr;gap:0;border:1px solid var(--line);background:var(--surface)}
+.start>div{padding:30px;min-width:0}
+.start .side{background:var(--navy);color:#fff}
+.start .side p,.start .side li{color:var(--on-navy)}
+.start .side ol{margin:16px 0 0;padding-inline-start:20px;line-height:2}
+.f{display:grid;gap:14px}
+.f label{display:grid;gap:6px;font-size:15px;color:var(--muted)}
+.f input,.f select{font:300 16px var(--ar);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:0;padding:12px;min-width:0;width:100%;box-sizing:border-box}
+.f input:focus,.f select:focus{outline:2px solid var(--gold);outline-offset:-1px}
+.f .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.f .ok{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.8}
+.f .ok input{width:18px;height:18px;margin-top:5px;flex:none}
+.f button{cursor:pointer;border:0;justify-content:center}
+.f button[disabled]{opacity:.6;cursor:wait}
+.msg{font-size:15px;line-height:1.9;padding:14px 16px;border-inline-start:3px solid var(--gold);background:var(--chip)}
+.msg.err{border-color:#C0392B}
+.keybox{direction:ltr;text-align:left;font:400 14px ui-monospace,Menlo,Consolas,monospace;background:var(--navy-deep);color:var(--gold);padding:14px;word-break:break-all;margin-top:10px}
+@media(max-width:800px){.start{grid-template-columns:1fr}.f .two{grid-template-columns:1fr}}
 .soon{display:inline-block;background:var(--gold);color:var(--navy);font-size:12px;padding:0 8px;margin-inline-start:8px;vertical-align:middle;font-weight:500}
 .plans{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-right:1px solid var(--line)}
 .plan{border-left:1px solid var(--line);border-bottom:1px solid var(--line);padding:26px 22px;background:var(--surface);display:flex;flex-direction:column}
@@ -268,7 +287,7 @@ footer .copy{width:100%;font-size:13px;opacity:.8}
         <table>
           <tr><td>بصمة 0.1</td><td>تعمل الآن داخل FISH ID</td></tr>
           <tr><td>بصمة 1.0</td><td>مدرّبة على صور أسواق المملكة <span class="soon">قريبًا</span></td></tr>
-          <tr><td>Basma API</td><td>للمطورين والجهات <span class="soon">وصول مبكر</span></td></tr>
+          <tr><td>Basma API</td><td>للمطورين والجهات <span class="soon">متاحة الحين</span></td></tr>
         </table>
       </div>
     </div>
@@ -278,7 +297,7 @@ footer .copy{width:100%;font-size:13px;opacity:.8}
 <section id="api">
   <div class="wrap">
     <div class="kicker">For developers</div>
-    <h2>Basma API <span class="soon">وصول مبكر</span></h2>
+    <h2>Basma API</h2>
     <p class="sub">أرسل صورة، وارجع لك النوع واسمه المحلي ودرجة الثقة. يصلح لتطبيقات الأسواق، وأنظمة التفتيش، والمطاعم، والبحث العلمي.</p>
     <div class="api">
       <div><div class="lbl">REQUEST</div>
@@ -316,22 +335,66 @@ curl https://hawat.id/api/basma/v1/identify \
   <div class="wrap">
     <div class="kicker">Plans</div>
     <h2>الباقات</h2>
-    <p class="sub">أسعار الإطلاق المبدئية للوصول المبكر. الأسعار بالريال وقبل ضريبة القيمة المضافة.</p>
+    <p class="sub">أسعار الإطلاق. الأسعار بالريال وقبل ضريبة القيمة المضافة.</p>
     <div class="plans">
       <div class="plan"><h3>تجريبية</h3><div class="price"><b>0</b><span><svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></span></div><p class="muted">للتقييم قبل الاشتراك</p>
         <ul><li>50 طلب لمدة شهر</li><li>كل الأنواع والأسماء المحلية</li><li>دعم بالإيميل</li></ul>
-        <a class="btn dark" href="mailto:info@hawat.id?subject=Basma%20API%20-%20Free">ابدأ</a></div>
+        <a class="btn dark" href="#start" data-plan="trial">ابدأ مجانًا</a></div>
       <div class="plan"><h3>مطوّر</h3><div class="price"><b>1,499</b><span><svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg> / شهر</span></div><p class="muted">للتطبيقات الصغيرة</p>
         <ul><li>5,000 طلب بالشهر</li><li>الطلب الزائد 0.40 <svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></li><li>متابعة الاستهلاك من الواجهة</li></ul>
-        <a class="btn dark" href="mailto:info@hawat.id?subject=Basma%20API%20-%20Developer">اطلب</a></div>
+        <a class="btn dark" href="#start" data-plan="developer">اطلب</a></div>
       <div class="plan best"><h3>أعمال</h3><div class="price"><b>7,500</b><span><svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg> / شهر</span></div><p class="muted">للأسواق والمطاعم والموزعين</p>
         <ul><li>50,000 طلب بالشهر</li><li>الطلب الزائد 0.20 <svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></li><li>دعم مباشر</li></ul>
-        <a class="btn gold" href="mailto:info@hawat.id?subject=Basma%20API%20-%20Business">اطلب</a></div>
+        <a class="btn gold" href="#start" data-plan="business">اطلب</a></div>
       <div class="plan"><h3>الجهات الحكومية والبحثية</h3><div class="price"><b style="font-size:24px;font-family:var(--ar);font-weight:500">عقد سنوي</b></div><p class="muted">في المملكة ودول الخليج والبحر الأحمر</p>
         <ul><li>حسب الاتفاق</li><li>تشغيل على خوادم الجهة داخل المملكة</li><li>تدريب على بيانات الجهة</li><li>تكامل مع أنظمة التفتيش</li></ul>
-        <a class="btn dark" href="mailto:info@hawat.id?subject=Basma%20-%20Government">تواصل معنا</a></div>
+        <a class="btn dark" href="#start" data-plan="gov">تواصل معنا</a></div>
     </div>
     <p class="note">تطبيق FISH ID للأفراد والمحلات له باقاته الخاصة في <a href="/#pricing">الصفحة الرئيسية</a>.</p>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <div class="kicker">Get your key</div>
+    <h2>ابدأ الحين</h2>
+    <p class="sub">سجّل وتوصلك رسالة على إيميلك فيها مفتاحك خلال دقيقة. التجريبية مجانية، وإذا اخترت باقة مدفوعة نتواصل معك لإتمام الدفع ونرفع باقتك على نفس المفتاح.</p>
+    <div class="start">
+      <div class="side">
+        <h3 style="margin:0">كيف تبدأ</h3>
+        <ol>
+          <li>اكتب بياناتك واختر الباقة</li>
+          <li>يوصلك المفتاح على إيميلك</li>
+          <li>أرسل أول صورة بسطر واحد</li>
+          <li>تابع استهلاكك من <span class="lat">/v1/usage</span></li>
+        </ol>
+        <p style="margin-top:22px">للاستفسار: <span class="lat">info@hawat.id</span></p>
+      </div>
+      <div>
+        <form class="f" id="signup" novalidate>
+          <div class="two">
+            <label>الاسم<input name="name" required maxlength="80" autocomplete="name"></label>
+            <label>الجهة أو الشركة<input name="company" maxlength="80" autocomplete="organization"></label>
+          </div>
+          <div class="two">
+            <label>الإيميل<input name="email" type="email" required maxlength="200" autocomplete="email" dir="ltr"></label>
+            <label>الدولة<select name="country">
+              <option>السعودية</option><option>الإمارات</option><option>الكويت</option><option>البحرين</option><option>قطر</option><option>عُمان</option>
+              <option>مصر</option><option>الأردن</option><option>العراق</option><option>السودان</option><option>اليمن</option><option>إريتريا</option><option>جيبوتي</option><option>أخرى</option>
+            </select></label>
+          </div>
+          <label>الباقة<select name="plan" id="plan">
+            <option value="trial">تجريبية · 50 طلب لمدة شهر · مجانًا</option>
+            <option value="developer">مطوّر · 1,499 ريال بالشهر</option>
+            <option value="business">أعمال · 7,500 ريال بالشهر</option>
+            <option value="gov">جهة حكومية أو بحثية · عقد سنوي</option>
+          </select></label>
+          <label class="ok"><input type="checkbox" name="consent"><span>أوافق إن المفتاح لاستخدامي أو استخدام جهتي فقط وما أشاركه، وعلى <a href="/privacy.html">سياسة الخصوصية</a>.</span></label>
+          <button class="btn gold" type="submit">أرسل لي المفتاح</button>
+          <div id="signup-msg" class="msg" hidden></div>
+        </form>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -358,5 +421,38 @@ curl https://hawat.id/api/basma/v1/identify \
     <span class="copy">© 2026 محمد عمر اليعقوبي – منظومة حوات. جميع الحقوق محفوظة. «بصمة» مبنية على أبحاث مفتوحة المصدر في التعرّف على الكائنات الحية، مع الالتزام برخصها.</span>
   </div>
 </footer>
+<script>
+(function () {
+  var f = document.getElementById('signup'), el = function (n) { return f.elements[n]; }, msg = document.getElementById('signup-msg'), plan = document.getElementById('plan');
+  document.querySelectorAll('[data-plan]').forEach(function (a) {
+    a.addEventListener('click', function () { plan.value = a.getAttribute('data-plan'); });
+  });
+  function show(text, err, key) {
+    msg.hidden = false;
+    msg.className = 'msg' + (err ? ' err' : '');
+    msg.textContent = text;
+    if (key) { var k = document.createElement('div'); k.className = 'keybox'; k.textContent = key; msg.appendChild(k); }
+  }
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var d = {name: el('name').value.trim(), company: el('company').value.trim(), email: el('email').value.trim(), country: el('country').value, plan: el('plan').value, consent: el('consent').checked};
+    if (!d.name || !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(d.email)) return show('اكتب اسمك وإيميل صحيح.', true);
+    if (!d.consent) return show('لازم توافق على الشروط.', true);
+    var b = f.querySelector('button');
+    b.disabled = true;
+    fetch('/api/basma/v1/signup', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(d)})
+      .then(function (r) { return r.json().then(function (j) { return [r.ok, j]; }); })
+      .then(function (x) {
+        if (!x[0]) return show((x[1].error && x[1].error.message) || 'صار خطأ، حاول مرة ثانية.', true);
+        f.querySelectorAll('input,select,button').forEach(function (el) { el.disabled = true; });
+        if (x[1].key) show('هذا مفتاحك. انسخه واحفظه في مكان آمن، ما راح يطلع مرة ثانية.', false, x[1].key);
+        else show('أرسلنا مفتاحك على ' + d.email + '. لو ما لقيته خلال دقائق، شيك على البريد غير المرغوب.' + (d.plan !== 'trial' ? ' وبنتواصل معك لإتمام الدفع.' : ''));
+        try { gtag('event', 'basma_signup', {plan: d.plan}); } catch (_) {}
+      })
+      .catch(function () { show('ما قدرنا نوصل للخادم، حاول بعد شوي.', true); })
+      .finally(function () { if (!el('consent').disabled) b.disabled = false; });
+  });
+})();
+</script>
 </body>
 </html>
