@@ -31,6 +31,8 @@ ThemeData buildTheme() {
   );
   // نص أكبر من الافتراضي: التطبيق يُستخدم في السوق تحت الشمس.
   final text = base.textTheme.apply(fontFamily: 'Tajawal', bodyColor: AppColors.ink);
+  // زوايا حادة في كل التطبيق (ذوق المالك): لا زوايا منحنية في البطاقات والأزرار والنوافذ.
+  const sharp = RoundedRectangleBorder();
   return base.copyWith(
     textTheme: text.copyWith(
       bodyLarge: text.bodyLarge?.copyWith(fontSize: 16, height: 1.5),
@@ -49,7 +51,7 @@ ThemeData buildTheme() {
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         side: const BorderSide(color: AppColors.line),
       ),
     ),
@@ -58,7 +60,7 @@ ThemeData buildTheme() {
         minimumSize: const Size.fromHeight(56),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         textStyle: const TextStyle(fontFamily: 'Tajawal', fontSize: 17, fontWeight: FontWeight.w700),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: sharp,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -66,8 +68,19 @@ ThemeData buildTheme() {
         minimumSize: const Size.fromHeight(52),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(fontFamily: 'Tajawal', fontSize: 16, fontWeight: FontWeight.w700),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: sharp,
       ),
     ),
+    elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(shape: sharp)),
+    textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(shape: sharp)),
+    iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(shape: sharp)),
+    segmentedButtonTheme: SegmentedButtonThemeData(style: SegmentedButton.styleFrom(shape: sharp)),
+    chipTheme: const ChipThemeData(shape: sharp),
+    dialogTheme: const DialogThemeData(shape: sharp),
+    bottomSheetTheme: const BottomSheetThemeData(shape: sharp),
+    snackBarTheme: const SnackBarThemeData(shape: sharp),
+    popupMenuTheme: const PopupMenuThemeData(shape: sharp),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(shape: sharp),
+    inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder(borderRadius: BorderRadius.zero)),
   );
 }

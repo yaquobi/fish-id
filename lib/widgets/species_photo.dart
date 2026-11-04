@@ -115,7 +115,7 @@ class _Framed extends StatelessWidget {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.zero,
             border: Border.all(color: AppColors.line),
           ),
           constraints: const BoxConstraints(maxHeight: 200),

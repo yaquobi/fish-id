@@ -90,7 +90,7 @@ class _ResultScreenState extends State<ResultScreen> {
       padding: EdgeInsets.fromLTRB(12, 12, 12, MediaQuery.paddingOf(context).bottom + 8),
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.zero,
           child: SizedBox(
             height: (MediaQuery.sizeOf(context).height * .25).clamp(140, 240),
             child: Image.memory(widget.image, fit: BoxFit.cover),
@@ -105,7 +105,7 @@ class _ResultScreenState extends State<ResultScreen> {
               itemCount: _images.length - 1,
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (_, i) => ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.zero,
                 child: Image.memory(_images[i + 1], width: 64, height: 64, fit: BoxFit.cover),
               ),
             ),
@@ -444,9 +444,9 @@ class _Plan extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: AppColors.navyLight,
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.zero,
     child: InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.zero,
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

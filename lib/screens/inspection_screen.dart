@@ -238,7 +238,7 @@ class _InspectionScreenState extends State<InspectionScreen> {
                 controller: _shop,
                 decoration: InputDecoration(
                   labelText: tr('اسم المحل أو رقمه', 'Shop name or number'),
-                  border: const OutlineInputBorder(),
+                  border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                 ),
               ),
               const SizedBox(height: 10),
@@ -251,7 +251,7 @@ class _InspectionScreenState extends State<InspectionScreen> {
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         labelText: tr('الاسم المكتوب', 'Name on label'),
-                        border: const OutlineInputBorder(),
+                        border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                       ),
                     ),
                   ),
@@ -263,7 +263,7 @@ class _InspectionScreenState extends State<InspectionScreen> {
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: tr('السعر / كجم', 'Price / kg'),
-                        border: const OutlineInputBorder(),
+                        border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                       ),
                     ),
                   ),
@@ -351,7 +351,7 @@ class _InspectionScreenState extends State<InspectionScreen> {
                 maxLength: 500,
                 decoration: InputDecoration(
                   labelText: tr('ملاحظة المفتش', 'Inspector note'),
-                  border: const OutlineInputBorder(),
+                  border: const OutlineInputBorder(borderRadius: BorderRadius.zero),
                 ),
               ),
             ],
