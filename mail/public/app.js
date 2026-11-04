@@ -69,14 +69,16 @@ function shell() {
 }
 function renderNav() {
   const total = Object.values(unread).reduce((x, y) => x + y, 0);
-  const u = accFilter ? unread[accFilter] || 0 : total;
+  const accId = () => accFilter.split('|')[0], accAddr = () => accFilter.split('|')[1] || '';
+  const u = accFilter ? unread[accId()] || 0 : total;
   $('#nav').innerHTML = `<button class="btn gold wide newmail" id="newmail">✎ رسالة جديدة</button>
     <div class="navsec">المجلدات</div>
     ${FOLDERS.map((f) => `<a class="nf ${f.id === folder ? 'on' : ''}" href="#/${f.id}"><span class="fi">${f.ico}</span>${f.name}${f.id === 'inbox' && u ? `<b class="cnt num">${u}</b>` : ''}</a>`).join('')}
     <div class="navsec">الحسابات</div>
     <a class="nf ${!accFilter ? 'on' : ''}" data-acc=""><span class="fi">◎</span>كل الحسابات${total ? `<b class="cnt num">${total}</b>` : ''}</a>
     ${me.accounts.map((a) => `<a class="nf ${a.id === accFilter ? 'on' : ''}" data-acc="${a.id}" title="${esc(a.email)}"><span class="fi"><i class="dot" style="background:${a.color}"></i></span>
-      <span class="ellip">${esc(a.name)}<small class="en">${esc(a.email)}</small></span>${unread[a.id] ? `<b class="cnt num">${unread[a.id]}</b>` : ''}${a.status === 'error' ? '<b class="err">!</b>' : ''}</a>`).join('')}
+      <span class="ellip">${esc(a.name)}<small class="en">${esc(a.email)}</small></span>${unread[a.id] ? `<b class="cnt num">${unread[a.id]}</b>` : ''}${a.status === 'error' ? '<b class="err">!</b>' : ''}</a>
+      ${[a.email, ...(a.aliases || [])].length > 1 ? [a.email, ...a.aliases].map((e) => `<a class="nf sub ${accFilter === a.id + '|' + e ? 'on' : ''}" data-acc="${a.id}|${esc(e)}"><span class="fi">↳</span><span class="ellip en">${esc(e)}</span></a>`).join('') : ''}`).join('')}
     <a class="nf" href="#/${folder}/s"><span class="fi">⚙</span>الإعدادات وإضافة حساب</a>`;
   $('#newmail').onclick = () => { draft = null; location.hash = `#/${folder}/c`; };
   $('#nav').querySelectorAll('[data-acc]').forEach((el) => (el.onclick = () => {
@@ -87,9 +89,10 @@ function renderNav() {
 function renderList(sel) {
   const f = FOLDERS.find((x) => x.id === folder);
   const q = query.trim().toLowerCase();
-  const list = rows.filter((r) => (!accFilter || r.acc === accFilter) &&
+  const [fa, fe] = accFilter.split('|');
+  const list = rows.filter((r) => (!fa || r.acc === fa) && (!fe || [r.to, r.fromAddr].join(',').toLowerCase().includes(fe)) &&
     (!q || [r.from, r.fromAddr, r.subject, r.to, r.toName].some((x) => String(x || '').toLowerCase().includes(q))));
-  $('#listhead').innerHTML = `<b>${f.name}</b><span class="mute">${accFilter ? esc(accById(accFilter).name) + ' · ' : ''}<span class="num">${list.length}</span></span>`;
+  $('#listhead').innerHTML = `<b>${f.name}</b><span class="mute">${accFilter ? esc(fe || accById(fa).name) + ' · ' : ''}<span class="num">${list.length}</span></span>`;
   const L = $('#list');
   if (!me.accounts.length) { L.innerHTML = `<div class="empty">ما فيه حسابات مربوطة بعد.<br><br><a class="btn gold" href="#/inbox/s">أضف أول حساب</a></div>`; return; }
   if (loading && !list.length) { L.innerHTML = '<div class="empty">جاري التحميل…</div>'; return; }
@@ -208,7 +211,8 @@ function attCard(acc, f, uid, x) {
 // ---------- كتابة رسالة ----------
 function compose() {
   $('#shell').classList.add('reading');
-  const d = draft || { acc: accFilter || me.accounts[0]?.id, from: accById(accFilter || me.accounts[0]?.id).email, to: '', cc: '', subject: '', text: '' };
+  const [ca, ce] = accFilter.split('|');
+  const d = draft || { acc: ca || me.accounts[0]?.id, from: ce || accById(ca || me.accounts[0]?.id).email, to: '', cc: '', subject: '', text: '' };
   const froms = me.accounts.flatMap((a) => [a.email, ...(a.aliases || [])].map((e) => ({ acc: a.id, e })));
   $('#read').innerHTML = `<div class="toolbar"><button class="tb mob" id="back">→</button><b class="tt">${esc(d.title || 'رسالة جديدة')}</b>
       <span class="grow"></span><button class="tb" id="discard">تجاهل</button><button class="btn gold" id="go">إرسال ➤</button></div>
