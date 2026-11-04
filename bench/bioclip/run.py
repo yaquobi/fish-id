@@ -60,6 +60,34 @@ def embed_images(model, preprocess, images, batch=16):
     return torch.cat(feats) if feats else torch.empty(0)
 
 
+_rembg = None
+
+
+def cutout(img, cache, key):
+    """بصمة: نقص السمكة من خلفيتها ونحطها على خلفية رمادية موحّدة (صورة الكتاب وصورة السوق نفس الشي)."""
+    global _rembg
+    f = cache / f"nobg-{key}.png"
+    if f.exists():
+        return Image.open(f).convert("RGB")
+    if _rembg is None:
+        import rembg
+
+        _rembg = rembg.new_session(os.environ.get("REMBG_MODEL", "isnet-general-use"))
+    import rembg
+
+    im = img.copy()
+    im.thumbnail((1024, 1024))
+    rgba = rembg.remove(im, session=_rembg)
+    box = rgba.getchannel("A").point(lambda a: 255 if a > 20 else 0).getbbox()
+    if box:
+        rgba = rgba.crop(box)
+    bg = Image.new("RGB", rgba.size, (128, 128, 128))
+    bg.paste(rgba, mask=rgba.getchannel("A"))
+    cache.mkdir(parents=True, exist_ok=True)
+    bg.save(f)
+    return bg
+
+
 def pct(a, n):
     return f"{100 * a / n:.1f}% ({a} من {n})" if n else "—"
 
@@ -73,6 +101,7 @@ def main():
     ap.add_argument("--pretrained", default=None, help="للتجربة المحلية بنموذج غير مدرّب")
     ap.add_argument("--cache", default="/out/cache")
     ap.add_argument("--out", default="/out")
+    ap.add_argument("--nobg", action="store_true", help="بصمة: قص السمكة من الخلفية قبل حساب البصمة")
     args = ap.parse_args()
 
     torch.set_num_threads(os.cpu_count() or 4)
@@ -97,7 +126,10 @@ def main():
         for d in sorted(p for p in refs.iterdir() if p.is_dir()):
             for f in sorted(d.glob("*.jpg")):
                 try:
-                    ref_imgs.append(Image.open(f).convert("RGB"))
+                    im = Image.open(f).convert("RGB")
+                    if args.nobg:
+                        im = cutout(im, Path(args.cache), hashlib.sha1(str(f).encode()).hexdigest())
+                    ref_imgs.append(im)
                     ref_ids.append(d.name)
                 except Exception:
                     pass
@@ -112,10 +144,12 @@ def main():
     stats = {k: {"top1": 0, "top3": 0, "fam": 0} for k in ["text", "refs", "mix", "claude", "claude+bioclip"]}
     n = 0
     times = []
-    log = open(Path(args.out) / f"bioclip-{time.strftime('%Y-%m-%dT%H%M', time.gmtime())}.jsonl", "w", encoding="utf-8")
+    log = open(Path(args.out) / f"bioclip{'-nobg' if args.nobg else ''}-{time.strftime('%Y-%m-%dT%H%M', time.gmtime())}.jsonl", "w", encoding="utf-8")
     for c in cases:
         try:
             img = fetch(c["photo"], Path(args.cache))
+            if args.nobg:
+                img = cutout(img, Path(args.cache), hashlib.sha1(c["photo"].encode()).hexdigest())
         except Exception as e:
             print(f"\n{c['photo']}: {e}", file=sys.stderr)
             continue
