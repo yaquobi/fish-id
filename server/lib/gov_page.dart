@@ -9,6 +9,9 @@ const govPage = r'''<!doctype html>
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>FISH ID · لوحة الجهة الرسمية</title>
+<link rel="icon" href="/img/gov-favicon.png">
+<link rel="apple-touch-icon" href="/img/gov-apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="FISH ID رسمي">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
