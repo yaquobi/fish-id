@@ -167,6 +167,7 @@ async function connect(a) {
     await c.connect();
     await c.mailboxOpen('INBOX');
     st.status = 'ok'; st.error = null;
+    worker(a, 'fg').catch(() => {}); worker(a, 'bg').catch(() => {}); // نجهّز الاتصالين من البداية
     await refresh(a);
   } catch (e) {
     st.status = 'error'; st.error = e.authenticationFailed ? 'كلمة المرور غير صحيحة' : String(e.message || e);
@@ -212,7 +213,8 @@ const fmtAddr = (x) => (x?.value || []).map((v) => ({ name: v.name, address: v.a
 async function getMessage(a, f, uid, { markSeen = true, kind = 'fg' } = {}) {
   const key = `${a.id}/${f}/${uid}`;
   let out = msgCache.get(key);
-  if (!out && inflight.has(key)) out = await inflight.get(key).catch(() => null);
+  // لو التجهيز المسبق يجيبها الحين ننتظره شوي بس، وبعدها نجيبها بنفسنا عشان ما تتأخر ضغطتك
+  if (!out && inflight.has(key)) out = await Promise.race([inflight.get(key), new Promise((ok) => setTimeout(() => ok(null), kind === 'fg' ? 250 : 60000))]).catch(() => null);
   if (!out) {
     let done; inflight.set(key, new Promise((ok) => (done = ok)));
     try {
