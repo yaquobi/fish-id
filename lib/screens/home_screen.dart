@@ -375,10 +375,34 @@ class _Menu extends StatelessWidget {
               ),
             ),
             onTap: () async {
-              final messenger = ScaffoldMessenger.of(context);
+              // The drawer covers the snack bar, so close it and show the ID in a dialog the user can read.
+              final nav = Navigator.of(context);
               final id = await FishIdApi.userId();
               await Clipboard.setData(ClipboardData(text: id));
-              messenger.showSnackBar(SnackBar(content: Text(tr('نسخنا رقم حسابك: $id', 'Account ID copied: $id'))));
+              nav.pop();
+              if (!nav.mounted) return;
+              await showDialog<void>(
+                context: nav.context,
+                builder: (ctx) => AlertDialog(
+                  title: Text(tr('رقم حسابك', 'Your account ID')),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SelectableText(id, textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 16)),
+                      const SizedBox(height: 12),
+                      Text(tr('نسخناه لك، الصقه في واتساب وأرسله لنا.', 'Copied. Paste it in WhatsApp and send it to us.')),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Clipboard.setData(ClipboardData(text: id)),
+                      child: Text(tr('انسخ مرة ثانية', 'Copy again')),
+                    ),
+                    TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(tr('تمام', 'OK'))),
+                  ],
+                ),
+              );
             },
           ),
           ListTile(
