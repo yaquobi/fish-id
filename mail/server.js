@@ -131,9 +131,14 @@ async function refresh(a, { notify = false } = {}) {
   const before = new Set((st.list || []).map((r) => r.uid));
   const maxUid = Math.max(0, ...before);
   const rows = await loadInbox(st, a);
+  const sig = (l) => l.map((r) => `${r.uid}${r.seen ? 's' : ''}${r.starred ? '*' : ''}`).join(',');
+  const changed = sig(st.list || []) !== sig(rows);
   st.list = rows;
-  if (notify && st.ready) await notifyNew(a, rows.filter((r) => !before.has(r.uid) && r.uid > maxUid && !r.seen));
+  const fresh = rows.filter((r) => !before.has(r.uid) && r.uid > maxUid && !r.seen);
+  if (changed) broadcast({ t: 'inbox', acc: a.id, n: fresh.length });
+  if (notify && st.ready) await notifyNew(a, fresh);
   st.ready = true;
+  prefetch(a).catch(() => {});
 }
 
 async function connect(a) {
@@ -173,11 +178,72 @@ cfg.accounts.forEach((a) => connect(a).catch(() => {}));
 setInterval(() => cfg.accounts.forEach((a) => refresh(a, { notify: true }).catch(() => {})), 120000);
 
 // أوامر منفصلة (قراءة رسالة، نقل، حذف) باتصال قصير عشان ما نوقف المراقبة.
-async function withImap(a, fn) {
-  const c = new ImapFlow(await imapOpts(a));
-  await c.connect();
-  try { return await fn(c); } finally { await c.logout().catch(() => {}); }
+// اتصال ثاني دائم لكل حساب للأوامر (فتح رسالة، نقل…) عشان ما ننتظر تسجيل دخول جديد كل مرة.
+const workers = new Map(); // id -> Promise<ImapFlow>
+async function worker(a) {
+  let p = workers.get(a.id);
+  if (p) { const c = await p.catch(() => null); if (c?.usable) return c; workers.delete(a.id); }
+  p = (async () => {
+    const c = new ImapFlow(await imapOpts(a));
+    c.on('error', () => {}); c.on('close', () => { if (workers.get(a.id) === p) workers.delete(a.id); });
+    await c.connect();
+    return c;
+  })();
+  workers.set(a.id, p);
+  p.catch(() => workers.delete(a.id));
+  return p;
 }
+async function withImap(a, fn) {
+  try { return await fn(await worker(a)); }
+  catch (e) {
+    // انقطع الاتصال؟ نجرب مرة ثانية باتصال جديد
+    if (!/closed|ECONN|EPIPE|timeout|Connection not available/i.test(String(e.message || e))) throw e;
+    workers.delete(a.id);
+    return fn(await worker(a));
+  }
+}
+
+// ذاكرة مؤقتة للرسائل المفتوحة، ونجهّز أحدث رسائل الوارد مسبقًا عشان تفتح على طول.
+const msgCache = new Map(); // "acc/f/uid" -> شكل الرسالة الجاهز
+const fmtAddr = (x) => (x?.value || []).map((v) => ({ name: v.name, address: v.address }));
+async function getMessage(a, f, uid, { markSeen = true } = {}) {
+  const key = `${a.id}/${f}/${uid}`;
+  let out = msgCache.get(key);
+  if (!out) {
+    const parsed = await withImap(a, async (c) => {
+      const lock = await c.getMailboxLock(await folderPath(c, a, f));
+      try { const msg = await c.fetchOne(String(uid), { source: true }, { uid: true }); return msg ? simpleParser(msg.source) : null; }
+      finally { lock.release(); }
+    });
+    if (!parsed) return null;
+    out = {
+      acc: a.id, f, uid: Number(uid), subject: parsed.subject || '(بدون عنوان)', date: parsed.date,
+      from: fmtAddr(parsed.from), to: fmtAddr(parsed.to), cc: fmtAddr(parsed.cc), replyTo: fmtAddr(parsed.replyTo),
+      messageId: parsed.messageId || '', references: [].concat(parsed.references || []),
+      html: parsed.html || null, text: parsed.text || '',
+      attachments: (parsed.attachments || []).filter((x) => x.contentDisposition !== 'inline' || x.filename)
+        .map((x) => ({ i: parsed.attachments.indexOf(x), name: x.filename || 'مرفق', size: x.size, type: x.contentType })),
+    };
+    msgCache.set(key, out);
+    while (msgCache.size > 120) msgCache.delete(msgCache.keys().next().value);
+  }
+  if (markSeen) {
+    withImap(a, async (c) => {
+      const lock = await c.getMailboxLock(await folderPath(c, a, f));
+      try { await c.messageFlagsAdd(String(uid), ['\\Seen'], { uid: true }); } finally { lock.release(); }
+    }).catch(() => {});
+  }
+  return out;
+}
+async function prefetch(a) {
+  const rows = (live.get(a.id)?.list || []).slice(-12).reverse();
+  for (const r of rows) if (!msgCache.has(`${a.id}/inbox/${r.uid}`)) await getMessage(a, 'inbox', r.uid, { markSeen: false }).catch(() => {});
+}
+
+// تحديث لحظي للتطبيق المفتوح (Server-Sent Events)
+const sse = new Set();
+function broadcast(ev) { for (const res of sse) { try { res.write(`data: ${JSON.stringify(ev)}\n\n`); } catch {} } }
+setInterval(() => { for (const res of sse) { try { res.write(': ping\n\n'); } catch {} } }, 25000);
 async function specialPath(c, use) {
   const list = await c.list();
   return list.find((f) => f.specialUse === use)?.path;
@@ -303,6 +369,12 @@ async function api(req, res, url) {
 
   if (p === '/logout' && m === 'POST') { delete cfg.sessions[tok]; save(); return send(res, 200, { ok: true }, { 'set-cookie': `hm=; Path=${BASE}; Max-Age=0` }); }
 
+  if (p === '/events') {
+    res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', 'x-accel-buffering': 'no', connection: 'keep-alive' });
+    res.write(': ok\n\n');
+    sse.add(res); req.on('close', () => sse.delete(res));
+    return;
+  }
   if (p === '/me') {
     return send(res, 200, { vapid: cfg.vapid.publicKey, accounts: cfg.accounts.map((a) => ({ ...pub(a),
       status: live.get(a.id)?.status || 'off', error: live.get(a.id)?.error || null })) });
@@ -331,26 +403,10 @@ async function api(req, res, url) {
   let r;
   if ((r = /^\/msg\/(\w+)\/(\w+)\/(\d+)$/.exec(p)) && m === 'GET') {
     const a = accOf(r[1]); if (!a || !FOLDERS[r[2]]) return send(res, 404, { error: 'غير موجود' });
-    const out = await withImap(a, async (c) => {
-      const lock = await c.getMailboxLock(await folderPath(c, a, r[2]));
-      try {
-        const msg = await c.fetchOne(r[3], { source: true }, { uid: true });
-        if (!msg) return null;
-        await c.messageFlagsAdd(r[3], ['\\Seen'], { uid: true });
-        return await simpleParser(msg.source);
-      } finally { lock.release(); }
-    });
+    const out = await getMessage(a, r[2], r[3]);
     if (!out) return send(res, 404, { error: 'الرسالة غير موجودة' });
     if (r[2] === 'inbox') { const row = live.get(a.id)?.list?.find((x) => x.uid === Number(r[3])); if (row) row.seen = true; }
-    const fmt = (x) => (x?.value || []).map((v) => ({ name: v.name, address: v.address }));
-    return send(res, 200, {
-      acc: a.id, f: r[2], uid: Number(r[3]), subject: out.subject || '(بدون عنوان)', date: out.date,
-      from: fmt(out.from), to: fmt(out.to), cc: fmt(out.cc), replyTo: fmt(out.replyTo),
-      messageId: out.messageId || '', references: [].concat(out.references || []),
-      html: out.html || null, text: out.text || '',
-      attachments: (out.attachments || []).filter((x) => x.contentDisposition !== 'inline' || x.filename)
-        .map((x) => ({ i: out.attachments.indexOf(x), name: x.filename || 'مرفق', size: x.size, type: x.contentType })),
-    });
+    return send(res, 200, out);
   }
   if ((r = /^\/att\/(\w+)\/(\w+)\/(\d+)\/(\d+)$/.exec(p))) {
     const a = accOf(r[1]); if (!a || !FOLDERS[r[2]]) return send(res, 404, 'not found');
@@ -382,6 +438,7 @@ async function api(req, res, url) {
         else await c.messageFlagsRemove(uid, ['\\Flagged'], { uid: true });
       } finally { lock.release(); }
     });
+    msgCache.delete(`${a.id}/${f}/${uid}`);
     const st = live.get(a.id);
     if (st && f === 'inbox' && (act === 'archive' || act === 'trash')) st.list = st.list.filter((x) => x.uid !== Number(uid));
     refresh(a).catch(() => {});

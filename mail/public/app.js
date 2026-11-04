@@ -164,8 +164,20 @@ async function openMsg(acc, f, uid) {
   if (m.html) {
     const fr = document.createElement('iframe');
     fr.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
-    fr.srcdoc = `<!doctype html><meta charset="utf-8"><base target="_blank"><style>body{margin:16px;font-family:Tahoma,Arial,sans-serif;word-wrap:break-word}img{max-width:100%;height:auto}</style>${m.html}`;
-    fr.onload = () => { const fit = () => { try { fr.style.height = fr.contentDocument.documentElement.scrollHeight + 24 + 'px'; } catch {} }; fit(); setTimeout(fit, 600); setTimeout(fit, 2000); };
+    fr.srcdoc = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><base target="_blank"><style>html,body{overflow-x:hidden}body{margin:12px;font-family:Tahoma,Arial,sans-serif;word-wrap:break-word;overflow-wrap:anywhere}img{max-width:100%;height:auto}pre{white-space:pre-wrap}</style>${m.html}`;
+    fr.onload = () => {
+      // نصغّر الإيميل العريض (جداول 600px وأكثر) عشان يجي على مقاس الشاشة، زي Gmail
+      const fit = () => { try {
+        const d = fr.contentDocument, root = d.documentElement, b = d.body;
+        b.style.zoom = 1;
+        const W = fr.clientWidth, sw = Math.max(root.scrollWidth, b.scrollWidth);
+        const z = sw > W + 2 ? Math.max(0.3, W / sw) : 1;
+        b.style.zoom = z;
+        fr.style.height = Math.ceil(Math.max(root.scrollHeight, b.scrollHeight * z)) + 24 + 'px';
+      } catch {} };
+      fit(); setTimeout(fit, 500); setTimeout(fit, 1500); setTimeout(fit, 4000);
+      try { fr.contentDocument.querySelectorAll('img').forEach((im) => im.addEventListener('load', fit)); } catch {}
+    };
     body.appendChild(fr);
   } else body.innerHTML = `<pre dir="auto">${esc(m.text)}</pre>`;
 
@@ -316,12 +328,23 @@ $('#settingsBtn').onclick = () => (location.hash = `#/${folder}/s`);
 $('#search').oninput = (e) => { query = e.target.value; renderList(selKey()); };
 $('#refresh').onclick = async () => { toast('جاري التحديث…'); await call('refresh', { method: 'POST', body: {} }).catch(() => {}); await loadList(true); };
 document.addEventListener('visibilitychange', () => { if (!document.hidden && me) loadList(true); });
-setInterval(() => { if (!document.hidden && me && folder === 'inbox') loadList(true); }, 30000);
+setInterval(() => { if (!document.hidden && me && folder === 'inbox') loadList(true); }, 60000);
+// تحديث لحظي: السيرفر يبلغنا أول ما توصل رسالة
+let es = null;
+function live() {
+  if (es || !('EventSource' in window)) return;
+  es = new EventSource('api/events');
+  es.onmessage = (e) => {
+    let d = {}; try { d = JSON.parse(e.data); } catch {}
+    if (d.t === 'inbox') { if (folder === 'inbox') loadList(true); else call('counts').then((c) => { unread = c.unread; renderNav(); }).catch(() => {}); if (d.n) toast(d.n === 1 ? 'وصلت رسالة جديدة 📩' : `وصلت ${d.n} رسائل جديدة 📩`); }
+  };
+  es.onerror = () => { es.close(); es = null; setTimeout(() => me && live(), 5000); };
+}
 
 async function boot() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
   try { me = await call('me'); } catch { return; }
   app.innerHTML = ''; route.done = false;
-  route();
+  route(); live();
 }
 boot();
