@@ -8,6 +8,7 @@ import 'package:shelf/shelf.dart';
 import 'accounts.dart';
 import 'admin_page.dart';
 import 'ads.dart';
+import 'basma.dart';
 import 'book.dart';
 import 'claude.dart';
 import 'collect_page.dart';
@@ -67,6 +68,7 @@ class FishIdApp {
     this.ads,
     this.shops,
     this.gateway,
+    this.basma,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
     ledger?.ads = ads;
@@ -123,6 +125,9 @@ class FishIdApp {
 
   /// أرقام الإعلانات من المنصات، للبريف اليومي والمحاسبة.
   final AdStore? ads;
+
+  /// «بصمة» في الظل: تقارن نموذجنا بـ Opus على كل فحص حقيقي بدون ما تأثر على الجواب (admin/basma).
+  final BasmaShadow? basma;
   final DateTime Function() _clock;
 
   static const maxBytes = 5 * 1024 * 1024;
@@ -434,6 +439,7 @@ class FishIdApp {
       rethrow;
     }
     await store?.record(user, _clock(), result: result, usd: usageCost(usage), ms: watch.elapsedMilliseconds, photos: photos.length);
+    if (photos.isNotEmpty) basma?.compare(photos.first, result, _clock());
     // أول فحص ناجح للحساب يعني مستخدم جديد فعلي (الحساب نفسه ينفتح بمجرد فتح التطبيق).
     if (user != null && store != null && store.find(user)?['scans'] == 1) {
       final users = store.all.where((a) => (a['scans'] as int? ?? 0) > 0).length;
@@ -493,6 +499,8 @@ class FishIdApp {
         return _json(200, who);
       case ('GET', 'species'):
         return _json(200, speciesNames);
+      case ('GET', 'basma') when basma != null:
+        return _json(200, basma!.summary());
       case ('GET', 'staff') when staff != null:
         return _json(200, staff!.list());
       case ('POST', 'staff') when staff != null:
