@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<!-- Google tag (gtag.js): visit statistics for the website only, no ad signals -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-DXP9EDEF08"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-DXP9EDEF08', { allow_google_signals: false, allow_ad_personalization_signals: false });
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>بصمة | نموذج ذكاء اصطناعي سعودي للتعرّف على الأسماك · من حوات</title>
+<meta name="description" content="بصمة (FISH ID Basma): نموذج ذكاء اصطناعي سعودي من منظومة حوات، يتعرّف على أسماك البحر الأحمر والخليج العربي من صورة في أقل من ثانية، ويعطي اسمها المحلي. متاح للمطورين والجهات عن طريق API.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="theme-color" content="#0B2236">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FISH ID">
+<meta property="og:locale" content="ar_SA">
+<meta property="og:title" content="بصمة: نموذج سعودي يعرف أسماك بحارنا">
+<meta property="og:description" content="نموذج ذكاء اصطناعي من منظومة حوات يتعرّف على أسماك البحر الأحمر والخليج من صورة، بأسمائها السعودية.">
+<meta property="og:url" content="https://hawat.id/basma/">
+<meta property="og:image" content="https://hawat.id/img/og.png">
+<link rel="canonical" href="https://hawat.id/basma/">
+<link rel="icon" href="/img/favicon.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;500;600&family=Tajawal:wght@300;400;500;700&display=swap">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Basma بصمة","alternateName":"FISH ID Basma","applicationCategory":"DeveloperApplication","operatingSystem":"Web API","description":"نموذج ذكاء اصطناعي سعودي للتعرّف على أسماك البحر الأحمر والخليج العربي من صورة، بأسمائها المحلية.","url":"https://hawat.id/basma/","publisher":{"@type":"Organization","name":"HUWAT حوات","url":"https://hawat.id"},"countryOfOrigin":"SA","inLanguage":["ar","en"]}
+</script>
+<style>
+:root{
+  --navy:#0B2236; --navy-deep:#061624; --navy-2:#0F2C44; --gold:#F2C14E;
+  --bg:#F3F6F8; --surface:#fff; --ink:#0B2236; --muted:#4A5B6B; --line:#D5DEE6; --chip:#E9EFF4; --on-navy:#C9D6E2;
+  --ar:"Tajawal","Chakra Petch",sans-serif; --lat:"Chakra Petch","Tajawal",sans-serif;
+}
+*{box-sizing:border-box;border-radius:0}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:300 17px/1.8 var(--ar);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+.lat{font-family:var(--lat);direction:ltr;unicode-bidi:isolate}
+.word{font-family:var(--lat);font-weight:600;letter-spacing:.14em;direction:ltr;unicode-bidi:isolate;white-space:nowrap}
+.word b{color:var(--gold);font-weight:600}
+.sr{width:.8em;height:.8em;vertical-align:-.05em;fill:currentColor}
+h1,h2,h3{font-weight:500;margin:0}
+/* hero */
+.hero{background:linear-gradient(180deg,var(--navy-deep),var(--navy));color:#fff}
+nav{display:flex;align-items:center;gap:18px;padding:18px 0}
+nav .word{font-size:19px;text-decoration:none}
+nav .sp{flex:1}
+nav a.k{color:var(--on-navy);text-decoration:none;font-size:15px}
+nav a.k:hover{color:#fff}
+.hero-in{padding:56px 0 64px;display:grid;grid-template-columns:1.25fr 1fr;gap:48px;align-items:center}
+.eyebrow{display:inline-block;border:1px solid rgba(242,193,78,.45);color:var(--gold);padding:3px 12px;font-size:14px;font-weight:400}
+.hero h1{font-size:clamp(34px,5vw,54px);line-height:1.25;margin:18px 0 14px;font-weight:500}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.lead{color:var(--on-navy);font-size:clamp(17px,2vw,19px);max-width:34em;margin:0 0 28px}
+.btns{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-flex;align-items:center;min-height:50px;padding:0 22px;font:500 16px var(--ar);text-decoration:none;border:1px solid transparent}
+.btn.gold{background:var(--gold);color:var(--navy)}
+.btn.line{border-color:rgba(255,255,255,.35);color:#fff}
+.btn.dark{background:var(--navy);color:#fff}
+.mark{border:1px solid rgba(255,255,255,.18);padding:28px;background:rgba(255,255,255,.03)}
+.mark svg{display:block;width:100%;height:auto}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(255,255,255,.14);margin-top:8px}
+.stats div{padding:18px 0 22px}
+.stats b{display:block;font:400 28px var(--lat);color:var(--gold);line-height:1.3}
+.stats span{color:var(--on-navy);font-size:14px}
+/* sections */
+section{padding:72px 0}
+section.alt{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.kicker{font:400 13px var(--lat);letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+h2{font-size:clamp(26px,3.4vw,36px);line-height:1.3;margin:8px 0 12px}
+.sub{color:var(--muted);max-width:44em;margin:0 0 36px}
+.grid{display:grid;gap:0;border-top:1px solid var(--line);border-right:1px solid var(--line)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.cell{border-left:1px solid var(--line);border-bottom:1px solid var(--line);padding:26px 24px;background:var(--surface)}
+section.alt .cell{background:var(--bg)}
+.cell h3{font-size:19px;margin:10px 0 6px}
+.cell p{margin:0;color:var(--muted);font-size:16px}
+.num{font:400 14px var(--lat);color:var(--muted)}
+.ico{width:28px;height:28px;stroke:var(--navy);fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.flow{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);background:var(--surface)}
+.flow div{padding:24px;border-left:1px solid var(--line);position:relative}
+.flow div:last-child{border-left:0}
+.flow b{display:block;font:400 13px var(--lat);color:var(--muted);letter-spacing:.12em}
+.flow h3{font-size:18px;margin:6px 0}
+.flow p{margin:0;color:var(--muted);font-size:15px}
+.science{display:grid;grid-template-columns:1.1fr 1fr;gap:40px;align-items:start}
+.science p{margin:0 0 14px}
+.science ul{margin:0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.science li{padding:14px 0;border-bottom:1px solid var(--line);display:flex;gap:14px}
+.science li b{font:400 13px var(--lat);color:var(--muted);min-width:28px;padding-top:3px}
+.honest{border:1px solid var(--line);background:var(--surface);padding:22px 24px;margin-top:22px}
+.honest table{width:100%;border-collapse:collapse;font-size:15px;margin-top:8px}
+.honest td,.honest th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;font-weight:400}
+.honest th{color:var(--muted);font-size:13px}
+.honest .n{font-family:var(--lat);direction:ltr;text-align:left}
+.honest small{color:var(--muted);display:block;margin-top:10px;font-size:13px}
+pre{margin:0;background:var(--navy-deep);color:#DCE6EF;padding:22px;overflow-x:auto;font:400 14px/1.7 ui-monospace,Menlo,Consolas,monospace;direction:ltr;text-align:left}
+pre .c{color:#7F95AA}
+pre .g{color:var(--gold)}
+.api{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line)}
+.api>div{min-width:0}
+.api .lbl{background:var(--navy);color:var(--on-navy);font:400 13px var(--lat);padding:8px 22px;letter-spacing:.1em;direction:ltr;text-align:left}
+.soon{display:inline-block;background:var(--gold);color:var(--navy);font-size:12px;padding:0 8px;margin-inline-start:8px;vertical-align:middle;font-weight:500}
+.plans{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-right:1px solid var(--line)}
+.plan{border-left:1px solid var(--line);border-bottom:1px solid var(--line);padding:26px 22px;background:var(--surface);display:flex;flex-direction:column}
+.plan.best{background:var(--navy);color:#fff}
+.plan.best .muted,.plan.best li{color:var(--on-navy)}
+.plan h3{font-size:18px}
+.price{margin:12px 0 4px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.price b{font:400 34px var(--lat)}
+.price span{font-size:14px}
+.muted{color:var(--muted);font-size:14px;margin:0}
+.plan ul{list-style:none;margin:16px 0 20px;padding:0;font-size:15px;flex:1}
+.plan li{padding:5px 0;border-bottom:1px dashed var(--line)}
+.plan.best li{border-color:rgba(255,255,255,.15)}
+.plan .btn{justify-content:center}
+.note{color:var(--muted);font-size:14px;margin-top:16px}
+.saudi{display:grid;grid-template-columns:1fr auto;gap:30px;align-items:center;background:var(--navy);color:#fff;padding:40px}
+.saudi p{color:var(--on-navy);margin:8px 0 0}
+.saudi img{height:40px;width:auto}
+footer{background:var(--navy-deep);color:var(--on-navy);padding:28px 0;font-size:14px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center}
+footer a{color:var(--on-navy);text-decoration:none}
+footer .sp{flex:1}
+footer img{height:20px;vertical-align:middle}
+footer .copy{width:100%;font-size:13px;opacity:.8}
+@media (max-width:900px){
+  .hero-in,.science,.api,.saudi{grid-template-columns:1fr}
+  .g3,.g4,.plans,.flow{grid-template-columns:1fr 1fr}
+  .flow div:nth-child(2){border-left:0}
+  .flow div:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .mark{display:none}
+  nav a.k.hide{display:none}
+}
+@media (max-width:560px){
+  .g3,.g4,.plans,.flow{grid-template-columns:1fr}
+  .flow div{border-left:0;border-bottom:1px solid var(--line)}
+  .stats{grid-template-columns:1fr 1fr}
+  .saudi{padding:28px 22px}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="riyal" viewBox="0 0 1256 1256"><path fill="currentColor" d="M750,1119 C730,1163,716,1211,711,1262 C711,1262,1136,1172,1136,1172 C1156,1127,1169,1079,1174,1028 C1174,1028,750,1119,750,1119Z M1136,901 C1136,901,1136,901,1136,901 C1156,857,1169,809,1174,758 C1174,758,843,828,843,828 C843,828,843,693,843,693 C843,693,1136,631,1136,631 C1156,587,1169,538,1174,488 C1174,488,843,558,843,558 C843,558,843,72,843,72 C793,100,748,138,711,183 C711,183,711,586,711,586 C711,586,579,614,579,614 C579,614,579,6,579,6 C528,34,483,72,447,117 C447,117,447,642,447,642 C447,642,151,705,151,705 C131,750,117,798,112,849 C112,849,447,777,447,777 C447,777,447,948,447,948 C447,948,88,1024,88,1024 C68,1068,55,1117,50,1167 C50,1167,425,1088,425,1088 C456,1081,482,1063,499,1038 C499,1038,568,936,568,936 C568,936,568,936,568,936 C575,926,579,913,579,899 C579,899,579,749,579,749 C579,749,711,721,711,721 C711,721,711,992,711,992 C711,992,1136,901,1136,901Z"/></symbol></svg>
+<header class="hero">
+  <div class="wrap">
+    <nav>
+      <a class="word" href="/">FISH <b>ID</b></a>
+      <span class="sp"></span>
+      <a class="k hide" href="#how">كيف تشتغل</a>
+      <a class="k hide" href="#region">المنطقة</a>
+      <a class="k hide" href="#science">الأساس العلمي</a>
+      <a class="k" href="#api">للمطورين</a>
+      <a class="k" href="#plans">الباقات</a>
+    </nav>
+    <div class="hero-in">
+      <div>
+        <span class="eyebrow">نموذج ذكاء اصطناعي سعودي · من منظومة حوات</span>
+        <h1>بصمة: <em>نموذج سعودي</em> يعرف أسماك بحارنا</h1>
+        <p class="lead">صوّر السمكة، وبصمة تقول لك نوعها واسمها المحلي في منطقتك، في أقل من ثانية. نموذج طوّرناه في المملكة لأسماك البحر الأحمر والخليج العربي، وهو المحرّك اللي يشغّل تطبيق FISH ID، ومتاح للمطورين والجهات.</p>
+        <div class="btns">
+          <a class="btn gold" href="mailto:info@hawat.id?subject=Basma%20API%20-%20%D8%B7%D9%84%D8%A8%20%D9%88%D8%B5%D9%88%D9%84%20%D9%85%D8%A8%D9%83%D8%B1">اطلب وصولًا مبكرًا</a>
+          <a class="btn line" href="/">جرّبها في تطبيق FISH ID</a>
+        </div>
+      </div>
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 320 220" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M40 110c40-52 112-66 170-26l46-34v120l-46-34c-58 40-130 26-170-26z" stroke="#fff" stroke-width="1.6"/>
+          <g stroke="#F2C14E" stroke-width="1.1" opacity=".9">
+            <path d="M96 110c18-26 52-34 80-16"/><path d="M84 110c22-34 66-44 102-20"/><path d="M72 110c26-42 80-54 124-24"/>
+            <path d="M96 110c18 26 52 34 80 16"/><path d="M84 110c22 34 66 44 102 20"/><path d="M72 110c26 42 80 54 124 24"/>
+          </g>
+          <circle cx="78" cy="102" r="4" stroke="#fff" stroke-width="1.4"/>
+          <g stroke="#C9D6E2" stroke-width="1" opacity=".55"><path d="M10 30h40M10 30v30M310 30h-40M310 30v30M10 190h40M10 190v-30M310 190h-40M310 190v-30"/></g>
+        </svg>
+      </div>
+    </div>
+    <div class="stats">
+      <div><b>448</b><span>نوعًا من موسوعة KSAFish</span></div>
+      <div><b class="lat">&lt;1s</b><span>للتعرّف على السمكة</span></div>
+      <div><b>2</b><span>البحر الأحمر والخليج</span></div>
+      <div><b>AR · EN</b><span>بالأسماء السعودية والعلمية</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="how">
+  <div class="wrap">
+    <div class="kicker">How it works</div>
+    <h2>كيف تشتغل بصمة؟</h2>
+    <p class="sub">كل سمكة لها «بصمة رقمية»: سلسلة أرقام تختصر شكلها ولونها وعلاماتها. بصمة تحوّل صورتك لبصمة، وتقارنها ببصمات كل الأنواع اللي تعرفها.</p>
+    <div class="flow">
+      <div><b>01</b><h3>الصورة</h3><p>صورة من الجوال، في السوق أو على القارب أو في المطبخ.</p></div>
+      <div><b>02</b><h3>البصمة الرقمية</h3><p>نموذج رؤية يحوّل الصورة إلى بصمة رقمية تمثّل ملامح السمكة.</p></div>
+      <div><b>03</b><h3>المطابقة</h3><p>مقارنة فورية مع بصمات 448 نوعًا من أسماك المملكة.</p></div>
+      <div><b>04</b><h3>النتيجة</h3><p>النوع، واسمه المحلي في البحر الأحمر والخليج، والاسم العلمي، ودرجة الثقة.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="features">
+  <div class="wrap">
+    <div class="kicker">Features</div>
+    <h2>وش يميّز بصمة؟</h2>
+    <p class="sub">نماذج الذكاء الاصطناعي العامة تعرف كل شي قليلًا. بصمة متخصصة في شي واحد: أسماك بحارنا.</p>
+    <div class="grid g3">
+      <div class="cell"><svg class="ico" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><h3>سريعة جدًا</h3><p>أقل من ثانية للصورة على معالج عادي، بدون كرت شاشة. مناسبة للأسواق والتفتيش الميداني.</p></div>
+      <div class="cell"><svg class="ico" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><h3>بأسمائنا المحلية</h3><p>هامور، شعور، بياض، كنعد... الاسم اللي يعرفه الصياد والبائع في كل منطقة، مع الاسم العلمي.</p></div>
+      <div class="cell"><svg class="ico" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/></svg><h3>تتعلم من السوق</h3><p>كل صورة يعتمدها مصوّرونا في أسواق المملكة تنضاف لبصمة فورًا، بدون إعادة بناء.</p></div>
+      <div class="cell"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><h3>قابلة للتشغيل داخل المملكة</h3><p>النموذج حقنا، ويشتغل على خوادمنا أو خوادم الجهة نفسها، فتبقى البيانات تحت سيطرتك.</p></div>
+      <div class="cell"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><h3>تكلفة منخفضة</h3><p>لأنها تشتغل على معالج عادي، تكلفة الطلب جزء بسيط من تكلفة النماذج العامة الكبيرة.</p></div>
+      <div class="cell"><svg class="ico" viewBox="0 0 24 24"><path d="M4 12h4l3-7 4 14 3-7h2"/></svg><h3>تعرف حدودها</h3><p>كل جواب معه درجة ثقة. وإذا ما كانت متأكدة، تقول، أو تطلب صورة ثانية بدل ما تخمّن.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="region">
+  <div class="wrap">
+    <div class="kicker">One region, shared seas</div>
+    <h2>بحارنا مشتركة، وبصمة تخدم المنطقة كلها</h2>
+    <p class="sub">أغلب أسماك البحر الأحمر والخليج العربي نفسها على سواحل جيراننا. فبصمة اللي تعرف أسماك المملكة، تعرف أسماك المنطقة، وتقدر تتعلم أسماءها المحلية في كل دولة.</p>
+    <div class="grid g3">
+      <div class="cell"><span class="num">RED SEA</span><h3>البحر الأحمر</h3><p>المملكة، ومصر، والأردن (خليج العقبة)، والسودان، واليمن، وإرتريا، وجيبوتي.</p></div>
+      <div class="cell"><span class="num">ARABIAN GULF</span><h3>الخليج العربي</h3><p>المملكة، والكويت، والبحرين، وقطر، والإمارات، وعُمان، والعراق.</p></div>
+      <div class="cell"><span class="num">FOR GOVERNMENTS</span><h3>للجهات في المنطقة</h3><p>وزارات الزراعة والثروة السمكية والبلديات والجامعات: نسخة من بصمة بأسماء بلدكم المحلية، تشتغل على خوادمكم.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="science" class="alt">
+  <div class="wrap science">
+    <div>
+      <div class="kicker">Scientific basis</div>
+      <h2>الأساس العلمي</h2>
+      <p>بصمة مبنية على طريقة تعلّم حديثة اسمها <b>التعلّم التبايني بين الصورة والنص</b> (Contrastive vision-language learning): النموذج يتعلم يقرّب بصمة صورة الكائن من بصمة اسمه ووصفه التصنيفي، ويبعدها عن غيره.</p>
+      <p>نبدأ من أساس علمي مفتوح ومنشور تدرّب على ملايين الصور من شجرة الحياة، ونطوّره ببيانات سعودية ما يملكها غيرنا:</p>
+      <ul>
+        <li><b>01</b><span><b style="font-family:var(--ar);font-weight:500;color:var(--ink)">موسوعة أسماك السعودية KSAFish</b>: 448 نوعًا بأسمائها المحلية والعلمية وتصنيفها.</span></li>
+        <li><b>02</b><span><b style="font-family:var(--ar);font-weight:500;color:var(--ink)">صور مرجعية موثّقة</b> لأسماك البحر الأحمر بأسمائها المحلية.</span></li>
+        <li><b>03</b><span><b style="font-family:var(--ar);font-weight:500;color:var(--ink)">صور السوق</b> من مصوّرين في القنفذة وجدة وجازان والمنطقة الشرقية، وهي اللي تعلّم بصمة الفرق بين صورة الكتاب وصورة الصندوق.</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="honest">
+        <h3>الأرقام بصراحة</h3>
+        <table>
+          <tr><th>الاختبار</th><th class="n">top-1</th><th class="n">top-3</th><th class="n">الوقت</th></tr>
+          <tr><td>بصمة 0.1 (306 صور، 54 نوعًا)</td><td class="n">66%</td><td class="n">85%</td><td class="n">0.7s</td></tr>
+        </table>
+        <small>top-1 يعني الجواب الأول صحيح، و top-3 يعني الصحيح ضمن أول ثلاثة. هذي نتيجة النسخة الأولى قبل تدريبها على صور السوق السعودية، وتتحسن مع كل دفعة صور. ننشر الأرقام الجديدة هنا مع كل إصدار.</small>
+      </div>
+      <div class="honest">
+        <h3>الإصدارات</h3>
+        <table>
+          <tr><td>بصمة 0.1</td><td>تعمل الآن داخل FISH ID</td></tr>
+          <tr><td>بصمة 1.0</td><td>مدرّبة على صور أسواق المملكة <span class="soon">قريبًا</span></td></tr>
+          <tr><td>Basma API</td><td>للمطورين والجهات <span class="soon">وصول مبكر</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="api">
+  <div class="wrap">
+    <div class="kicker">For developers</div>
+    <h2>Basma API <span class="soon">وصول مبكر</span></h2>
+    <p class="sub">أرسل صورة، وارجع لك النوع واسمه المحلي ودرجة الثقة. يصلح لتطبيقات الأسواق، وأنظمة التفتيش، والمطاعم، والبحث العلمي.</p>
+    <div class="api">
+      <div><div class="lbl">REQUEST</div>
+<pre><span class="c"># صورة السمكة كما هي</span>
+curl https://hawat.id/api/basma/v1/identify \
+  -H <span class="g">"Authorization: Bearer $BASMA_KEY"</span> \
+  -H "Content-Type: image/jpeg" \
+  --data-binary @fish.jpg</pre></div>
+      <div><div class="lbl">RESPONSE</div>
+<pre>{
+  "top": [
+    { "id": "HWT-FISH-0365",
+      "sci": "Epinephelus coioides",
+      "red_sea": <span class="g">"هامور"</span>,
+      "gulf": <span class="g">"هامور"</span>,
+      "score": 0.91 }
+  ],
+  "model": "basma-1.0",
+  "ms": 640
+}</pre></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="plans">
+  <div class="wrap">
+    <div class="kicker">Plans</div>
+    <h2>الباقات</h2>
+    <p class="sub">أسعار الإطلاق المبدئية للوصول المبكر. الأسعار بالريال وقبل ضريبة القيمة المضافة.</p>
+    <div class="plans">
+      <div class="plan"><h3>تجريبية</h3><div class="price"><b>0</b><span><svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></span></div><p class="muted">للتجربة والتطوير</p>
+        <ul><li>100 طلب بالشهر</li><li>كل الأنواع والأسماء المحلية</li><li>دعم بالإيميل</li></ul>
+        <a class="btn dark" href="mailto:info@hawat.id?subject=Basma%20API%20-%20Free">ابدأ</a></div>
+      <div class="plan"><h3>مطوّر</h3><div class="price"><b>199</b><span><svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg> / شهر</span></div><p class="muted">للتطبيقات الصغيرة</p>
+        <ul><li>5,000 طلب بالشهر</li><li>الطلب الزائد 0.05 <svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></li><li>لوحة استهلاك</li></ul>
+        <a class="btn dark" href="mailto:info@hawat.id?subject=Basma%20API%20-%20Developer">اطلب</a></div>
+      <div class="plan best"><h3>أعمال</h3><div class="price"><b>999</b><span><svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg> / شهر</span></div><p class="muted">للأسواق والمطاعم والموزعين</p>
+        <ul><li>50,000 طلب بالشهر</li><li>الطلب الزائد 0.03 <svg class="sr" role="img" aria-label="ريال"><use href="#riyal"/></svg></li><li>أولوية في السرعة ودعم مباشر</li></ul>
+        <a class="btn gold" href="mailto:info@hawat.id?subject=Basma%20API%20-%20Business">اطلب</a></div>
+      <div class="plan"><h3>الجهات الحكومية والبحثية</h3><div class="price"><b style="font-size:24px;font-family:var(--ar);font-weight:500">حسب الاتفاق</b></div><p class="muted">في المملكة ودول الخليج والبحر الأحمر</p>
+        <ul><li>تشغيل على خوادم الجهة داخل المملكة</li><li>تدريب على بيانات الجهة</li><li>تكامل مع أنظمة التفتيش</li></ul>
+        <a class="btn dark" href="mailto:info@hawat.id?subject=Basma%20-%20Government">تواصل معنا</a></div>
+    </div>
+    <p class="note">تطبيق FISH ID للأفراد والمحلات له باقاته الخاصة في <a href="/#pricing">الصفحة الرئيسية</a>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="saudi">
+      <div>
+        <h2 style="margin:0">صناعة سعودية، من منظومة حوات</h2>
+        <p>بصمة طُوّرت في المملكة، لبحار المملكة، ببيانات سعودية. هي جزء من منظومة حوات اللي تخدم قطاع الثروة السمكية من الصيد إلى المستهلك، ومع تطبيق FISH ID وموسوعة KSAFish تكمّل بعضها، دعمًا للأمن الغذائي ومستهدفات رؤية المملكة 2030.</p>
+      </div>
+      <img src="/img/huwat-white.png" alt="حوات" width="96" height="40">
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="word">FISH <b>ID</b> · Basma</span>
+    <span class="sp"></span>
+    <a href="/">تطبيق FISH ID</a>
+    <a href="https://ksafish.com/ar" target="_blank" rel="noopener">موسوعة KSAFish</a>
+    <a href="/privacy.html">سياسة الخصوصية</a>
+    <a href="mailto:info@hawat.id">info@hawat.id</a>
+    <span class="copy">© 2026 محمد عمر اليعقوبي – منظومة حوات. جميع الحقوق محفوظة. «بصمة» مبنية على أبحاث مفتوحة المصدر في التعرّف على الكائنات الحية، مع الالتزام برخصها.</span>
+  </div>
+</footer>
+</body>
+</html>

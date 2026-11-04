@@ -49,3 +49,6 @@ Subscriptions are billed and cancelled through Google Play or the App Store.
 - Website: https://hawat.id/
 - Privacy policy: https://hawat.id/privacy.html
 - Contact: info@hawat.id
+
+## Basma (بصمة)
+Basma is FISH ID's own Saudi-built fish identification model from HUWAT: photo in, species with Saudi local names out, in under a second. It powers FISH ID and is offered to developers and governments across the Red Sea and Arabian Gulf region as an API (early access). Details: https://hawat.id/basma/
