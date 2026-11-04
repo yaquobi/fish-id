@@ -9,6 +9,7 @@ import 'accounts.dart';
 import 'admin_page.dart';
 import 'ads.dart';
 import 'basma.dart';
+import 'basma_api.dart';
 import 'book.dart';
 import 'claude.dart';
 import 'collect_page.dart';
@@ -69,6 +70,7 @@ class FishIdApp {
     this.shops,
     this.gateway,
     this.basma,
+    this.basmaApi,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
     ledger?.ads = ads;
@@ -128,6 +130,9 @@ class FishIdApp {
 
   /// «بصمة» في الظل: تقارن نموذجنا بـ Opus على كل فحص حقيقي بدون ما تأثر على الجواب (admin/basma).
   final BasmaShadow? basma;
+
+  /// «بصمة API» للعملاء بمفاتيحهم (basma/v1/...)، وإدارتهم من admin/basma-clients.
+  final BasmaApi? basmaApi;
   final DateTime Function() _clock;
 
   static const maxBytes = 5 * 1024 * 1024;
@@ -136,7 +141,7 @@ class FishIdApp {
   static const _cors = {
     'access-control-allow-origin': '*',
     'access-control-allow-methods': 'POST, GET, OPTIONS',
-    'access-control-allow-headers': 'content-type, x-fishid-user, x-fishid-lang, x-collector, x-shop, x-gov',
+    'access-control-allow-headers': 'content-type, authorization, x-api-key, x-fishid-user, x-fishid-lang, x-collector, x-shop, x-gov',
     'access-control-expose-headers': 'x-fishid-remaining',
   };
 
@@ -201,6 +206,9 @@ class FishIdApp {
       } on FormatException {
         return _json(400, {'code': 'bad_request', 'message': 'الطلب غير صالح'});
       }
+    }
+    if (path.startsWith('basma/v1/') && basmaApi != null) {
+      return basmaApi!.handle(req, path.substring(9), _clock());
     }
     if (req.method == 'POST' && path == 'fishId/identify') {
       try {
@@ -501,6 +509,19 @@ class FishIdApp {
         return _json(200, speciesNames);
       case ('GET', 'basma') when basma != null:
         return _json(200, basma!.summary());
+      case ('GET', 'basma-clients') when basmaApi != null:
+        return _json(200, {'plans': BasmaClients.plans, 'vat': BasmaClients.vat, 'clients': basmaApi!.clients.list(now)});
+      case ('POST', 'basma-clients') when basmaApi != null && role == 'owner':
+        final b = await body();
+        final c = basmaApi!.clients;
+        if (b['add'] is Map) return _json(200, await c.add(b['add'] as Map, now));
+        if (b['id'] is String && b['rotate'] == true) return _json(200, await c.rotate(b['id'] as String));
+        if (b['id'] is String && b['delete'] == true) {
+          await c.remove(b['id'] as String);
+          return _json(200, {'ok': true});
+        }
+        if (b['id'] is String && b['update'] is Map) return _json(200, await c.update(b['id'] as String, b['update'] as Map, now));
+        throw const FishIdError('bad_request', 'الطلب غير صالح');
       case ('GET', 'staff') when staff != null:
         return _json(200, staff!.list());
       case ('POST', 'staff') when staff != null:

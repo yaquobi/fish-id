@@ -421,23 +421,24 @@ const icons = {
   gov: '<path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-6 10 6z"/>',
   book: '<path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/>',
   basma: '<path d="M12 4a8 8 0 0 0-8 8M12 4a8 8 0 0 1 8 8v2M8 12a4 4 0 0 1 8 0v3c0 2-1 4-2 5M12 12v4c0 2-1 3.5-2 4.5M6 16c0 1.5-.5 3-1.5 4M17.5 18.5l-.5 1.5"/>',
+  basmaApi: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M21 12v2"/>',
   brief: '<path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5M8 12h8M8 16h5"/>',
   staff: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/><path d="M17 3l1.5 1.5L21 2"/>',
 };
 const tabName = k => ({home: T('الرئيسية', 'Overview'), brief: T('البريف اليومي', 'Daily brief'), report: T('التقارير', 'Reports'), money: T('المحاسبة', 'Accounting'), alerts: T('التنبيهات', 'Alerts'),
   users: T('المستخدمين', 'Users'), scans: T('الفحوصات', 'Scans'), contrib: T('صور المساهمين', 'Contributions'), settings: T('الباقات والأسعار', 'Plans & prices'),
-  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), shops: T('المحلات', 'Shops'), gov: T('الجهات الرسمية', 'Government'), book: T('صور الأسماك', 'Fish photos'), basma: T('بصمة في الظل', 'Basma (shadow)')})[k];
+  codes: T('رموز الهدايا', 'Gift codes'), site: T('الموقع والزوار', 'Website & status'), launch: T('بلّغني بالإطلاق', 'Launch waitlist'), staff: T('الفريق', 'Team'), collectors: T('المصوّرين', 'Photo collectors'), shops: T('المحلات', 'Shops'), gov: T('الجهات الرسمية', 'Government'), book: T('صور الأسماك', 'Fish photos'), basma: T('بصمة في الظل', 'Basma (shadow)'), basmaApi: T('عملاء بصمة API', 'Basma API clients')})[k];
 // التبويبات حسب الصلاحية (السيرفر يتأكد بعد).
 const roleTabs = {
-  owner: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'basma', 'settings', 'codes', 'staff'],
-  admin: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'basma', 'settings', 'codes'],
+  owner: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'basma', 'basmaApi', 'settings', 'codes', 'staff'],
+  admin: ['home', 'brief', 'site', 'launch', 'report', 'money', 'alerts', 'users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'basma', 'basmaApi', 'settings', 'codes'],
   accountant: ['home', 'brief', 'report', 'money', 'alerts'],
   investor: ['report'],
 };
 // مجموعات القائمة الجانبية. أي تبويب جديد ينضاف لمجموعته هنا.
 const navGroups = () => [
   [T('نظرة عامة', 'Overview'), ['home', 'brief', 'report', 'alerts']],
-  [T('العملاء', 'Customers'), ['users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'basma', 'launch']],
+  [T('العملاء', 'Customers'), ['users', 'shops', 'gov', 'scans', 'contrib', 'collectors', 'book', 'basma', 'basmaApi', 'launch']],
   [T('المال', 'Money'), ['money', 'settings', 'codes']],
   [T('الموقع والفريق', 'Site & team'), ['site', 'staff']],
 ];
@@ -1429,6 +1430,68 @@ function main() {
       <div class="card"><h3>${T('آخر الفحوصات', 'Latest scans')}</h3>
         <table><tr><th>${T('الوقت', 'Time')}</th><th>Opus</th><th>${T('بصمة', 'Basma')}</th><th></th></tr>
         ${b.last.map(r => `<tr><td>${when(r.t)}</td><td>${sp(r.opus[0])}</td><td>${sp(r.basma[0])}</td><td>${top(r) ? '✓' : r.opus.includes(r.basma[0]) ? '≈' : '✗'}</td></tr>`).join('') || `<tr><td class="msg" colspan="4">${T('ما فيه فحوصات للحين', 'No scans yet')}</td></tr>`}</table></div>`;
+  },
+
+  // عملاء «بصمة API»: مفتاح لكل شركة أو جهة، وعدّاد الطلبات، وفاتورة الشهر (تنسجّل في المحاسبة بضغطة).
+  async basmaApi(added = null) {
+    const d = await api('basma-clients');
+    const list = d.clients;
+    const planOpts = sel => Object.entries(d.plans).map(([k, p]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+    const due = list.reduce((t, c) => t + (c.lastBill.invoiced ? 0 : c.lastBill.amount), 0);
+    const reqs = list.reduce((t, c) => t + c.bill.requests, 0);
+    const limit = c => c.bill.included ? `${num(c.used)} / ${num(c.bill.included)}` : num(c.used);
+    // الشهر الحالي تقدير لين يخلص، والفاتورة تنسجّل للشهر اللي خلص بس.
+    const billCell = (c, b, done) => b.amount ? `${sar(b.amount)}<div class="k">${T('مع الضريبة', 'incl. VAT')} ${money(b.total)}${b.extra ? ` · ${num(b.extra)} ${T('زائد', 'extra')}` : ''}</div>` +
+      (!done ? '' : b.invoiced ? `<div class="k">✓ ${T('مسجّلة', 'recorded')}</div>` : `<button class="act ghost sm" data-inv="${esc(c.id)}" data-m="${b.month}">${T('سجّلها في المحاسبة', 'Record in accounting')}</button>`) : '—';
+    $('#app').innerHTML = heading(T('عملاء بصمة API', 'Basma API clients'), T('الشركات والجهات اللي تستخدم نموذجنا بمفاتيحها · hawat.id/basma', 'Companies and agencies using our model with their own keys')) + `
+      <div class="grid">
+        ${kpi(T('العملاء', 'Clients'), num(list.filter(c => c.active !== false).length), T('فعّالين', 'active'), 'hero')}
+        ${kpi(T('طلبات هذا الشهر', 'Requests this month'), num(reqs))}
+        ${kpi(T('فواتير الشهر الماضي غير المسجّلة', 'Unrecorded last-month bills'), sar(due), T('بدون الضريبة', 'excl. VAT'))}
+      </div>
+      ${added ? `<div class="card" style="margin-bottom:14px"><h3>${T('المفتاح السري', 'Secret key')}</h3>
+        <div class="k">${T('ينعرض الحين بس. انسخه وأرسله للعميل بشكل خاص (إيميل). لو ضاع نسوي مفتاح جديد.', 'Shown only now. Copy it and send it privately. If lost, rotate a new one.')}</div>
+        <div class="secret"><code>${esc(added.key)}</code><button class="act gold sm" id="ak-copy">${T('نسخ', 'Copy')}</button></div></div>` : ''}
+      <div class="cols"><div class="card"><div class="wrap"><table><tr><th>${T('العميل', 'Client')}</th><th>${T('الباقة', 'Plan')}</th><th class="num">${T('الطلبات', 'Requests')}</th><th>${T('هذا الشهر (تقدير)', 'This month (so far)')}</th><th>${T('الشهر الماضي', 'Last month')}</th><th>${T('آخر طلب', 'Last call')}</th></tr>
+      ${list.map(c => `<tr${c.active === false ? ' style="opacity:.5"' : ''}><td>${esc(c.name)}<div class="k">${esc(c.contact)}${c.country ? ' · ' + esc(c.country) : ''}</div><div class="k mono">${esc(c.prefix)}…</div>
+        <div class="noprint" style="margin-top:6px"><button class="act ghost sm" data-ext="${esc(c.id)}">${T('تمديد شهر', '+1 month')}</button>
+        <button class="act ghost sm" data-rot="${esc(c.id)}">${T('مفتاح جديد', 'New key')}</button>
+        <button class="act ghost sm" data-on="${esc(c.id)}" data-v="${c.active === false ? 1 : ''}">${c.active === false ? T('تفعيل', 'Enable') : T('إيقاف', 'Stop')}</button></div></td>
+        <td><select data-plan="${esc(c.id)}">${planOpts(c.plan)}</select>${c.until ? `<div class="k">${T('ينتهي', 'ends')} ${when(c.until)}</div>` : ''}</td>
+        <td class="num">${limit(c)}</td><td>${billCell(c, c.bill, false)}</td><td>${billCell(c, c.lastBill, true)}</td><td>${c.last ? when(c.last) : '—'}</td></tr>`).join('') || `<tr><td colspan="6" class="msg">${T('ما فيه عملاء للحين', 'No clients yet')}</td></tr>`}
+      </table></div></div>
+      <div class="card noprint"><h3>${T('عميل جديد', 'New client')}</h3>
+        <label class="set"><span>${T('الاسم', 'Name')}</span><input id="b-name" style="width:200px"></label>
+        <label class="set"><span>${T('الإيميل أو الجوال', 'Email or phone')}</span><input id="b-contact" style="width:200px"></label>
+        <label class="set"><span>${T('الدولة', 'Country')}</span><input id="b-country" style="width:200px" placeholder="${T('السعودية، الإمارات، مصر...', 'Saudi Arabia, UAE, Egypt...')}"></label>
+        <label class="set"><span>${T('الباقة', 'Plan')}</span><select id="b-plan">${planOpts('trial')}</select></label>
+        <label class="set"><span>${T('طلبات بالشهر (للجهات)', 'Requests / month (agencies)')}</span><input id="b-inc" type="number" min="0" style="width:120px" placeholder="${T('حسب الباقة', 'plan default')}"></label>
+        <label class="set"><span>${T('السعر الشهري (للجهات)', 'Monthly price (agencies)')}</span><input id="b-price" type="number" min="0" style="width:120px" placeholder="${T('حسب الباقة', 'plan default')}"></label>
+        <div class="row" style="margin-top:12px"><button class="act gold" id="b-save">${T('إنشاء مفتاح', 'Create key')}</button> <span id="b-msg" class="err"></span></div>
+        <div class="note">${T('التجريبية 50 طلب لمدة شهر وتوقف. المطوّر والأعمال يكملون بعد المشمول ويتحاسبون على الزائد. الأسعار بدون ضريبة 15%.', 'Trial: 50 requests for a month, then stops. Developer and Business continue past the included requests and pay per extra request. Prices exclude 15% VAT.')}</div></div></div>`;
+    const go = async (body, again = null) => { await post('basma-clients', body); show('basmaApi', again); };
+    if (added) $('#ak-copy').onclick = async () => { try { await navigator.clipboard.writeText(added.key); $('#ak-copy').textContent = T('تم النسخ', 'Copied'); } catch (e) {} };
+    $('#app').querySelectorAll('[data-plan]').forEach(s => s.onchange = () => go({id: s.dataset.plan, update: {plan: s.value}}));
+    $('#app').querySelectorAll('[data-ext]').forEach(b => b.onclick = () => go({id: b.dataset.ext, update: {extendDays: 30}}));
+    $('#app').querySelectorAll('[data-on]').forEach(b => b.onclick = () => go({id: b.dataset.on, update: {active: !!b.dataset.v}}));
+    $('#app').querySelectorAll('[data-rot]').forEach(b => b.onclick = async () => {
+      if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = T('يوقف القديم، متأكد؟', 'Stops the old key. Sure?'); return; }
+      show('basmaApi', await post('basma-clients', {id: b.dataset.rot, rotate: true}));
+    });
+    $('#app').querySelectorAll('[data-inv]').forEach(b => b.onclick = async () => {
+      const c = list.find(x => x.id === b.dataset.inv);
+      const bill = c.bill.month === b.dataset.m ? c.bill : c.lastBill;
+      const [y, m] = bill.month.split('-').map(Number);
+      const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+      await post('ledger', {add: {kind: 'income', provider: 'بصمة API', label: `بصمة API · ${c.name} · ${bill.month}`, amount: bill.amount, currency: 'SAR', date: last,
+        note: `${bill.requests} طلب، ${bill.extra} زائد، بدون الضريبة (${money(bill.vat)} ضريبة)`}});
+      go({id: c.id, update: {invoiced: bill.month}});
+    });
+    $('#b-save').onclick = async () => {
+      const n = id => $(id).value === '' ? undefined : Number($(id).value);
+      try { show('basmaApi', await post('basma-clients', {add: {name: $('#b-name').value, contact: $('#b-contact').value, country: $('#b-country').value, plan: $('#b-plan').value, included: n('#b-inc'), price: n('#b-price')}})); }
+      catch (e) { $('#b-msg').textContent = e.message; }
+    };
   },
 
   // الأسماك المتداولة واسمها المحلي مع صور المصوّرين المقبولة. صور الكتاب تبقى على السيرفر للتطبيق وما تنعرض هنا عشان اللوحة تبقى خفيفة.

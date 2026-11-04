@@ -13,6 +13,7 @@ import 'package:fish_id_server/ledger.dart';
 import 'package:fish_id_server/refs.dart';
 import 'package:fish_id_server/ads.dart';
 import 'package:fish_id_server/basma.dart';
+import 'package:fish_id_server/basma_api.dart';
 import 'package:fish_id_server/shops.dart';
 import 'package:fish_id_server/site.dart';
 import 'package:fish_id_server/staff.dart';
@@ -49,6 +50,9 @@ Future<void> main() async {
 
   // الحسابات والفحوصات والإعدادات (مربوطة بـ data/accounts على السيرفر)، والمحاسبة في نفس المجلد.
   final accounts = AccountStore.open(env['FISHID_ACCOUNTS'] ?? 'accounts');
+  // بصمة في الظل (خدمة basma في docker-compose). بدون الرابط ما تشتغل.
+  final basma = accounts == null || (env['FISHID_BASMA_URL'] ?? '').isEmpty ? null : BasmaShadow.http(accounts.dir, Uri.parse(env['FISHID_BASMA_URL']!));
+  final notify = _both(_telegram(env['FISHID_TELEGRAM_TOKEN'] ?? '', env['FISHID_TELEGRAM_CHAT'] ?? ''), _ntfy(env['FISHID_NTFY_TOPIC'] ?? ''));
   final app = FishIdApp(
     identify: ai?.identify,
     box: ai?.box,
@@ -66,8 +70,9 @@ Future<void> main() async {
     shops: accounts == null ? null : ShopStore.open(accounts.dir),
     gov: accounts == null ? null : GovStore.open(accounts.dir),
     gateway: _moyasar(env),
-    // بصمة في الظل (خدمة basma في docker-compose). بدون الرابط ما تشتغل.
-    basma: accounts == null || (env['FISHID_BASMA_URL'] ?? '').isEmpty ? null : BasmaShadow.http(accounts.dir, Uri.parse(env['FISHID_BASMA_URL']!)),
+    basma: basma,
+    // بصمة API للعملاء (hawat.id/api/basma/v1/identify) على نفس الخدمة.
+    basmaApi: basma == null ? null : BasmaApi(BasmaClients.open(accounts!.dir), basma.rank, BasmaApi.speciesFrom(data), notify: notify),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {
@@ -75,7 +80,7 @@ Future<void> main() async {
         (s['id'] as String).split('-').last: '${[s['red'], s['gulf'], s['sci']].firstWhere((n) => '${n ?? ''}'.isNotEmpty)}'.split('|').first.trim(),
     },
     perMinute: int.tryParse(env['FISHID_PER_MINUTE'] ?? '') ?? 30,
-    notify: _both(_telegram(env['FISHID_TELEGRAM_TOKEN'] ?? '', env['FISHID_TELEGRAM_CHAT'] ?? ''), _ntfy(env['FISHID_NTFY_TOPIC'] ?? '')),
+    notify: notify,
   );
   final port = int.tryParse(env['PORT'] ?? '') ?? 8080;
   final server = await io.serve(app.handler, InternetAddress.anyIPv4, port);
@@ -85,7 +90,6 @@ Future<void> main() async {
   if (app.ads != null) {
     unawaited(app.pullAds(DateTime.now()));
   }
-  final notify = app.notify;
   if (notify != null) {
     notify('✅ FISH ID: السيرفر اشتغل${ai == null ? '، لكن مفتاح Claude ناقص والفحوصات متوقفة' : ''}.');
   }
