@@ -1,10 +1,7 @@
 :root {
   --navy: #0B2236; --gold: #F2C14E; --bg: #f3f4f6; --card: #fff; --pane: #fafbfc; --ink: #0B2236;
   --mute: #6b7785; --line: #e3e6ea; --sel: #fdf3d8; --hover: #f1f3f6; --red: #c0392b;
-  font-family: 'Tajawal', system-ui, sans-serif; font-weight: 300;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #071624; --card: #0B2236; --pane: #091d2f; --ink: #e8edf2; --mute: #8fa0b2; --line: #1d3a55; --sel: #2a3a2a; --hover: #10293f; }
+  font-family: 'Tajawal', system-ui, sans-serif; font-weight: 300; color-scheme: light;
 }
 * { box-sizing: border-box; border-radius: 0 !important; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
@@ -142,7 +139,7 @@ a { color: inherit; }
 /* شاشات متوسطة: نخفي المجلدات في قائمة جانبية */
 @media (max-width: 1180px) {
   .shell { grid-template-columns: 340px 1fr; }
-  #menu { display: block !important; }
+  #menu:not(.hide) { display: block !important; }
   .nav { position: fixed; top: 0; bottom: 0; right: 0; width: 270px; z-index: 20; transform: translateX(100%); transition: transform .2s; padding-top: max(12px, env(safe-area-inset-top)); }
   .navopen .nav { transform: none; }
   .navopen .scrim { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 15; }
