@@ -164,3 +164,5 @@ a { color: inherit; }
   .settings h2 { margin-inline: 14px; }
 }
 @media (min-width: 1181px) { #menu { display: none !important; } }
+.nf.sub { padding-top: 6px; padding-bottom: 6px; font-size: 12.5px; padding-inline-start: 34px; color: var(--mute); }
+.nf.sub.on { color: var(--ink); }
