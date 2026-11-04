@@ -22,6 +22,14 @@ if ! grep -q '^FISHID_ADMIN_TOKEN=' .env; then
 fi
 mkdir -p ../data/accounts
 
+# بصمة (المستودع الخاص yaquobi/basma في /opt/basma): إذا موجود نشغّل خدمتها في الظل مع الخادم.
+# COMPOSE_FILE في .env يخلي أي docker compose داخل server/ يشمل ملفها (حتى telegram.sh و ntfy.sh).
+sed -i '/^COMPOSE_FILE=/d' .env
+if [[ -f ../../basma/Dockerfile ]]; then
+  echo 'COMPOSE_FILE=docker-compose.yml:docker-compose.basma.yml' >> .env
+  mkdir -p ../data/hf
+fi
+
 # 2. الحاوية.
 docker compose up -d --build
 for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:$PORT/health >/dev/null 2>&1 && break; sleep 1; done

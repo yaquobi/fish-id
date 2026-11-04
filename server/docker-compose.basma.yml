@@ -1,0 +1,21 @@
+# بصمة في الظل: كل فحص يروح لخدمة basma بعد جواب Opus، ونسجّل هل اتفقوا (admin/basma). المستخدم ما يشوف شي منها.
+# كود بصمة في المستودع الخاص yaquobi/basma، مسحوب على السيرفر في /opt/basma.
+# install.sh يضيف هذا الملف تلقائيًا (COMPOSE_FILE في .env) إذا المجلد موجود.
+services:
+  fishid:
+    environment:
+      - FISHID_BASMA_URL=http://basma:8090/basma
+
+  basma:
+    build:
+      context: ../../basma
+    container_name: basma
+    restart: unless-stopped
+    # داخل شبكة Docker بس، بدون منفذ على السيرفر. النموذج محفوظ في data/hf.
+    volumes:
+      - ../data/hf:/hf
+    environment:
+      - BASMA_THREADS=4
+    # نصف المعالج بالكثير، عشان الخادم الأساسي يبقى سريع.
+    cpus: 4
+    mem_limit: 8g
