@@ -11,8 +11,6 @@ void main() {
   setUp(() => dir = Directory.systemTemp.createTempSync('basma'));
   tearDown(() => dir.deleteSync(recursive: true));
 
-  Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 50));
-
   test('logs Opus and Basma answers and sums agreement', () async {
     var calls = 0;
     final b = BasmaShadow(File('${dir.path}/s.jsonl'), (_) async {
@@ -32,7 +30,7 @@ void main() {
     // ما نرسل اللي مو سمكة أو بدون مرشحين.
     b.compare(photo, '{"is_fish":false,"candidates":[]}', now);
     b.compare(photo, 'not json', now);
-    await settle();
+    await b.idle;
     expect(calls, 2);
     final s = b.summary();
     expect(s['scans'], 2);
@@ -46,7 +44,7 @@ void main() {
   test('a failing Basma service never throws', () async {
     final b = BasmaShadow(File('${dir.path}/s.jsonl'), (_) async => throw const SocketException('down'));
     b.compare(photo, '{"candidates":[{"id":"1"}]}', DateTime.now());
-    await settle();
+    await b.idle;
     expect(b.summary()['scans'], 0);
   });
 

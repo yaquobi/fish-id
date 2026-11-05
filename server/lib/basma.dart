@@ -34,6 +34,9 @@ class BasmaShadow {
   final File file;
   final BasmaRank rank;
   Future<void> _queue = Future.value();
+
+  /// يخلص لما تنتهي كل المقارنات اللي في الطابور (للاختبارات).
+  Future<void> get idle => _queue;
   int _pending = 0;
 
   /// يقارن بالخلفية. [result] جواب Opus كما رجع للتطبيق.
