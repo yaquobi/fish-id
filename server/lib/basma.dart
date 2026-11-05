@@ -23,7 +23,8 @@ class BasmaShadow {
       // خدمة بصمة (Python) تقرا الطول من content-length، والإرسال المقطّع يوصلها فاضي.
       req.contentLength = photo.bytes.length;
       req.add(photo.bytes);
-      final res = await req.close().timeout(const Duration(seconds: 30));
+      // أول طلب بعد فترة هدوء يطوّل (النموذج يرجع للذاكرة)، والمقارنة بالخلفية فما يضر ننتظر.
+      final res = await req.close().timeout(const Duration(seconds: 90));
       final body = await res.transform(utf8.decoder).join();
       if (res.statusCode != 200) throw HttpException('basma ${res.statusCode}');
       return jsonDecode(body) as Map<String, dynamic>;
@@ -33,6 +34,9 @@ class BasmaShadow {
   final File file;
   final BasmaRank rank;
   Future<void> _queue = Future.value();
+
+  /// يخلص لما تنتهي كل المقارنات اللي في الطابور (للاختبارات).
+  Future<void> get idle => _queue;
   int _pending = 0;
 
   /// يقارن بالخلفية. [result] جواب Opus كما رجع للتطبيق.
