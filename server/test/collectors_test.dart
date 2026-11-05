@@ -50,6 +50,9 @@ void main() {
     final (_, manifest) = await call('GET', 'collect/manifest.webmanifest?k=$key');
     expect(manifest['start_url'], '/api/collect?k=$key');
     expect(manifest['display'], 'standalone');
+    final sw = await app.handler(Request('GET', Uri.parse('http://x/api/collect/sw.js')));
+    expect(sw.statusCode, 200);
+    expect(sw.headers['service-worker-allowed'], '/api/collect');
 
     var (st, me) = await call('GET', 'collect/me', headers: h);
     expect(st, 200);
@@ -63,7 +66,7 @@ void main() {
     (st, me) = await call('POST', 'collect/join', body: {'contact': '055 123 4567', 'consent': true}, headers: h);
     expect(st, 200);
 
-    (st, me) = await call('POST', 'collect/upload', body: {'name': 'شعور (0220)', 'species': '0220', 'images': images, 'note': 'صيد اليوم'}, headers: h);
+    (st, me) = await call('POST', 'collect/upload', body: {'name': 'شعور (0220)', 'species': '0220', 'images': images, 'note': 'صيد اليوم', 'takenAt': '2026-10-31T04:00:00Z'}, headers: h);
     expect(st, 200);
     expect(me['fish'], 1);
     expect(me['today'], 1);
@@ -72,6 +75,7 @@ void main() {
     final list = ContribStore('${dir.path}/contrib').latest();
     expect(list.single['files'], hasLength(5));
     expect(list.single['source'], 'collector');
+    expect(list.single['taken_at'], '2026-10-31T04:00:00.000Z');
     expect(list.single['parts'], CollectorStore.parts);
     expect(list.single['species'], '0220');
     expect(list.single['collector'], 'سعد');

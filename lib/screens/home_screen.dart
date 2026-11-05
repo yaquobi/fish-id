@@ -5,12 +5,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/billing.dart';
 import '../data/fish_id_api.dart';
+import '../data/upload_queue.dart';
 import '../l10n.dart';
 import '../theme.dart';
 import '../widgets/ai_consent.dart';
 import '../widgets/logo.dart';
 import 'box_screen.dart';
 import 'browse_screen.dart';
+import 'contribute_screen.dart';
 import 'inspector_screen.dart';
 import 'result_screen.dart';
 import 'shop_screen.dart';
@@ -200,6 +202,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     trailing: Icon(L10n.en ? Icons.chevron_right : Icons.chevron_left),
                     onTap: () =>
                         Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BrowseScreen())),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // للصيادين في البحر: يصوّرون بدون نت، والصور تنرسل لحالها أول ما يرجع النت.
+                Card(
+                  child: ValueListenableBuilder(
+                    valueListenable: UploadQueue.pending,
+                    builder: (context, n, _) => ListTile(
+                      leading: const Icon(Icons.add_a_photo_outlined, color: AppColors.navy),
+                      title: Text(
+                        tr('ساهم بصور سمك (بدون نت)', 'Share fish photos (works offline)'),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(
+                        n > 0
+                            ? tr('$n تنتظر النت، وبتنرسل لحالها', '$n waiting for internet, sent automatically')
+                            : tr('للصيادين: صوّر في البحر وتنرسل لما يرجع النت', 'For fishermen: shoot at sea, sent when back online'),
+                      ),
+                      trailing: Icon(L10n.en ? Icons.chevron_right : Icons.chevron_left),
+                      onTap: () =>
+                          Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ContributeScreen())),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),

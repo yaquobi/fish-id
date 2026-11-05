@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../data/fish_id_api.dart';
+import '../data/upload_queue.dart';
 import '../l10n.dart';
 import '../theme.dart';
 
@@ -17,11 +18,30 @@ class ContributeCard extends StatefulWidget {
   final List<(String, String)> candidates;
   final int score;
 
+  static const dayOptions = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 10];
+  static Map<String, String> get storageOptions => {
+    'unknown': tr('ما أعرف', "I don't know"),
+    'ice': tr('على الثلج', 'On ice'),
+    'fridge': tr('في الثلاجة', 'In the fridge'),
+    'room': tr('في غرفة مكيّفة', 'In an air-conditioned room'),
+    'hot': tr('برّا أو في السيارة', 'Outside or in the car'),
+    'frozen': tr('مجمّدة', 'Frozen'),
+  };
+
+  static String dayLabel(int d) => switch (d) {
+    -1 => tr('ما أعرف', "I don't know"),
+    0 => tr('نفس اليوم', 'Same day'),
+    1 => tr('يوم', '1 day'),
+    2 => tr('يومين', '2 days'),
+    10 => tr('أكثر من أسبوع', 'More than a week'),
+    _ => tr('$d أيام', '$d days'),
+  };
+
   @override
   State<ContributeCard> createState() => _ContributeCardState();
 }
 
-enum _Status { idle, sending, done }
+enum _Status { idle, sending, done, queued }
 
 class _ContributeCardState extends State<ContributeCard> {
   bool _open = false;
@@ -32,25 +52,6 @@ class _ContributeCardState extends State<ContributeCard> {
   bool _consent = false;
   _Status _status = _Status.idle;
   String? _error;
-
-  static const _dayOptions = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 10];
-  static Map<String, String> get _storageOptions => {
-    'unknown': tr('ما أعرف', "I don't know"),
-    'ice': tr('على الثلج', 'On ice'),
-    'fridge': tr('في الثلاجة', 'In the fridge'),
-    'room': tr('في غرفة مكيّفة', 'In an air-conditioned room'),
-    'hot': tr('برّا أو في السيارة', 'Outside or in the car'),
-    'frozen': tr('مجمّدة', 'Frozen'),
-  };
-
-  static String _dayLabel(int d) => switch (d) {
-    -1 => tr('ما أعرف', "I don't know"),
-    0 => tr('نفس اليوم', 'Same day'),
-    1 => tr('يوم', '1 day'),
-    2 => tr('يومين', '2 days'),
-    10 => tr('أكثر من أسبوع', 'More than a week'),
-    _ => tr('$d أيام', '$d days'),
-  };
 
   Future<void> _send() async {
     setState(() {
@@ -68,6 +69,17 @@ class _ContributeCardState extends State<ContributeCard> {
         score: widget.score,
       );
       if (mounted) setState(() => _status = _Status.done);
+    } on FishIdOfflineException {
+      // ما فيه نت: نحفظها في الجوال وتنرسل لحالها أول ما يرجع.
+      await UploadQueue.add(widget.images, {
+        'species': _species,
+        'speciesConfirmed': _sure,
+        'days': _days,
+        'storage': _storage,
+        'predicted': [for (final c in widget.candidates) c.$1],
+        'score': widget.score,
+      });
+      if (mounted) setState(() => _status = _Status.queued);
     } on FishIdException catch (e) {
       if (mounted) {
         setState(() {
@@ -80,20 +92,26 @@ class _ContributeCardState extends State<ContributeCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_status == _Status.done) {
+    if (_status == _Status.done || _status == _Status.queued) {
+      final queued = _status == _Status.queued;
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Icon(Icons.volunteer_activism, color: AppColors.good),
+              Icon(queued ? Icons.cloud_upload_outlined : Icons.volunteer_activism, color: AppColors.good),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  tr(
-                    'شكرًا لك! وصلت صورك، وبتساعدنا نخلي FISH ID أدق لأسماكنا.',
-                    'Thank you! Your photos arrived and will help make FISH ID more accurate for our fish.',
-                  ),
+                  queued
+                      ? tr(
+                          'شكرًا لك! ما فيه نت الحين، فحفظنا صورك في الجوال، وبتنرسل لحالها أول ما يرجع النت.',
+                          'Thank you! There is no internet now, so we saved your photos on the phone. They will be sent automatically when you are back online.',
+                        )
+                      : tr(
+                          'شكرًا لك! وصلت صورك، وبتساعدنا نخلي FISH ID أدق لأسماكنا.',
+                          'Thank you! Your photos arrived and will help make FISH ID more accurate for our fish.',
+                        ),
                   style: const TextStyle(fontWeight: FontWeight.w700, height: 1.5),
                 ),
               ),
@@ -183,7 +201,10 @@ class _ContributeCardState extends State<ContributeCard> {
                       initialValue: _days,
                       isExpanded: true,
                       decoration: _field(tr('كم يوم من الصيد؟', 'Days since catch?')),
-                      items: [for (final d in _dayOptions) DropdownMenuItem(value: d, child: Text(_dayLabel(d)))],
+                      items: [
+                        for (final d in ContributeCard.dayOptions)
+                          DropdownMenuItem(value: d, child: Text(ContributeCard.dayLabel(d))),
+                      ],
                       onChanged: (v) => setState(() => _days = v ?? -1),
                     ),
                   ),
@@ -194,7 +215,7 @@ class _ContributeCardState extends State<ContributeCard> {
                       isExpanded: true,
                       decoration: _field(tr('وين كانت محفوظة؟', 'How was it kept?')),
                       items: [
-                        for (final MapEntry(:key, :value) in _storageOptions.entries)
+                        for (final MapEntry(:key, :value) in ContributeCard.storageOptions.entries)
                           DropdownMenuItem(value: key, child: Text(value)),
                       ],
                       onChanged: (v) => setState(() => _storage = v ?? 'unknown'),

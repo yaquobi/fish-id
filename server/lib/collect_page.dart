@@ -102,7 +102,9 @@ function installBox() {
 }
 
 async function api(path, body) {
-  const res = await fetch(path, {method: body ? 'POST' : 'GET', headers: {'x-collector': key, 'content-type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
+  let res;
+  try { res = await fetch(path, {method: body ? 'POST' : 'GET', headers: {'x-collector': key, 'content-type': 'application/json'}, body: body ? JSON.stringify(body) : undefined}); }
+  catch (e) { throw Object.assign(new Error('ما فيه نت. افتح الصفحة مرة وحدة وانت على النت، وبعدها تشتغل حتى بدون نت.'), {offline: true}); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || 'صار خطأ، حاول مرة ثانية');
   return data;
@@ -121,11 +123,21 @@ async function start() {
   const invite = params.get('i');
   if (invite && !key) return signup(invite);
   if (!key) return fail('افتح الرابط اللي وصلك من فريق FISH ID.');
-  try { me = await api('collect/me'); } catch (e) { return fail(e.message); }
+  try {
+    me = await api('collect/me');
+    try { localStorage.setItem('fishid-collector-me', JSON.stringify(me)); } catch (e) {}
+  } catch (e) {
+    // في البحر بدون نت: نكمل بآخر بيانات انحفظت في الجوال، والصور تنتظر لين يرجع النت.
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('fishid-collector-me') || 'null'); } catch (_) {}
+    if (!e.offline || !saved) return fail(e.message);
+    me = saved;
+  }
   $('#who').innerHTML = `${esc(me.name)}<br><span style="opacity:.7">${esc(me.city)}</span>`;
   options = {};
   for (const [id, name] of Object.entries(me.species || {})) options[`${name} (${id})`] = id;
   me.joined ? form() : join();
+  flush();
 }
 
 // رابط الدعوة العام: يسجل اسمه ومدينته وجواله، ويطلع له رابطه الخاص ويتحفظ في الجوال.
@@ -184,7 +196,8 @@ function form(done) {
   shots = {};
   $('#app').innerHTML = `<div id="install"></div><div class="stats"><div class="stat"><div class="n num" id="today">${num(me.today)}</div><div class="l">سمكة اليوم</div></div>
     <div class="stat"><div class="n num" id="fish">${num(me.fish)}</div><div class="l">المجموع</div></div></div>
-    ${done ? `<div class="msg ok" style="margin:0 0 14px">✓ انرفعت ${esc(done)}. يعطيك العافية! الحين السمكة اللي بعدها.</div>` : ''}
+    <div id="pending"></div>
+    ${done ? `<div class="msg ok" style="margin:0 0 14px">${done.queued ? `✓ انحفظت ${esc(done.name)} في الجوال، وبترتفع لحالها أول ما يرجع النت. الحين السمكة اللي بعدها.` : `✓ انرفعت ${esc(done)}. يعطيك العافية! الحين السمكة اللي بعدها.`}</div>` : ''}
     <div class="card"><h2>1. اسم السمكة</h2>
       <input type="text" id="name" list="sp" placeholder="مثل: هامور، بياض، شعري..." autocomplete="off">
       <datalist id="sp">${Object.keys(options).map(o => `<option value="${esc(o)}">`).join('')}</datalist>
@@ -217,6 +230,7 @@ function form(done) {
   });
   $('#send').onclick = send;
   installBox();
+  pendingBox();
 }
 
 function ready() { $('#send').disabled = !($('#name').value.trim() && Object.keys(shots).length >= 3); }
@@ -240,12 +254,72 @@ function shrink(file) {
   });
 }
 
+// طابور بدون نت: الرفعة تنحفظ في الجوال (IndexedDB) وترتفع لحالها أول ما يرجع النت.
+function db() {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open('fishid-collect', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('pending', {keyPath: 'id', autoIncrement: true});
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+async function store(mode, fn) {
+  const d = await db();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction('pending', mode);
+    const out = fn(tx.objectStore('pending'));
+    tx.oncomplete = () => resolve(out && out.result);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+const queued = () => store('readonly', s => s.getAll()).catch(() => []);
+async function pendingBox() {
+  const box = $('#pending');
+  if (!box) return;
+  const n = (await queued()).length;
+  box.innerHTML = n ? `<div class="card install"><p>📥 <b class="num">${num(n)}</b> ${n === 1 ? 'سمكة تنتظر' : 'سمك ينتظر'} النت، وبترتفع لحالها أول ما يرجع.</p><button id="flush">ارفع الحين</button></div>` : '';
+  if (n) $('#flush').onclick = async () => { $('#flush').disabled = true; await flush(true); };
+}
+let flushing = false;
+async function flush(manual) {
+  if (flushing || !key) return;
+  flushing = true;
+  let left = 0;
+  try {
+    for (const item of await queued()) {
+      let res;
+      try { res = await fetch('collect/upload', {method: 'POST', headers: {'x-collector': key, 'content-type': 'application/json'}, body: item.body}); }
+      catch (e) { left = 1; break; }
+      if (res.status === 429 || res.status >= 500) { left = 1; break; }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && me) { me.fish = data.fish; me.today = data.today; }
+      // رفض نهائي (مثل رابط ملغي) ما ينفع نعيده، فنشيله عشان ما يوقف الباقي.
+      await store('readwrite', s => s.delete(item.id));
+    }
+  } finally { flushing = false; }
+  if (me && $('#fish')) { $('#fish').textContent = num(me.fish); $('#today').textContent = num(me.today); }
+  await pendingBox();
+  if (manual && left) show('#m', 'لسا ما فيه نت. الصور محفوظة، وبنرفعها لحالنا.', true);
+}
+addEventListener('online', () => flush());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flush(); });
+setInterval(() => { if (navigator.onLine) flush(); }, 60000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('collect/sw.js', {scope: '/api/collect'}).catch(() => {});
+
+async function keep(name, body) {
+  try {
+    await store('readwrite', s => s.add({body, name, at: Date.now()}));
+    form({queued: true, name}); scrollTo(0, 0);
+  } catch (e) { $('#bar').style.display = 'none'; show('#m', 'النت ضعيف وما انرفعت. صورك محفوظة هنا، اضغط ارفع مرة ثانية.', true); ready(); }
+}
+
 function send() {
   const name = $('#name').value.trim();
   const body = JSON.stringify({
-    name, species: options[name] || '', note: $('#note').value,
+    name, species: options[name] || '', note: $('#note').value, takenAt: new Date().toISOString(),
     images: PARTS.filter(([k]) => shots[k]).map(([k]) => ({part: k, image: shots[k], mediaType: 'image/jpeg'})),
   });
+  if (!navigator.onLine) return keep(name, body);
   $('#send').disabled = true;
   $('#m').innerHTML = '';
   const bar = $('#bar'); bar.style.display = 'block';
@@ -259,9 +333,10 @@ function send() {
     let data = {};
     try { data = JSON.parse(x.responseText); } catch (e) {}
     if (x.status === 200) { me.fish = data.fish; me.today = data.today; form(name); scrollTo(0, 0); }
+    else if (x.status === 429 || x.status >= 500) keep(name, body);
     else { bar.style.display = 'none'; show('#m', data.message || 'ما انرفعت، حاول مرة ثانية', true); ready(); }
   };
-  x.onerror = () => { bar.style.display = 'none'; show('#m', 'النت ضعيف وما انرفعت. صورك محفوظة هنا، اضغط ارفع مرة ثانية.', true); ready(); };
+  x.onerror = () => keep(name, body);
   x.send(body);
 }
 
@@ -269,4 +344,23 @@ start();
 </script>
 </body>
 </html>
+''';
+
+/// عامل الخدمة لصفحة المصوّرين: يجيب الصفحة من النت ويحفظ نسخة، ولو ما فيه نت يفتح النسخة المحفوظة.
+const collectWorker = r'''
+const CACHE = 'fishid-collect-v1';
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  const page = e.request.mode === 'navigate' && url.pathname === '/api/collect';
+  const asset = url.pathname.startsWith('/img/') || url.pathname === '/api/collect/manifest.webmanifest';
+  if (!page && !asset) return;
+  const id = page ? '/api/collect' : url.pathname;
+  e.respondWith(fetch(e.request).then(res => {
+    if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(id, copy)); }
+    return res;
+  }).catch(() => caches.match(id).then(r => r || Response.error())));
+});
 ''';

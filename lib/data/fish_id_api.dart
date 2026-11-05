@@ -21,6 +21,11 @@ class FishIdException implements Exception {
   String toString() => message;
 }
 
+/// ما فيه نت أو الخادم مشغول مؤقتًا: الطلب ممكن ينجح لو أعدناه بعدين.
+class FishIdOfflineException extends FishIdException {
+  const FishIdOfflineException(super.message);
+}
+
 /// خلصت الفحوصات (المجانية أو سقف الشهر)، فنعرض الاشتراك بدل «حاول مرة ثانية».
 class FishIdQuotaException extends FishIdException {
   const FishIdQuotaException(super.message);
@@ -272,6 +277,7 @@ abstract final class FishIdApi {
     required String storage,
     required List<String> predicted,
     required int score,
+    String? takenAt,
   }) async {
     if (isDemo) {
       await Future<void>.delayed(const Duration(seconds: 1));
@@ -296,12 +302,14 @@ abstract final class FishIdApi {
               'predicted': predicted,
               'score': score,
               'consent': true,
+              'takenAt': ?takenAt,
             }),
           )
           .timeout(const Duration(seconds: 60));
     } on Exception {
-      throw FishIdException(_offline);
+      throw FishIdOfflineException(_offline);
     }
+    if (res.statusCode == 429 || res.statusCode >= 500) throw FishIdOfflineException(_offline);
     if (res.statusCode != 200) {
       throw FishIdException(
         _serverMessage(utf8.decode(res.bodyBytes)) ??

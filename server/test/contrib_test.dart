@@ -47,6 +47,7 @@ void main() {
         'predicted': ['0220', '0219'],
         'score': 81,
         'consent': true,
+        'takenAt': '2026-10-26T05:30:00.000Z',
       }),
     );
     expect(res.statusCode, 200);
@@ -57,6 +58,7 @@ void main() {
     expect(meta['species_confirmed'], true);
     expect(meta['days_since_catch'], 2);
     expect(meta['storage'], 'ice');
+    expect(meta['taken_at'], '2026-10-26T05:30:00.000Z');
     expect(String.fromCharCodes(File('${folder.path}/1.jpg').readAsBytesSync()).contains('GPS'), isFalse);
     expect(sent.single, contains('شعور (0220) · 1 صور · 2 يوم من الصيد'));
     dir.deleteSync(recursive: true);
