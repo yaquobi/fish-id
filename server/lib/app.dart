@@ -1185,6 +1185,7 @@ class FishIdApp {
     final storage = storages.contains(body['storage']) ? body['storage'] as String : 'unknown';
     final predicted = [for (final p in (body['predicted'] is List ? body['predicted'] as List : const [])) '$p'].take(3).toList();
     final score = body['score'] is int ? (body['score'] as int).clamp(-1, 100) : -1;
+    final takenAt = DateTime.tryParse('${body['takenAt'] ?? ''}');
     _limit();
     final id = await store.save(photos, {
       'species': species,
@@ -1193,6 +1194,8 @@ class FishIdApp {
       'storage': storage,
       'predicted': predicted,
       'app_score': score,
+      // وقت التصوير لو انحفظت في الجوال بدون نت وانرسلت بعدين.
+      if (takenAt != null) 'taken_at': takenAt.toUtc().toIso8601String(),
     }, _clock());
     final name = species.isEmpty ? 'بدون نوع' : '${speciesNames[species] ?? species} ($species)';
     _tell(
@@ -1214,6 +1217,13 @@ class FishIdApp {
       return Response.ok(
         collectPage,
         headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer'},
+      );
+    }
+    if (req.method == 'GET' && path == 'collect/sw.js') {
+      // يحفظ الصفحة في الجوال عشان تفتح في البحر بدون نت. نطاقه /api/collect (الصفحة نفسها فوق مجلد الملف).
+      return Response.ok(
+        collectWorker,
+        headers: {'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache', 'service-worker-allowed': '/api/collect'},
       );
     }
     if (req.method == 'GET' && path == 'collect/manifest.webmanifest') {
@@ -1313,6 +1323,8 @@ class FishIdApp {
           'storage': parts.contains('ice') ? 'ice' : 'unknown',
           'predicted': const <String>[],
           'app_score': -1,
+          // وقت التصوير لو انحفظت في الجوال بدون نت وانرفعت بعدين.
+          if (DateTime.tryParse('${body['takenAt'] ?? ''}') case final t?) 'taken_at': t.toUtc().toIso8601String(),
         }, now);
         await store.counted(key, photos.length, now);
         _tell(

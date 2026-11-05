@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/crash_reports.dart';
+import 'data/upload_queue.dart';
 import 'l10n.dart';
 import 'screens/home_screen.dart';
 import 'theme.dart';
@@ -11,6 +12,7 @@ Future<void> main() async {
   await CrashReports.start();
   await L10n.load();
   runApp(const FishIdApp());
+  UploadQueue.start();
 }
 
 class FishIdApp extends StatelessWidget {
