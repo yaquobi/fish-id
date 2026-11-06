@@ -53,7 +53,11 @@ Future<void> main() async {
   final accounts = AccountStore.open(env['FISHID_ACCOUNTS'] ?? 'accounts');
   // بصمة في الظل (خدمة basma في docker-compose). بدون الرابط ما تشتغل.
   final basma = accounts == null || (env['FISHID_BASMA_URL'] ?? '').isEmpty ? null : BasmaShadow.http(accounts.dir, Uri.parse(env['FISHID_BASMA_URL']!));
-  final notify = _both(_telegram(env['FISHID_TELEGRAM_TOKEN'] ?? '', env['FISHID_TELEGRAM_CHAT'] ?? ''), _ntfy(env['FISHID_NTFY_TOPIC'] ?? ''));
+  final notify = _both(
+    _both(_telegram(env['FISHID_TELEGRAM_TOKEN'] ?? '', env['FISHID_TELEGRAM_CHAT'] ?? ''), _ntfy(env['FISHID_NTFY_TOPIC'] ?? '')),
+    // نسخة من كل تنبيه بالإيميل، عشان سكرتير الإيميل (Claude) يقراها كل ساعة ويفرز المهم. off يطفيها.
+    _emailAlerts(_mailer(env), env['FISHID_ALERT_EMAIL'] ?? 'yaquobi+alerts@hawat.sa'),
+  );
   final app = FishIdApp(
     identify: ai?.identify,
     box: ai?.box,
@@ -161,6 +165,26 @@ Notify? _telegram(String token, String chat) {
       if (res.statusCode != 200) stderr.writeln('FishId: تليجرام رد ${res.statusCode}');
     } on Object catch (e) {
       stderr.writeln('FishId: تعذّر الإرسال لتليجرام: $e');
+    }
+  }());
+}
+
+/// يرسل نسخة من التنبيه بالإيميل بعنوان يبدأ بـ «FISH ID Alert» وبدون ما ينتظره أحد. أي خطأ ينكتب في السجل بس.
+Notify? _emailAlerts(Mailer? mailer, String to) {
+  if (mailer == null || to.isEmpty || to == 'off') return null;
+  return (text) => unawaited(() async {
+    try {
+      final first = text.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => 'تنبيه').trim();
+      final title = first.length > 90 ? '${first.substring(0, 90)}…' : first;
+      final safe = const HtmlEscape().convert(text);
+      await mailer.send(
+        to: to,
+        subject: 'FISH ID Alert: $title',
+        html: '<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;font-size:14px;line-height:1.7;white-space:pre-wrap">$safe</div>',
+        text: text,
+      );
+    } on Object catch (e) {
+      stderr.writeln('FishId: تعذّر إرسال تنبيه الإيميل: $e');
     }
   }());
 }
