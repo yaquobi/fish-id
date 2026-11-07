@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:fish_id_server/basma_api.dart';
+import 'package:fish_id_server/contrib.dart';
 import 'package:fish_id_server/mailer.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
@@ -201,5 +202,41 @@ void main() {
     expect(m, contains('From: =?UTF-8?B?'));
     expect(m, contains(base64.encode(utf8.encode('<b>هلا</b>'))));
     expect(m, contains('--B--'));
+  });
+
+  test('a client labels a photo: it joins the review queue and is not counted', () async {
+    final cdir = Directory.systemTemp.createTempSync('basma_label');
+    addTearDown(() => cdir.deleteSync(recursive: true));
+    final store = ContribStore(cdir.path);
+    api = BasmaApi(clients, (p) async => {'top': [], 'ms': 1}, BasmaApi.speciesFrom(data), notify: notes.add, contrib: store);
+    final k = (await clients.add({'name': 'حوات', 'plan': 'trial'}, now))['key'] as String;
+    final jpg = [0xFF, 0xD8, 0xFF, 0xD9];
+    Future<(int, Map<String, dynamic>)> label(Map<String, Object?> b) => call('label', key: k, type: 'application/json', body: utf8.encode(jsonEncode({'image': base64.encode(jpg), 'mediaType': 'image/jpeg', ...b})));
+
+    var (s, j) = await label({'species': '0365', 'name': 'هامور', 'verdict': 'correct', 'predicted': ['0365', '0058', 'x'], 'score': 91, 'source': 'hawat-counter', 'place': 'ميناء القنفذة'});
+    expect(s, 200);
+    expect(j['ok'], isTrue);
+    (s, j) = await label({'species': '', 'name': 'شعور', 'verdict': 'corrected', 'predicted': ['0058']});
+    expect(s, 200);
+    (s, j) = await label({'species': '9999'});
+    expect(s, 400);
+    expect(j['error']['code'], 'bad_species');
+    (s, j) = await label({'species': '', 'name': ''});
+    expect(s, 400);
+
+    final items = store.latest();
+    expect(items, hasLength(2));
+    final first = items.firstWhere((m) => m['verdict'] == 'correct');
+    expect(first['source'], 'basma-label');
+    expect(first['client'], 'حوات');
+    expect(first['place'], 'ميناء القنفذة');
+    expect(first['species'], '0365');
+    expect(first['species_confirmed'], isTrue);
+    expect(first['predicted'], ['0365', '0058']);
+    expect(items.firstWhere((m) => m['verdict'] == 'corrected')['species_confirmed'], isFalse);
+    // تنبيه واحد في اليوم، والصور ما تنحسب من الباقة.
+    expect(notes.where((n) => n.contains('🏷️')), hasLength(1));
+    final (_, u) = await call('usage', key: k, method: 'GET');
+    expect(u['used'], 0);
   });
 }

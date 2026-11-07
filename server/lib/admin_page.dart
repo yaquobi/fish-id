@@ -1358,6 +1358,7 @@ function main() {
         <div class="thumbs">${c.files.map(f => `<img alt="" data-src="contrib/${esc(c.day)}/${esc(c.id)}/${esc(f)}">`).join('')}</div>
         <div><b>${c.species ? sp(c.species) : T('بدون نوع', 'No species')}</b> ${c.species_confirmed ? `<span class="pill ok">${T('أكّده المستخدم', 'user confirmed')}</span>` : ''}</div>
         ${c.source === 'collector' ? `<div class="k">${T('المصوّر', 'Collector')}: ${esc(c.collector)} · ${esc(c.city)} · ${T('كتب', 'typed')}: <b>${esc(c.typed_name)}</b>${c.note ? ' · ' + esc(c.note) : ''}</div>` : ''}
+        ${c.source === 'basma-label' ? `<div class="k">${T('خبير من', 'Expert from')} ${esc(c.client)}${c.place ? ' · ' + esc(c.place) : ''} · ${c.verdict === 'corrected' ? T('صحّح الصنف إلى', 'corrected to') : T('أكّد الصنف', 'confirmed')}: <b>${esc(c.typed_name)}</b></div>` : ''}
         <div class="k">${c.days_since_catch >= 0 ? `${num(c.days_since_catch)} ${T('يوم من الصيد', 'days since catch')}` : T('الأيام غير معروفة', 'days unknown')} · ${esc(storageName(c.storage))} · ${when(c.at)}</div>
         <div class="k">${T('التطبيق توقع', 'App predicted')}: ${(c.predicted || []).map(sp).join(', ') || '—'}</div>
         <div class="row noprint" style="margin-top:10px"><button class="act sm" data-r="approved">${T('قبول', 'Approve')}</button><button class="act ghost sm" data-r="rejected">${T('رفض', 'Reject')}</button>
