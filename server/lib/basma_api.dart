@@ -8,6 +8,7 @@ import 'package:shelf/shelf.dart';
 
 import 'basma.dart';
 import 'claude.dart';
+import 'contrib.dart';
 import 'mailer.dart';
 
 /// عملاء «بصمة API» اللي يشترون النموذج للشركات والجهات (hawat.id/basma).
@@ -258,7 +259,7 @@ class BasmaClients {
 /// يرجّع أقرب الأنواع من 448 نوعًا في الموسوعة بالاسم العلمي والإنجليزي والمحلي (البحر الأحمر والخليج).
 /// GET basma/v1/usage يرجّع الباقة والمستخدم والمتبقي، و GET basma/v1/species قائمة الأنواع (ما تنحسب).
 class BasmaApi {
-  BasmaApi(this.clients, this.rank, this.species, {this.perMinute = 60, this.notify, this.mail});
+  BasmaApi(this.clients, this.rank, this.species, {this.perMinute = 60, this.notify, this.mail, this.contrib});
 
   final BasmaClients clients;
   final BasmaRank rank;
@@ -270,6 +271,10 @@ class BasmaApi {
 
   /// يرسل المفتاح لإيميل العميل بعد التسجيل الذاتي. بدونه المفتاح يطلع في الصفحة مباشرة.
   final SendMail? mail;
+
+  /// صور بصنف مؤكد من عملاء بصمة (مثل عدّاد ميناء في حوات). تدخل نفس طابور «صور المساهمين» للمراجعة،
+  /// وبعد القبول تصير بيانات تدريب لبصمة.
+  final ContribStore? contrib;
 
   static const model = 'basma-0.1';
   static const maxBytes = 5 * 1024 * 1024;
@@ -324,12 +329,72 @@ class BasmaApi {
           'usage': _usage(after, now),
         });
       }
+      if (req.method == 'POST' && sub == 'label') return _json(200, {'ok': true, 'id': await _label(req, c, now)});
       throw const FishIdError('not_found', 'Unknown endpoint. See https://hawat.id/basma/', status: 404);
     } on FishIdError catch (e) {
       return _json(e.status, {
         'error': {'code': e.code, 'message': e.message},
       });
     }
+  }
+
+  final _labelDays = <String, String>{};
+
+  /// POST basma/v1/label: صورة مع الصنف اللي أكّده خبير (العدّاد في الميناء).
+  /// JSON {image, mediaType, species: "0380" أو "", name: الاسم المحلي, verdict: correct|corrected,
+  /// predicted: ["0380", ...], score: 0..100, source: "hawat-counter", place: "ميناء القنفذة"}.
+  /// ما ينحسب من الباقة، والصورة تنحذف منها بيانات الموقع والجوال قبل الحفظ.
+  Future<String> _label(Request req, Map<String, dynamic> c, DateTime now) async {
+    final store = contrib;
+    if (store == null) throw const FishIdError('label_off', 'Labelling is not enabled on this server.', status: 503);
+    final Map body;
+    try {
+      body = jsonDecode(await req.readAsString()) as Map;
+    } on Object {
+      throw const FishIdError('bad_request', 'Send JSON with image, mediaType and species.');
+    }
+    final mt = '${body['mediaType'] ?? 'image/jpeg'}';
+    if (mt != 'image/jpeg' && mt != 'image/png') throw const FishIdError('bad_image', 'Send one JPEG or PNG image.');
+    final Uint8List img;
+    try {
+      img = base64.decode('${body['image']}'.replaceFirst(RegExp(r'^data:[^,]*,'), ''));
+    } on Object {
+      throw const FishIdError('bad_image', 'Send one JPEG or PNG image.');
+    }
+    if (img.isEmpty || img.length > maxBytes) throw const FishIdError('bad_image', 'Send one JPEG or PNG image up to 5 MB.');
+    final sp = '${body['species'] ?? ''}';
+    if (sp.isNotEmpty && !species.containsKey(sp)) throw const FishIdError('bad_species', 'Unknown species id. See GET basma/v1/species.');
+    String short(Object? v, int n) {
+      final t = '${v ?? ''}'.trim();
+      return t.length > n ? t.substring(0, n) : t;
+    }
+
+    final name = short(body['name'], 40);
+    if (sp.isEmpty && name.isEmpty) throw const FishIdError('bad_species', 'Send species or name.');
+    final verdict = body['verdict'] == 'corrected' ? 'corrected' : 'correct';
+    final predicted = [for (final p in (body['predicted'] is List ? body['predicted'] as List : const [])) short(p, 4)].where(species.containsKey).take(3).toList();
+    final score = body['score'] is num ? (body['score'] as num).round().clamp(0, 100) : -1;
+    final place = short(body['place'], 60);
+    final id = await store.save([Photo(img, mt)], {
+      'source': 'basma-label',
+      'client': c['name'],
+      'from': short(body['source'], 30),
+      'place': place,
+      'typed_name': name,
+      'verdict': verdict,
+      'species': sp,
+      'species_confirmed': sp.isNotEmpty,
+      'days_since_catch': -1,
+      'storage': 'unknown',
+      'predicted': predicted,
+      'app_score': score,
+    }, now);
+    final day = now.toUtc().toIso8601String().substring(0, 10);
+    if (_labelDays['${c['id']}'] != day) {
+      _labelDays['${c['id']}'] = day;
+      notify?.call('🏷️ أول صورة اليوم من ${c['name']}${place.isEmpty ? '' : ' ($place)'}: ${sp.isEmpty ? name : '${species[sp]!['red_sea']} ($sp)'}. راجعها من «صور المساهمين».');
+    }
+    return id;
   }
 
   final _signups = <String, (String, int)>{};

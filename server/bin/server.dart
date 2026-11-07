@@ -58,11 +58,12 @@ Future<void> main() async {
     // نسخة من كل تنبيه بالإيميل، عشان سكرتير الإيميل (Claude) يقراها كل ساعة ويفرز المهم. off يطفيها.
     _emailAlerts(_mailer(env), env['FISHID_ALERT_EMAIL'] ?? 'yaquobi+alerts@hawat.sa'),
   );
+  final contrib = ContribStore.open(env['FISHID_CONTRIB'] ?? 'contrib');
   final app = FishIdApp(
     identify: ai?.identify,
     box: ai?.box,
     // مجلد مساهمات المستخدمين (مربوط بـ data/contrib على السيرفر في docker-compose).
-    contrib: ContribStore.open(env['FISHID_CONTRIB'] ?? 'contrib'),
+    contrib: contrib,
     collectors: accounts == null ? null : CollectorStore.open(accounts.dir),
     // أرشيف كتاب أسماك البحر الأحمر (data/book/archive على السيرفر)، يبنيه tool/book_extract.py.
     book: BookArchive.open(env['FISHID_BOOK'] ?? 'book', {for (final s in data['species'] as List) '${s['sci']}'.toLowerCase().trim(): s['id'] as String}),
@@ -77,7 +78,7 @@ Future<void> main() async {
     gateway: _moyasar(env),
     basma: basma,
     // بصمة API للعملاء (hawat.id/api/basma/v1/identify) على نفس الخدمة.
-    basmaApi: basma == null ? null : BasmaApi(BasmaClients.open(accounts!.dir), basma.rank, BasmaApi.speciesFrom(data), notify: notify, mail: _mailer(env)?.send),
+    basmaApi: basma == null ? null : BasmaApi(BasmaClients.open(accounts!.dir), basma.rank, BasmaApi.speciesFrom(data), notify: notify, mail: _mailer(env)?.send, contrib: contrib),
     adminToken: env['FISHID_ADMIN_TOKEN'] ?? '',
     revenueCat: _revenueCat(env['FISHID_RC_KEY'] ?? 'goog_hbGYTrOvVqpREIzVQGfbduJsozZ'),
     speciesNames: {
